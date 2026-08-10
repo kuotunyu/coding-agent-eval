@@ -37,16 +37,28 @@ different. It is frozen here and asserted by reproducing both manifests.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
 import subprocess
+import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from coding_agent_eval.fixtures.image_identity import (
+    SHA256_DIGEST,
+    PreparedImageIdentity,
+)
 from coding_agent_eval.fixtures.report import Check, Observation
-from coding_agent_eval.sandbox.fingerprint import COMPONENTS, environment_fingerprint
+from coding_agent_eval.sandbox.fingerprint import (
+    COMPONENTS,
+    CURRENT_COMPONENTS,
+    environment_fingerprint,
+)
 
 _DOCKER_TIMEOUT = 180
 
@@ -94,6 +106,9 @@ class EnvironmentReport:
     fixture_version: str
     checks: tuple[Check, ...]
     observations: tuple[Observation, ...] = ()
+    image_identity: PreparedImageIdentity | None = None
+    observed_manifest_digest: str | None = None
+    observed_config_digest: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -108,6 +123,42 @@ class EnvironmentReport:
         body = [check.render() for check in self.checks]
         body += [observation.render() for observation in self.observations]
         return "\n".join([head, *body])
+
+    def to_document(self) -> dict[str, Any]:
+        """Return a JSON-safe report with declared and observed identity separated."""
+        identity = None
+        if self.image_identity is not None:
+            identity = {
+                "immutable_ref": self.image_identity.immutable_ref,
+                "declared_manifest_digest": self.image_identity.manifest_digest,
+                "observed_manifest_digest": self.observed_manifest_digest,
+                "declared_config_digest": self.image_identity.config_digest,
+                "observed_config_digest": self.observed_config_digest,
+            }
+        return {
+            "fixture_id": self.fixture_id,
+            "fixture_version": self.fixture_version,
+            "ok": self.ok,
+            "image_identity": identity,
+            "checks": [
+                {
+                    "name": check.name,
+                    "ok": check.ok,
+                    "expected": check.expected,
+                    "actual": check.actual,
+                    "detail": list(check.detail),
+                }
+                for check in self.checks
+            ],
+            "observations": [
+                {
+                    "name": observation.name,
+                    "value": observation.value,
+                    "why_unverified": observation.why_unverified,
+                }
+                for observation in self.observations
+            ],
+        }
 
 
 def runtime_version(raw: str) -> str:
@@ -135,17 +186,74 @@ def manager_version(raw: str, manager: str) -> str:
     return f"{manager} {tokens[0]}"
 
 
-def _docker(args: list[str]) -> subprocess.CompletedProcess[bytes]:
+def _docker(
+    args: list[str], *, environment: Mapping[str, str] | None = None
+) -> subprocess.CompletedProcess[bytes]:
     try:
-        return subprocess.run(["docker", *args], capture_output=True, timeout=_DOCKER_TIMEOUT)
+        return subprocess.run(
+            ["docker", *args],
+            capture_output=True,
+            timeout=_DOCKER_TIMEOUT,
+            env=environment,
+        )
     except (OSError, subprocess.SubprocessError) as exc:
         raise EnvironmentCheckError(f"docker {args[0]} failed: {exc}") from exc
 
 
-def local_image_id(tag: str) -> str | None:
-    """The local image ID for a tag, or None when it is not present."""
-    proc = _docker(["image", "inspect", "--format", "{{.Id}}", tag])
+def local_config_digest(image_ref: str) -> str | None:
+    """The local image configuration digest, or None when it is absent."""
+    proc = _docker(["image", "inspect", "--format", "{{.Id}}", image_ref])
     return proc.stdout.decode("utf-8").strip() if proc.returncode == 0 else None
+
+
+def local_image_id(tag: str) -> str | None:
+    """Compatibility name for the legacy prepared-image check."""
+    return local_config_digest(tag)
+
+
+def registry_manifest_digest(
+    image_ref: str, *, environment: Mapping[str, str] | None = None
+) -> str | None:
+    """Resolve an OCI registry manifest digest without confusing it with `.Id`."""
+    proc = _docker(
+        [
+            "buildx",
+            "imagetools",
+            "inspect",
+            "--format",
+            "{{json .Manifest.Digest}}",
+            image_ref,
+        ],
+        environment=environment,
+    )
+    if proc.returncode != 0:
+        return None
+    raw = proc.stdout.decode("utf-8", "replace").strip()
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        decoded = raw
+    if not isinstance(decoded, str) or SHA256_DIGEST.fullmatch(decoded) is None:
+        raise EnvironmentCheckError(
+            f"registry inspection returned an invalid manifest digest for {image_ref}"
+        )
+    return decoded
+
+
+def anonymous_registry_manifest_digest(image_ref: str) -> str:
+    """Resolve and pull `image_ref` with an empty Docker credential directory."""
+    with tempfile.TemporaryDirectory(prefix="cae-docker-config-") as directory:
+        anonymous_environment = dict(os.environ)
+        anonymous_environment["DOCKER_CONFIG"] = directory
+        manifest_digest = registry_manifest_digest(image_ref, environment=anonymous_environment)
+        if manifest_digest is None:
+            raise EnvironmentCheckError(
+                f"could not resolve {image_ref} without registry credentials"
+            )
+        pulled = _docker(["pull", image_ref], environment=anonymous_environment)
+        if pulled.returncode != 0:
+            raise EnvironmentCheckError(f"could not pull {image_ref} without registry credentials")
+        return manifest_digest
 
 
 def image_arch(image: str) -> str:
@@ -268,7 +376,7 @@ def load_manifest(fixture_dir: Path) -> dict[str, Any]:
     return document
 
 
-def run_environment_check(fixture_dir: Path) -> EnvironmentReport:
+def run_environment_check(fixture_dir: Path, *, online: bool = False) -> EnvironmentReport:
     """Re-derive one fixture's environment identity and compare with its manifest.
 
     Raises `EnvironmentCheckError` when the check cannot run — no daemon, no image,
@@ -276,6 +384,20 @@ def run_environment_check(fixture_dir: Path) -> EnvironmentReport:
     something did not hold.
     """
     manifest = load_manifest(fixture_dir)
+    environment = manifest["environment"]
+    if "prepared_image_repository" in environment:
+        return _run_current_environment_check(fixture_dir, manifest=manifest, online=online)
+    if online:
+        raise EnvironmentCheckError(
+            "online registry verification requires the current OCI image identity contract"
+        )
+    return _run_legacy_environment_check(fixture_dir, manifest=manifest)
+
+
+def _run_legacy_environment_check(
+    fixture_dir: Path, *, manifest: dict[str, Any]
+) -> EnvironmentReport:
+    """Keep historical fixture verification readable during the migration."""
     environment = manifest["environment"]
     declared_digest = str(environment["prepared_image_digest"])
     tag = str(environment["prepared_image_tag"])
@@ -345,6 +467,7 @@ def run_environment_check(fixture_dir: Path) -> EnvironmentReport:
         fixture_id=str(manifest["fixture_id"]),
         fixture_version=str(manifest["fixture_version"]),
         checks=tuple(checks),
+        observed_config_digest=present,
         observations=(
             Observation(
                 name="base_image_digest",
@@ -355,4 +478,126 @@ def run_environment_check(fixture_dir: Path) -> EnvironmentReport:
                 ),
             ),
         ),
+    )
+
+
+def _run_current_environment_check(
+    fixture_dir: Path, *, manifest: dict[str, Any], online: bool
+) -> EnvironmentReport:
+    """Verify current registry/config identities without conflating the two."""
+    environment = manifest["environment"]
+    identity = PreparedImageIdentity.from_environment(environment)
+
+    observed_config = local_config_digest(identity.immutable_ref)
+    if observed_config is None:
+        raise EnvironmentCheckError(
+            f"the prepared image {identity.immutable_ref} is not present locally; "
+            "pull that digest-qualified reference before this can check anything"
+        )
+
+    checks: list[Check] = []
+    observed_manifest: str | None = None
+    if online:
+        observed_manifest = anonymous_registry_manifest_digest(identity.immutable_ref)
+        checks += [
+            Check(
+                name="prepared_image_manifest_digest",
+                ok=observed_manifest == identity.manifest_digest,
+                expected=identity.manifest_digest,
+                actual=observed_manifest,
+                detail=(
+                    ()
+                    if observed_manifest == identity.manifest_digest
+                    else ("the registry resolved a different OCI manifest",)
+                ),
+            ),
+            Check(
+                name="anonymous_pull",
+                ok=True,
+                expected="pullable without registry credentials",
+                actual=identity.immutable_ref,
+            ),
+        ]
+
+    checks += [
+        Check(
+            name="prepared_image_config_digest",
+            ok=observed_config == identity.config_digest,
+            expected=identity.config_digest,
+            actual=observed_config,
+            detail=(
+                ()
+                if observed_config == identity.config_digest
+                else ("the local image configuration is not the object declared by the fixture",)
+            ),
+        ),
+        recipe_pins_the_base(fixture_dir / str(environment["rebuild_recipe"])),
+    ]
+
+    subject = (
+        identity.immutable_ref if observed_config == identity.config_digest else observed_config
+    )
+    probed = probe_image(subject, str(manifest["language"]))
+    lock_hex = lock_manifest_sha256(fixture_dir / str(environment["lock_manifest"]))
+    components = {
+        "base_image_digest": str(environment["base_image_digest"]),
+        "prepared_image_manifest_digest": identity.manifest_digest,
+        "prepared_image_config_digest": identity.config_digest,
+        "os_release_id": probed.os_release_id,
+        "os_release_version_id": probed.os_release_version_id,
+        "primary_runtime_version": probed.primary_runtime_version,
+        "package_manager_version": probed.package_manager_version,
+        "lock_manifest_sha256": lock_hex,
+        "arch": probed.arch,
+    }
+    assert set(components) == set(CURRENT_COMPONENTS), (
+        "the probe must cover every current environment component"
+    )
+
+    rebuilt = environment_fingerprint(components, contract="current")
+    declared_fingerprint = str(environment["fingerprint"])
+    checks.append(
+        Check(
+            name="fingerprint",
+            ok=rebuilt == declared_fingerprint,
+            expected=declared_fingerprint,
+            actual=rebuilt,
+            detail=(
+                tuple(f"{name} = {value}" for name, value in sorted(components.items()))
+                if rebuilt != declared_fingerprint
+                else ()
+            ),
+        )
+    )
+
+    observations = [
+        Observation(
+            name="base_image_digest",
+            value=str(environment["base_image_digest"]),
+            why_unverified=(
+                "the rebuild recipe consumes this registry pin, but this check does not "
+                "resolve the base image"
+            ),
+        )
+    ]
+    if not online:
+        observations.append(
+            Observation(
+                name="prepared_image_manifest_digest",
+                value=identity.manifest_digest,
+                why_unverified=(
+                    "offline mode does not contact the registry; use --online to verify "
+                    "the manifest and anonymous pull"
+                ),
+            )
+        )
+
+    return EnvironmentReport(
+        fixture_id=str(manifest["fixture_id"]),
+        fixture_version=str(manifest["fixture_version"]),
+        checks=tuple(checks),
+        observations=tuple(observations),
+        image_identity=identity,
+        observed_manifest_digest=observed_manifest,
+        observed_config_digest=observed_config,
     )

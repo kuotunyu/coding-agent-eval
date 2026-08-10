@@ -19,21 +19,29 @@ observed failing rather than only passing.
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
+from coding_agent_eval.fixtures import environment as environment_module
 from coding_agent_eval.fixtures.environment import (
     RUNTIMES,
     EnvironmentCheckError,
+    Probed,
     manager_version,
     recipe_pins_the_base,
     run_environment_check,
     runtime_version,
 )
-from coding_agent_eval.sandbox.fingerprint import COMPONENTS, environment_fingerprint
+from coding_agent_eval.sandbox.fingerprint import (
+    COMPONENTS,
+    CURRENT_COMPONENTS,
+    environment_fingerprint,
+)
 from tests.conftest import DOCKER_AVAILABLE, REPO_ROOT
 
 FIXTURE_IDS = ["fx-taskq-py", "fx-ledger-ts"]
@@ -59,6 +67,16 @@ RAW_VERSIONS = {
         "manager": "npm 10.9.8",
     },
 }
+
+CURRENT_MANIFEST_DIGEST = "sha256:" + "a" * 64
+CURRENT_CONFIG_DIGEST = "sha256:" + "b" * 64
+CURRENT_PROBED = Probed(
+    os_release_id="debian",
+    os_release_version_id="12",
+    primary_runtime_version="3.12.13",
+    package_manager_version="pip 25.0.1",
+    arch="linux/amd64",
+)
 
 
 def manifest_of(fixture_id: str) -> dict:
@@ -86,6 +104,55 @@ def edit_environment(fixture_dir: Path, key: str, value: object) -> None:
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
     document["environment"][key] = value
     path.write_text(yaml.safe_dump(document, sort_keys=True), encoding="utf-8", newline="\n")
+
+
+def current_copy(destination: Path) -> Path:
+    fixture_dir = partial_copy("fx-taskq-py", destination)
+    path = fixture_dir / "fixture.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    environment = manifest["environment"]
+    environment.pop("prepared_image_digest")
+    environment["prepared_image_repository"] = "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py"
+    environment["prepared_image_tag"] = "1.0.4"
+    environment["prepared_image_manifest_digest"] = CURRENT_MANIFEST_DIGEST
+    environment["prepared_image_config_digest"] = CURRENT_CONFIG_DIGEST
+
+    lock_hex = hashlib.sha256((fixture_dir / environment["lock_manifest"]).read_bytes()).hexdigest()
+    components = {
+        "base_image_digest": environment["base_image_digest"],
+        "prepared_image_manifest_digest": CURRENT_MANIFEST_DIGEST,
+        "prepared_image_config_digest": CURRENT_CONFIG_DIGEST,
+        "os_release_id": CURRENT_PROBED.os_release_id,
+        "os_release_version_id": CURRENT_PROBED.os_release_version_id,
+        "primary_runtime_version": CURRENT_PROBED.primary_runtime_version,
+        "package_manager_version": CURRENT_PROBED.package_manager_version,
+        "lock_manifest_sha256": lock_hex,
+        "arch": CURRENT_PROBED.arch,
+    }
+    assert set(components) == set(CURRENT_COMPONENTS)
+    environment["fingerprint"] = environment_fingerprint(components, contract="current")
+    path.write_text(yaml.safe_dump(manifest, sort_keys=True), encoding="utf-8", newline="\n")
+    return fixture_dir
+
+
+def install_current_observations(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    config_digest: str = CURRENT_CONFIG_DIGEST,
+    manifest_digest: str = CURRENT_MANIFEST_DIGEST,
+) -> None:
+    monkeypatch.setattr(
+        environment_module, "local_config_digest", lambda image_ref: config_digest, raising=False
+    )
+    monkeypatch.setattr(
+        environment_module,
+        "anonymous_registry_manifest_digest",
+        lambda image_ref: manifest_digest,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        environment_module, "probe_image", lambda image_ref, language: CURRENT_PROBED
+    )
 
 
 def failed_names(report: object) -> set[str]:
@@ -166,6 +233,184 @@ def test_an_empty_version_string_is_refused_rather_than_hashed() -> None:
         runtime_version("   ")
     with pytest.raises(EnvironmentCheckError):
         manager_version("", "pip")
+
+
+# ----------------------------------------------- current OCI identity (offline)
+
+
+def test_local_config_digest_reads_the_docker_image_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_docker(
+        args: list[str], *, environment: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[bytes]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, (CURRENT_CONFIG_DIGEST + "\n").encode(), b"")
+
+    monkeypatch.setattr(environment_module, "_docker", fake_docker)
+
+    assert environment_module.local_config_digest("repository@digest") == CURRENT_CONFIG_DIGEST
+    assert calls == [["image", "inspect", "--format", "{{.Id}}", "repository@digest"]]
+
+
+def test_registry_manifest_digest_reads_the_registry_object(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_docker(
+        args: list[str], *, environment: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[bytes]:
+        calls.append(args)
+        return subprocess.CompletedProcess(
+            args, 0, json.dumps(CURRENT_MANIFEST_DIGEST).encode(), b""
+        )
+
+    monkeypatch.setattr(environment_module, "_docker", fake_docker)
+
+    assert (
+        environment_module.registry_manifest_digest("repository@digest") == CURRENT_MANIFEST_DIGEST
+    )
+    assert calls == [
+        [
+            "buildx",
+            "imagetools",
+            "inspect",
+            "--format",
+            "{{json .Manifest.Digest}}",
+            "repository@digest",
+        ]
+    ]
+
+
+def test_anonymous_registry_probe_uses_an_empty_temporary_docker_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[list[str], str]] = []
+
+    def fake_docker(
+        args: list[str], *, environment: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[bytes]:
+        assert environment is not None
+        docker_config = environment["DOCKER_CONFIG"]
+        assert Path(docker_config).is_dir()
+        assert list(Path(docker_config).iterdir()) == []
+        calls.append((args, docker_config))
+        if args[:3] == ["buildx", "imagetools", "inspect"]:
+            return subprocess.CompletedProcess(
+                args, 0, json.dumps(CURRENT_MANIFEST_DIGEST).encode(), b""
+            )
+        return subprocess.CompletedProcess(args, 0, b"pulled", b"")
+
+    monkeypatch.setattr(environment_module, "_docker", fake_docker)
+
+    assert (
+        environment_module.anonymous_registry_manifest_digest("repository@digest")
+        == CURRENT_MANIFEST_DIGEST
+    )
+    assert len(calls) == 2
+    assert calls[0][1] == calls[1][1]
+    assert not Path(calls[0][1]).exists()
+
+
+def test_offline_current_check_keeps_manifest_digest_unverified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_dir = current_copy(tmp_path / "fx-taskq-py")
+    install_current_observations(monkeypatch)
+
+    report = run_environment_check(fixture_dir)
+    document = report.to_document()
+
+    assert report.ok
+    assert {check.name for check in report.checks} == {
+        "prepared_image_config_digest",
+        "recipe_pins_the_base",
+        "fingerprint",
+    }
+    assert {observation.name for observation in report.observations} == {
+        "base_image_digest",
+        "prepared_image_manifest_digest",
+    }
+    assert document["image_identity"] == {
+        "immutable_ref": (
+            "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@" + CURRENT_MANIFEST_DIGEST
+        ),
+        "declared_manifest_digest": CURRENT_MANIFEST_DIGEST,
+        "observed_manifest_digest": None,
+        "declared_config_digest": CURRENT_CONFIG_DIGEST,
+        "observed_config_digest": CURRENT_CONFIG_DIGEST,
+    }
+
+
+def test_current_config_mismatch_is_a_separate_failed_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_dir = current_copy(tmp_path / "fx-taskq-py")
+    observed = "sha256:" + "c" * 64
+    install_current_observations(monkeypatch, config_digest=observed)
+
+    report = run_environment_check(fixture_dir)
+
+    assert failed_names(report) == {"prepared_image_config_digest"}
+    check = next(item for item in report.checks if item.name == "prepared_image_config_digest")
+    assert check.expected == CURRENT_CONFIG_DIGEST
+    assert check.actual == observed
+
+
+def test_online_current_check_observes_manifest_and_anonymous_pull(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_dir = current_copy(tmp_path / "fx-taskq-py")
+    install_current_observations(monkeypatch)
+
+    report = run_environment_check(fixture_dir, online=True)
+
+    assert report.ok
+    assert {check.name for check in report.checks} == {
+        "prepared_image_manifest_digest",
+        "anonymous_pull",
+        "prepared_image_config_digest",
+        "recipe_pins_the_base",
+        "fingerprint",
+    }
+    assert report.to_document()["image_identity"]["observed_manifest_digest"] == (
+        CURRENT_MANIFEST_DIGEST
+    )
+
+
+def test_online_manifest_mismatch_is_not_hidden_by_a_successful_pull(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_dir = current_copy(tmp_path / "fx-taskq-py")
+    observed = "sha256:" + "c" * 64
+    install_current_observations(monkeypatch, manifest_digest=observed)
+
+    report = run_environment_check(fixture_dir, online=True)
+
+    assert failed_names(report) == {"prepared_image_manifest_digest"}
+    check = next(item for item in report.checks if item.name == "prepared_image_manifest_digest")
+    assert check.expected == CURRENT_MANIFEST_DIGEST
+    assert check.actual == observed
+
+
+def test_cli_current_environment_json_names_both_digest_kinds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from coding_agent_eval.cli import main
+
+    fixture_dir = current_copy(tmp_path / "fx-taskq-py")
+    install_current_observations(monkeypatch)
+
+    assert main(["fixture", "environment", str(fixture_dir), "--online", "--json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+
+    assert document[0]["image_identity"]["declared_manifest_digest"] == (CURRENT_MANIFEST_DIGEST)
+    assert document[0]["image_identity"]["observed_config_digest"] == CURRENT_CONFIG_DIGEST
 
 
 # ------------------------------------------------------------ recipe pinning

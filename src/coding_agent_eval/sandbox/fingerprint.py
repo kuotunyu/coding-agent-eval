@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Final
+from typing import Any, Final, Literal
 
-#: Everything that defines the measured environment.
-COMPONENTS: Final[tuple[str, ...]] = (
+#: Historical v0.1 identity. Read-only until the coordinated fixture re-pin.
+LEGACY_COMPONENTS: Final[tuple[str, ...]] = (
     "base_image_digest",
     "prepared_image_digest",
     "os_release_id",
@@ -30,12 +30,38 @@ COMPONENTS: Final[tuple[str, ...]] = (
     "arch",
 )
 
+#: Current identity separates the registry manifest from the image config.
+CURRENT_COMPONENTS: Final[tuple[str, ...]] = (
+    "base_image_digest",
+    "prepared_image_manifest_digest",
+    "prepared_image_config_digest",
+    "os_release_id",
+    "os_release_version_id",
+    "primary_runtime_version",
+    "package_manager_version",
+    "lock_manifest_sha256",
+    "arch",
+)
 
-def environment_fingerprint(components: dict[str, Any]) -> str:
+#: Compatibility name for historical callers. New code names its contract.
+COMPONENTS: Final[tuple[str, ...]] = LEGACY_COMPONENTS
+
+
+def environment_fingerprint(
+    components: dict[str, Any],
+    *,
+    contract: Literal["legacy", "current"] = "legacy",
+) -> str:
     """Return `sha256:<hex>` over the declared components.
 
     Raises `KeyError` when one is absent.
     """
-    payload = {name: components[name] for name in COMPONENTS}
+    if contract == "legacy":
+        names = LEGACY_COMPONENTS
+    elif contract == "current":
+        names = CURRENT_COMPONENTS
+    else:
+        raise ValueError(f"unknown environment fingerprint contract: {contract}")
+    payload = {name: components[name] for name in names}
     encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"

@@ -256,6 +256,12 @@ def test_fixture_rebuild_accepts_a_single_fixture_directory(
     assert "G3 pass: 1 fixture(s)" in capsys.readouterr().out
 
 
+@requires_checkout
+def test_fixture_online_and_json_options_are_environment_only() -> None:
+    assert main(["fixture", "rebuild", str(REPO_ROOT / "fixtures"), "--online"]) == 2
+    assert main(["fixture", "verify", str(REPO_ROOT / "fixtures"), "--json"]) == 2
+
+
 def test_console_script_is_installed() -> None:
     proc = subprocess.run(
         [sys.executable, "-m", "coding_agent_eval", "--version"],

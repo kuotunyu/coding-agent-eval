@@ -120,6 +120,19 @@ def build_parser() -> argparse.ArgumentParser:
                 type=Path,
                 help=("a fixture directory; rebuild also accepts a root holding several"),
             )
+            sub.add_argument(
+                "--online",
+                action="store_true",
+                help=(
+                    "environment only: verify the registry manifest and anonymous pull; "
+                    "default is local/offline"
+                ),
+            )
+            sub.add_argument(
+                "--json",
+                action="store_true",
+                help="environment only: emit machine-readable declared/observed identity",
+            )
         elif name == "run":
             sub.add_argument("fixture_dir", type=Path, help="fixture directory to run against")
             sub.add_argument("--snapshot", choices=("clean", "mutated"), default="mutated")
@@ -241,20 +254,26 @@ def _run_fixture_environment(args: argparse.Namespace) -> int:
         return 2
 
     failed = 0
+    reports = []
     for directory in directories:
         try:
-            report = run_environment_check(directory)
+            report = run_environment_check(directory, online=args.online)
         except EnvironmentCheckError as exc:
             print(f"{directory.name}: could not check the environment\n  - {exc}", file=sys.stderr)
             failed += 1
             continue
-        print(report.render(), file=sys.stdout if report.ok else sys.stderr)
+        reports.append(report)
+        if not args.json:
+            print(report.render(), file=sys.stdout if report.ok else sys.stderr)
         failed += 0 if report.ok else 1
 
     if failed:
         print(f"\n{failed} of {len(directories)} fixture environment(s) failed", file=sys.stderr)
         return 1
-    print(f"\nenvironment fingerprint re-derived for {len(directories)} fixture(s)")
+    if args.json:
+        print(json.dumps([report.to_document() for report in reports], indent=2, sort_keys=True))
+    else:
+        print(f"\nenvironment fingerprint re-derived for {len(directories)} fixture(s)")
     return 0
 
 
@@ -579,6 +598,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "validate":
         return _run_validate(args)
     if args.command == "fixture":
+        if args.action != "environment" and (args.online or args.json):
+            print("--online and --json are valid only for fixture environment", file=sys.stderr)
+            return 2
         actions = {
             "rebuild": _run_fixture_rebuild,
             "environment": _run_fixture_environment,
