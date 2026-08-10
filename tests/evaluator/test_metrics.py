@@ -15,7 +15,7 @@ efficiency.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -116,6 +116,42 @@ def ledger_of(
             ): Decision(d)
             for f, b, d in rulings
         },
+    )
+
+
+class DualReviewSource:
+    decision_source = "dual_review"
+    publishable = True
+    publication_reason = "dual_review_complete"
+    publication_provenance: ClassVar[dict[str, str]] = {
+        "review_set_id": "rs-test",
+        "review_set_manifest_sha256": "sha256:" + "1" * 64,
+        "primary_review_sha256": "sha256:" + "2" * 64,
+        "independent_review_sha256": "sha256:" + "3" * 64,
+        "resolutions_sha256": "sha256:" + "4" * 64,
+    }
+
+    def __init__(self, decisions: dict[LedgerKey, Any]) -> None:
+        self.decisions = decisions
+
+    def decision(self, key: LedgerKey) -> Any:
+        return self.decisions.get(key)
+
+
+def dual_review_of(
+    rulings: list[tuple[dict[str, Any], dict[str, Any], str]],
+) -> DualReviewSource:
+    from coding_agent_eval.evaluator.ledger import Decision
+
+    return DualReviewSource(
+        {
+            LedgerKey(
+                fixture_version=FIXTURE_VERSION,
+                bug_id=b["bug_id"],
+                finding_hash=finding_hash(f),
+            ): Decision(d)
+            for f, b, d in rulings
+        }
     )
 
 
@@ -368,12 +404,13 @@ def test_unsupported_trace_schema_version_refuses_to_score() -> None:
 def test_legacy_trace_contract_remains_readable_but_is_not_publishable() -> None:
     context = deepcopy(CONTEXT)
     context.trace_schema_version = "0.1.0"
-    ledger = ledger_of([], kind=LedgerKind.FORMAL)
+    ledger = dual_review_of([])
 
     result = score([], [], ledger, context=context)
 
     assert result.context.trace_schema_version == "0.1.0"
     assert result.publishable is False
+    assert result.publication_reason == "legacy_trace_contract"
 
 
 def test_unadjudicated_count_is_reported_in_the_error() -> None:
@@ -391,31 +428,49 @@ def test_a_synthetic_ledger_produces_an_unpublishable_result() -> None:
     b = bug("B-001", file="src/auth.py", start=100, end=110)
     f = finding("F-001", file="src/auth.py", start=104, end=104)
     result = score([f], [b], ledger_of([(f, b, "same_root_cause")]))
-    assert result.ledger_kind == "synthetic"
+    assert result.decision_source == "synthetic"
+    assert result.publication_reason == "synthetic_adjudication"
     assert result.publishable is False
 
 
-def test_a_formal_ledger_produces_a_publishable_result() -> None:
+def test_a_formal_single_ledger_is_legacy_and_unpublishable() -> None:
     b = bug("B-001", file="src/auth.py", start=100, end=110)
     f = finding("F-001", file="src/auth.py", start=104, end=104)
     ledger = ledger_of([(f, b, "same_root_cause")], kind=LedgerKind.FORMAL)
     context = deepcopy(CONTEXT)
     context.tool_backend = "measure_container:sha256:" + "b" * 64
     result = score([f], [b], ledger, context=context)
-    assert result.ledger_kind == "formal"
+    assert result.decision_source == "legacy_formal"
+    assert result.publication_reason == "single_adjudicator_legacy"
+    assert result.publishable is False
+
+
+def test_complete_dual_review_is_the_only_publishable_decision_source() -> None:
+    b = bug("B-001", file="src/auth.py", start=100, end=110)
+    f = finding("F-001", file="src/auth.py", start=104, end=104)
+    context = deepcopy(CONTEXT)
+    context.tool_backend = "measure_container:sha256:" + "b" * 64
+
+    result = score([f], [b], dual_review_of([(f, b, "same_root_cause")]), context=context)
+
+    assert result.decision_source == "dual_review"
+    assert result.publication_reason == "dual_review_complete"
     assert result.publishable is True
+    for field, value in DualReviewSource.publication_provenance.items():
+        assert result.as_dict()[field] == value
 
 
 def test_host_process_trace_0_2_is_not_publication_evidence() -> None:
     b = bug("B-001", file="src/auth.py", start=100, end=110)
     f = finding("F-001", file="src/auth.py", start=104, end=104)
-    ledger = ledger_of([(f, b, "same_root_cause")], kind=LedgerKind.FORMAL)
+    ledger = dual_review_of([(f, b, "same_root_cause")])
 
     result = score([f], [b], ledger)
 
     assert result.context.trace_schema_version == TRACE_SCHEMA_VERSION
     assert result.context.tool_backend == "host_process"
     assert result.publishable is False
+    assert result.publication_reason == "non_measure_backend"
 
 
 def test_results_document_carries_every_version_field() -> None:
@@ -445,4 +500,5 @@ def test_synthetic_prefix_is_visible_in_the_result_for_audit() -> None:
     b = bug("B-001", file="src/auth.py", start=100, end=110)
     f = finding("F-001", file="src/auth.py", start=104, end=104)
     result = score([f], [b], ledger_of([(f, b, "same_root_cause")]))
-    assert SYNTHETIC_PREFIX.lower().rstrip("-") in result.as_dict()["ledger_kind"]
+    assert SYNTHETIC_PREFIX.lower().rstrip("-") in result.as_dict()["decision_source"]
+    assert result.as_dict()["publication_reason"] == "synthetic_adjudication"

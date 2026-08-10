@@ -3,7 +3,8 @@
 > **These numbers describe no model.** Every result here comes from a scripted
 > baseline — a fixed list of steps with no model, no provider, and no network —
 > scored against a **synthetic** ledger. Each file carries
-> `"ledger_kind": "synthetic"` and `"publishable": false`, which is the machine-readable
+> `"decision_source": "synthetic"`, `"publication_reason": "synthetic_adjudication"`,
+> and `"publishable": false`, which is the machine-readable
 > form of that sentence.
 
 They exist so gate G9 has committed evidence rather than a claim: the pipeline runs end to

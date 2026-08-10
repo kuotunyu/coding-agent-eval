@@ -203,7 +203,7 @@ def _write(path: Path, text: str) -> None:
 
 
 def main() -> None:
-    from coding_agent_eval.trace.sanitizer import sanitize_events
+    from coding_agent_eval.trace.allowlist import PUBLIC_FIELDS
 
     GOLDEN.mkdir(parents=True, exist_ok=True)
 
@@ -228,7 +228,32 @@ def main() -> None:
         ],
     )
 
-    sanitize_events(RAW_EVENTS, GOLDEN / "trace.jsonl")
+    # This fixture is deliberately the frozen 0.1 read-compatibility artifact.
+    # Current sanitizers emit 0.2 only; routing these historical raw fields
+    # through that writer would either migrate the golden or make regeneration
+    # impossible. Keep the old envelope explicit and byte-deterministic.
+    _write(
+        GOLDEN / "trace.jsonl",
+        "".join(
+            json.dumps(
+                {
+                    "schema_version": "0.1.0",
+                    **record,
+                    "payload": {
+                        field: value
+                        for field, value in record["payload"].items()
+                        if field in PUBLIC_FIELDS[record["event"]]
+                        or (record["event"] == "run_header" and field == "image_digest")
+                    },
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            + "\n"
+            for record in RAW_EVENTS
+        ),
+    )
 
     result = replay_run(
         trace_path=GOLDEN / "trace.jsonl",

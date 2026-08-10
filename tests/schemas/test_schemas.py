@@ -27,6 +27,7 @@ EXPECTED_SCHEMAS = {
     "ledger-entry",
     "results",
     "known-residual-defects",
+    "review-set",
     "task",
 }
 
@@ -578,3 +579,11 @@ def test_every_committed_result_conforms_to_the_public_schema(repo_root: Path) -
         document = json.loads(path.read_text(encoding="utf-8"))
         errors = sorted(error.message for error in result_validator.iter_errors(document))
         assert errors == [], f"{path.relative_to(repo_root)}: {errors}"
+
+
+def test_synthetic_result_cannot_claim_publishable(repo_root: Path) -> None:
+    path = next((repo_root / "runs").glob("baseline-*/results.json"))
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["publishable"] = True
+
+    assert not validator("results").is_valid(document)

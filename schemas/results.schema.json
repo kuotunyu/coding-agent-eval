@@ -126,15 +126,45 @@
         "harness_error"
       ]
     },
-    "ledger_kind": {
+    "decision_source": {
       "enum": [
-        "formal",
-        "synthetic"
+        "legacy_formal",
+        "synthetic",
+        "dual_review"
       ]
     },
     "publishable": {
       "type": "boolean",
-      "description": "False whenever scoring used the synthetic ledger."
+      "description": "True only for complete dual review under the current trace and measure backend."
+    },
+    "publication_reason": {
+      "enum": [
+        "single_adjudicator_legacy",
+        "synthetic_adjudication",
+        "dual_review_complete",
+        "legacy_trace_contract",
+        "non_measure_backend"
+      ]
+    },
+    "review_set_id": {
+      "type": "string",
+      "pattern": "^rs-[a-z0-9][a-z0-9-]*$"
+    },
+    "review_set_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "primary_review_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "independent_review_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "resolutions_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "metrics": {
       "type": "object",
@@ -260,11 +290,129 @@
     "model",
     "budget",
     "termination_reason",
-    "ledger_kind",
+    "decision_source",
     "publishable",
+    "publication_reason",
     "metrics",
     "undefined_reasons",
     "counts"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision_source": {
+            "const": "dual_review"
+          }
+        },
+        "required": [
+          "decision_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "publication_reason": {
+            "enum": [
+              "dual_review_complete",
+              "legacy_trace_contract",
+              "non_measure_backend"
+            ]
+          }
+        },
+        "required": [
+          "review_set_id",
+          "review_set_manifest_sha256",
+          "primary_review_sha256",
+          "independent_review_sha256",
+          "resolutions_sha256"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision_source": {
+            "const": "synthetic"
+          }
+        },
+        "required": [
+          "decision_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "publishable": {
+            "const": false
+          },
+          "publication_reason": {
+            "const": "synthetic_adjudication"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision_source": {
+            "const": "legacy_formal"
+          }
+        },
+        "required": [
+          "decision_source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "publishable": {
+            "const": false
+          },
+          "publication_reason": {
+            "const": "single_adjudicator_legacy"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "publication_reason": {
+            "const": "dual_review_complete"
+          }
+        },
+        "required": [
+          "publication_reason"
+        ]
+      },
+      "then": {
+        "properties": {
+          "publishable": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "publication_reason": {
+            "enum": [
+              "legacy_trace_contract",
+              "non_measure_backend"
+            ]
+          }
+        },
+        "required": [
+          "publication_reason"
+        ]
+      },
+      "then": {
+        "properties": {
+          "publishable": {
+            "const": false
+          }
+        }
+      }
+    }
   ],
   "additionalProperties": false
 }

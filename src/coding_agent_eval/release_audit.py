@@ -104,7 +104,11 @@ def _audit_results(root: Path) -> list[AuditFinding]:
                         f"records {recorded_version}, fixture is {current_version}",
                     )
                 )
-        if document.get("ledger_kind") != "synthetic" or document.get("publishable") is not False:
+        if (
+            document.get("decision_source") != "synthetic"
+            or document.get("publication_reason") != "synthetic_adjudication"
+            or document.get("publishable") is not False
+        ):
             findings.append(
                 AuditFinding(
                     "result.publishability",

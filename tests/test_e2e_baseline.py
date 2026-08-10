@@ -181,7 +181,8 @@ def test_every_result_is_synthetic_and_unpublishable(fixture: Fixture) -> None:
                 bug_index=0,
             )
             document = result.results_document()
-            assert document["ledger_kind"] == "synthetic"
+            assert document["decision_source"] == "synthetic"
+            assert document["publication_reason"] == "synthetic_adjudication"
             assert document["publishable"] is False
 
 

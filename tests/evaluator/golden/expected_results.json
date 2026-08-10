@@ -16,9 +16,9 @@
     "unadjudicated_pairs": 0,
     "verified_bugs": 1
   },
+  "decision_source": "synthetic",
   "fixture_id": "fx-demo-py",
   "fixture_version": "1.0.0",
-  "ledger_kind": "synthetic",
   "metrics": {
     "benchmark_unsupported_findings_per_kloc": 0.5,
     "cost_per_verified_bug": null,
@@ -33,6 +33,7 @@
   "model": null,
   "pricing_table_version": "none-offline",
   "provider": null,
+  "publication_reason": "synthetic_adjudication",
   "publishable": false,
   "redaction_manifest_version": "0.1.0",
   "run_id": "golden-deterministic-001",

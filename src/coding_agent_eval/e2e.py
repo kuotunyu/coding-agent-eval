@@ -8,8 +8,9 @@ It exists so gate G9 can assert *known numbers*. A pipeline that runs is not
 evidence; a pipeline that produces the value it was predicted to produce is.
 
 **Every result this module can currently produce is unpublishable.** It scores
-against a synthetic ledger, so `ledger_kind` is `synthetic` and `publishable` is
-`false`. That is not a limitation to be lifted by writing more code — it is what
+against a synthetic ledger, so `decision_source` is `synthetic`,
+`publication_reason` is `synthetic_adjudication`, and `publishable` is `false`.
+That is not a limitation to be lifted by writing more code — it is what
 the numbers are, until a person adjudicates.
 
 **Isolation is a parameter, and the result records which one was used.** Passing

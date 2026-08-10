@@ -206,7 +206,8 @@ def test_the_golden_result_is_marked_unpublishable() -> None:
     """The historical 0.1 trace stays readable but cannot be publication evidence."""
     expected = json.loads(EXPECTED.read_text(encoding="utf-8"))
     assert expected["trace_schema_version"] == "0.1.0"
-    assert expected["ledger_kind"] == "synthetic"
+    assert expected["decision_source"] == "synthetic"
+    assert expected["publication_reason"] == "synthetic_adjudication"
     assert expected["publishable"] is False
 
 

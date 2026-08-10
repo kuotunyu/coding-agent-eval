@@ -35,7 +35,7 @@ from coding_agent_eval import (
 )
 from coding_agent_eval.evaluator.dedup import deduplicate
 from coding_agent_eval.evaluator.hashing import finding_hash
-from coding_agent_eval.evaluator.ledger import Decision, Ledger, LedgerKey
+from coding_agent_eval.evaluator.ledger import Decision, DecisionSource, LedgerKey
 from coding_agent_eval.evaluator.matcher import candidate_pairs, localization_recall
 from coding_agent_eval.fixtures.image_identity import SHA256_DIGEST
 
@@ -105,8 +105,10 @@ class ScoredRun:
     undefined_reasons: dict[str, str]
     counts: dict[str, int]
     verified_bug_ids: tuple[str, ...]
-    ledger_kind: str
+    decision_source: str
     publishable: bool
+    publication_reason: str
+    publication_provenance: dict[str, str]
     context: RunContext
     fixture: FixtureSpec
 
@@ -129,11 +131,13 @@ class ScoredRun:
             "model": self.context.model,
             "budget": self.context.budget,
             "termination_reason": self.context.termination_reason,
-            "ledger_kind": self.ledger_kind,
+            "decision_source": self.decision_source,
             "publishable": self.publishable,
+            "publication_reason": self.publication_reason,
             "metrics": self.metrics,
             "undefined_reasons": self.undefined_reasons,
             "counts": self.counts,
+            **self.publication_provenance,
         }
 
 
@@ -168,8 +172,10 @@ def _check_preconditions(context: RunContext, fixture: FixtureSpec) -> None:
         )
 
 
-def _lookup(ledger: Ledger, fixture_version: str, finding: Finding, bug: Bug) -> Decision | None:
-    return ledger.decision(
+def _lookup(
+    source: DecisionSource, fixture_version: str, finding: Finding, bug: Bug
+) -> Decision | None:
+    return source.decision(
         LedgerKey(
             fixture_version=fixture_version,
             bug_id=bug["bug_id"],
@@ -223,7 +229,7 @@ def score_run(
     *,
     findings: list[Finding],
     bugs: list[Bug],
-    ledger: Ledger,
+    ledger: DecisionSource,
     fixture: FixtureSpec,
     context: RunContext,
     usage: Usage,
@@ -294,6 +300,15 @@ def score_run(
     metrics["out_of_scope_findings"] = out_of_scope
     metrics["exact_duplicates_removed"] = duplicates_removed
 
+    publishable = ledger.publishable
+    publication_reason = ledger.publication_reason
+    if publishable and context.trace_schema_version != PUBLICATION_TRACE_SCHEMA_VERSION:
+        publishable = False
+        publication_reason = "legacy_trace_contract"
+    elif publishable and not _is_measure_backend(context.tool_backend):
+        publishable = False
+        publication_reason = "non_measure_backend"
+
     return ScoredRun(
         metrics=metrics,
         undefined_reasons=reasons,
@@ -305,12 +320,10 @@ def score_run(
             "unadjudicated_pairs": 0,
         },
         verified_bug_ids=tuple(sorted(verified_bug_ids)),
-        ledger_kind=ledger.kind.value,
-        publishable=(
-            ledger.publishable
-            and context.trace_schema_version == PUBLICATION_TRACE_SCHEMA_VERSION
-            and _is_measure_backend(context.tool_backend)
-        ),
+        decision_source=ledger.decision_source,
+        publishable=publishable,
+        publication_reason=publication_reason,
+        publication_provenance=dict(ledger.publication_provenance),
         context=context,
         fixture=fixture,
     )

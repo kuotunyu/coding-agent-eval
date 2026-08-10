@@ -26,10 +26,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from coding_agent_eval import ADJUDICATION_PROTOCOL_VERSION
 
@@ -104,6 +105,24 @@ class LedgerKey:
             raise LedgerError(f"malformed ledger key: {data!r}") from exc
 
 
+class DecisionSource(Protocol):
+    """The only adjudication surface the metric engine may depend on."""
+
+    @property
+    def decision_source(self) -> str: ...
+
+    @property
+    def publishable(self) -> bool: ...
+
+    @property
+    def publication_reason(self) -> str: ...
+
+    @property
+    def publication_provenance(self) -> Mapping[str, str]: ...
+
+    def decision(self, key: LedgerKey) -> Decision | None: ...
+
+
 def entry_hash(entry: dict[str, Any]) -> str:
     """Hash every field except `entry_hash` itself, which is the value produced."""
     payload = {k: v for k, v in entry.items() if k != "entry_hash"}
@@ -165,8 +184,24 @@ class Ledger:
 
     @property
     def publishable(self) -> bool:
-        """Only rulings by people can back a published number."""
-        return self.kind is LedgerKind.FORMAL
+        """Single-review and synthetic ledgers are historical or test evidence only."""
+        return False
+
+    @property
+    def decision_source(self) -> str:
+        return "legacy_formal" if self.kind is LedgerKind.FORMAL else "synthetic"
+
+    @property
+    def publication_reason(self) -> str:
+        return (
+            "single_adjudicator_legacy"
+            if self.kind is LedgerKind.FORMAL
+            else "synthetic_adjudication"
+        )
+
+    @property
+    def publication_provenance(self) -> Mapping[str, str]:
+        return {}
 
     def decision(self, key: LedgerKey) -> Decision | None:
         return self.decisions.get(key)

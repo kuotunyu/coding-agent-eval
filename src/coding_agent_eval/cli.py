@@ -421,9 +421,13 @@ def _run_evaluate_replay(args: argparse.Namespace) -> int:
 
     print(json.dumps(result.as_dict(), indent=2, sort_keys=True))
     if not result.publishable:
+        model_scope = (
+            "; these evaluator-only numbers describe no model"
+            if result.publication_reason == "synthetic_adjudication"
+            else ""
+        )
         print(
-            "note: scored against a synthetic ledger, so these numbers validate the "
-            "evaluator and describe no model",
+            f"note: result is not publication evidence ({result.publication_reason}){model_scope}",
             file=sys.stderr,
         )
     return 0

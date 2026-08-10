@@ -151,10 +151,12 @@ Partial adjudication never produces a headline number.
 The two ledgers are separate by construction. The formal ledger holds only real human
 rulings and currently contains two append-only rulings for two findings against
 `fx-taskq-py/B-001`. They do not cover a complete run and were made by the fixture author,
-so they support no publishable model metric. The synthetic ledger exists to validate the
-evaluator's arithmetic; every result computed from it carries `ledger_kind: synthetic` and
-`publishable: false`, and the evaluator rejects any `SYNTHETIC-` prefixed entry appearing in
-the formal ledger.
+so they support no publishable model metric. A single formal ledger is always stamped
+`decision_source: legacy_formal`, `publication_reason: single_adjudicator_legacy`, and
+`publishable: false`. The synthetic ledger exists to validate evaluator arithmetic; its
+results carry `decision_source: synthetic`, `publication_reason: synthetic_adjudication`, and
+`publishable: false`. The evaluator rejects any `SYNTHETIC-` prefixed entry appearing in the
+formal ledger.
 
 ---
 

@@ -19,6 +19,7 @@ from coding_agent_eval.evaluator.hashing import (
 from coding_agent_eval.evaluator.ledger import (
     SYNTHETIC_PREFIX,
     Decision,
+    DecisionSource,
     Ledger,
     LedgerError,
     LedgerKey,
@@ -40,6 +41,13 @@ from coding_agent_eval.evaluator.metrics import (
     score_run,
 )
 from coding_agent_eval.evaluator.replay import replay_run
+from coding_agent_eval.evaluator.review_set import (
+    ReviewSet,
+    ReviewSetError,
+    ReviewSetEvidence,
+    candidate_set_sha256,
+    load_review_set,
+)
 
 __all__ = [
     "KEYED_FIELDS",
@@ -48,6 +56,7 @@ __all__ = [
     "BlindedBatch",
     "BlindingError",
     "Decision",
+    "DecisionSource",
     "EvaluationError",
     "FixtureSpec",
     "KeyMap",
@@ -55,16 +64,21 @@ __all__ = [
     "LedgerError",
     "LedgerKey",
     "LedgerKind",
+    "ReviewSet",
+    "ReviewSetError",
+    "ReviewSetEvidence",
     "RunContext",
     "ScoredRun",
     "Usage",
     "candidate_pairs",
+    "candidate_set_sha256",
     "deduplicate",
     "export_batch",
     "finding_hash",
     "import_decisions",
     "is_candidate",
     "load_ledger",
+    "load_review_set",
     "localization_recall",
     "localized_bug_ids",
     "normalize_text",

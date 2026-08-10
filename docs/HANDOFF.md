@@ -60,8 +60,8 @@ Do not rewrite those files to manufacture replay compatibility.
 The formal ledger contains two human rulings for two findings matched to
 `fx-taskq-py/B-001`. It does not provide complete run coverage. The adjudicator is also the
 fixture author, so no independently verified, publishable model result exists. Committed
-`results.json` files remain scripted-baseline validation with `ledger_kind: synthetic` and
-`publishable: false`.
+`results.json` files remain scripted-baseline validation with `decision_source: synthetic`,
+`publication_reason: synthetic_adjudication`, and `publishable: false`.
 
 ## Publication blockers
 

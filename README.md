@@ -57,12 +57,14 @@ live verification 將單一位置的重複提交上限從七次降為兩次。�
 
 Repository 中所有 end-to-end baseline numbers 都是 deterministic scripted baseline 搭配
 synthetic adjudication ledger，用來驗證 evaluator arithmetic 與 data flow。它們不描述任何 model，
-並強制帶有 `ledger_kind: synthetic` 與 `publishable: false`。
+並強制帶有 `decision_source: synthetic`、`publication_reason: synthetic_adjudication` 與
+`publishable: false`。
 
-`verified_*` metrics 只接受 frozen human adjudication。Formal ledger 目前只有
-`fx-taskq-py/B-001` 的兩筆 owner rulings，既不完整，也不是 independent adjudication。因此目前沒有
-publishable 的 `verified_*` result。AI 不得撰寫 formal adjudication；synthetic rulings 必須使用
-`SYNTHETIC-` 前綴，並強制 `publishable: false`。
+`verified_*` metrics 只接受完整、evidence-bound 的 dual human review。既有 Formal ledger 只有
+`fx-taskq-py/B-001` 的兩筆 owner rulings，會固定標示為 `legacy_formal` 與
+`single_adjudicator_legacy`，不得成為 publishable result。AI 不得撰寫 formal adjudication；synthetic
+rulings 必須使用 `SYNTHETIC-` 前綴，並強制標示 `synthetic_adjudication` 與
+`publishable: false`。
 
 ## Fixtures
 

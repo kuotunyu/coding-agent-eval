@@ -165,12 +165,17 @@ def test_a_synthetic_ledger_is_not_publishable(tmp_path: Path) -> None:
     ledger = load_ledger(path, kind=LedgerKind.SYNTHETIC)
     assert ledger.kind is LedgerKind.SYNTHETIC
     assert ledger.publishable is False
+    assert ledger.decision_source == "synthetic"
+    assert ledger.publication_reason == "synthetic_adjudication"
 
 
-def test_a_formal_ledger_is_publishable(tmp_path: Path) -> None:
+def test_a_formal_single_ledger_is_legacy_and_unpublishable(tmp_path: Path) -> None:
     path = tmp_path / "adjudications.jsonl"
     write_entries(path, [human_entry()])
-    assert load_ledger(path, kind=LedgerKind.FORMAL).publishable is True
+    ledger = load_ledger(path, kind=LedgerKind.FORMAL)
+    assert ledger.publishable is False
+    assert ledger.decision_source == "legacy_formal"
+    assert ledger.publication_reason == "single_adjudicator_legacy"
 
 
 def test_the_synthetic_prefix_is_case_sensitive_and_exact(tmp_path: Path) -> None:
