@@ -33,6 +33,7 @@ class ReviewSetEvidence:
     tree_checksum: str
     trace_sha256: str
     findings_sha256: str
+    fixture_manifest_sha256: str
     trace_schema_version: str
     environment_fingerprint: str
     candidate_keys: tuple[LedgerKey, ...]
@@ -89,6 +90,13 @@ def _file_sha256(path: Path) -> str:
     return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
 
 
+def _canonical_sha256(payload: Any) -> str:
+    encoded = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    ).encode()
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
 def _load_manifest(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise ReviewSetError(f"missing review-set manifest at {path}")
@@ -114,6 +122,7 @@ def _check_evidence(manifest: Mapping[str, Any], evidence: ReviewSetEvidence) ->
         "tree_checksum": evidence.tree_checksum,
         "trace_sha256": evidence.trace_sha256,
         "findings_sha256": evidence.findings_sha256,
+        "fixture_manifest_sha256": evidence.fixture_manifest_sha256,
         "trace_schema_version": evidence.trace_schema_version,
         "environment_fingerprint": evidence.environment_fingerprint,
         "candidate_set_sha256": candidate_set_sha256(evidence.candidate_keys),
@@ -127,6 +136,40 @@ def _check_evidence(manifest: Mapping[str, Any], evidence: ReviewSetEvidence) ->
         raise ReviewSetError(
             f"trace_schema_version must be {PUBLICATION_TRACE_SCHEMA_VERSION} for dual review"
         )
+
+
+def _check_candidate_materials(
+    directory: Path, manifest: Mapping[str, Any], evidence: ReviewSetEvidence
+) -> None:
+    path = directory / "candidates.json"
+    if not path.is_file():
+        raise ReviewSetError(f"missing candidate materials at {path}")
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReviewSetError(f"candidate materials are not valid JSON: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise ReviewSetError("candidate materials must be a JSON object")
+    materials: dict[str, Any] = loaded
+    if materials.get("review_set_id") != manifest["review_set_id"]:
+        raise ReviewSetError("candidate materials belong to a different review set")
+    if materials.get("candidate_set_sha256") != manifest["candidate_set_sha256"]:
+        raise ReviewSetError("candidate materials have a different candidate-set hash")
+    if materials.get("fixture_version") != manifest["fixture_version"]:
+        raise ReviewSetError("candidate materials have a different fixture version")
+    items = materials.get("items")
+    if not isinstance(items, list):
+        raise ReviewSetError("candidate materials items must be an array")
+    try:
+        material_keys = tuple(LedgerKey.from_dict(item["key"]) for item in items)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ReviewSetError(f"candidate materials contain an invalid key: {exc}") from exc
+    if len(set(material_keys)) != len(material_keys) or set(material_keys) != set(
+        evidence.candidate_keys
+    ):
+        raise ReviewSetError("candidate materials do not cover the evidence candidate set")
+    if _canonical_sha256(materials) != manifest["candidate_materials_sha256"]:
+        raise ReviewSetError("candidate materials have drifted from their manifest hash")
 
 
 def _role_id(manifest: Mapping[str, Any], role: str) -> str | None:
@@ -220,6 +263,7 @@ def load_review_set(directory: Path, *, evidence: ReviewSetEvidence) -> ReviewSe
     manifest_path = directory / "manifest.json"
     manifest = _load_manifest(manifest_path)
     _check_evidence(manifest, evidence)
+    _check_candidate_materials(directory, manifest, evidence)
     _check_reviewers(manifest)
 
     primary_id = _role_id(manifest, "primary")

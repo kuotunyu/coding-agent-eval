@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,7 @@ def evidence(*, keys: tuple[LedgerKey, ...] = (KEY, OTHER_KEY)) -> ReviewSetEvid
         tree_checksum=SHA_A,
         trace_sha256=SHA_B,
         findings_sha256=SHA_C,
+        fixture_manifest_sha256="sha256:" + "e" * 64,
         trace_schema_version="0.2.0",
         environment_fingerprint="sha256:" + "d" * 64,
         candidate_keys=keys,
@@ -87,6 +89,7 @@ def write_review_set(
         "tree_checksum": bound.tree_checksum,
         "trace_sha256": bound.trace_sha256,
         "findings_sha256": bound.findings_sha256,
+        "fixture_manifest_sha256": bound.fixture_manifest_sha256,
         "candidate_set_sha256": candidate_set_sha256(bound.candidate_keys),
         "trace_schema_version": bound.trace_schema_version,
         "environment_fingerprint": bound.environment_fingerprint,
@@ -105,8 +108,24 @@ def write_review_set(
             "resolutions": "resolutions.jsonl",
         },
     }
+    materials = {
+        "review_set_id": manifest["review_set_id"],
+        "candidate_set_sha256": manifest["candidate_set_sha256"],
+        "fixture_version": bound.fixture_version,
+        "items": [
+            {"key": key.as_dict(), "item": {"blinded_context": f"candidate-{index}"}}
+            for index, key in enumerate(bound.candidate_keys, start=1)
+        ],
+    }
+    encoded_materials = json.dumps(
+        materials, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    ).encode()
+    manifest["candidate_materials_sha256"] = f"sha256:{sha256(encoded_materials).hexdigest()}"
     (root / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (root / "candidates.json").write_text(
+        json.dumps(materials, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     write_entries(
         root / "primary.jsonl",
@@ -223,6 +242,17 @@ def test_candidate_set_hash_drift_is_refused(tmp_path: Path) -> None:
     replace_manifest(root, manifest)
 
     with pytest.raises(ReviewSetError, match="candidate"):
+        load_review_set(root, evidence=bound)
+
+
+def test_candidate_material_drift_is_refused(tmp_path: Path) -> None:
+    root, bound = write_review_set(tmp_path / "review-set")
+    materials_path = root / "candidates.json"
+    materials = json.loads(materials_path.read_text(encoding="utf-8"))
+    materials["items"][0]["item"]["blinded_context"] = "tampered"
+    materials_path.write_text(json.dumps(materials), encoding="utf-8")
+
+    with pytest.raises(ReviewSetError, match="candidate materials"):
         load_review_set(root, evidence=bound)
 
 

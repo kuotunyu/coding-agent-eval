@@ -45,6 +45,10 @@ class KeyMap:
 
     fixture_version: str
     entries: dict[int, LedgerKey]
+    review_set_id: str | None = None
+    slot: str | None = None
+    candidate_set_sha256: str | None = None
+    worksheet_template_sha256: str | None = None
 
 
 def export_batch(
@@ -54,6 +58,10 @@ def export_batch(
     language: str,
     excerpts: dict[str, str],
     run_context: dict[str, Any] | None = None,
+    review_set_id: str | None = None,
+    slot: str | None = None,
+    candidate_set_sha256: str | None = None,
+    worksheet_template_sha256: str | None = None,
 ) -> tuple[BlindedBatch, KeyMap]:
     """Build the adjudicator-facing batch and the private key map.
 
@@ -85,7 +93,14 @@ def export_batch(
             finding_hash=finding_hash(finding),
         )
 
-    return BlindedBatch(items=items), KeyMap(fixture_version=fixture_version, entries=keys)
+    return BlindedBatch(items=items), KeyMap(
+        fixture_version=fixture_version,
+        entries=keys,
+        review_set_id=review_set_id,
+        slot=slot,
+        candidate_set_sha256=candidate_set_sha256,
+        worksheet_template_sha256=worksheet_template_sha256,
+    )
 
 
 def import_decisions(

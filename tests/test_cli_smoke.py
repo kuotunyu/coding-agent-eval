@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from coding_agent_eval import BENCHMARK_VERSION
-from coding_agent_eval.cli import main, subcommand_names
+from coding_agent_eval.cli import build_parser, main, subcommand_names
 from tests.conftest import REPO_ROOT, requires_checkout
 
 EXPECTED_SUBCOMMANDS = {
@@ -75,6 +75,81 @@ def test_evaluate_export_requires_run_dir_fixture_dir_and_out() -> None:
 
 def test_evaluate_import_requires_worksheet_keymap_and_adjudicator_id() -> None:
     assert main(["evaluate", "import", "--ledger", "x.jsonl"]) == 2
+
+
+@pytest.mark.parametrize(
+    ("argv", "action"),
+    [
+        (
+            [
+                "evaluate",
+                "init",
+                "--trace",
+                "trace.jsonl",
+                "--bugs",
+                "bugs.json",
+                "--fixture",
+                "fixtures/fx-demo",
+                "--review-set",
+                "review-set",
+                "--fixture-author-id",
+                "kuotunyu",
+                "--run-operator-id",
+                "kuotunyu",
+                "--primary-id",
+                "kuotunyu",
+                "--independent-id",
+                "reviewer-b",
+            ],
+            "init",
+        ),
+        (
+            [
+                "evaluate",
+                "export",
+                "--review-set",
+                "review-set",
+                "--slot",
+                "primary",
+                "--worksheet",
+                "primary.txt",
+                "--keymap",
+                "primary.keymap.json",
+            ],
+            "export",
+        ),
+        (
+            [
+                "evaluate",
+                "resolve-export",
+                "--review-set",
+                "review-set",
+                "--worksheet",
+                "resolver.txt",
+                "--keymap",
+                "resolver.keymap.json",
+            ],
+            "resolve-export",
+        ),
+        (
+            [
+                "evaluate",
+                "resolve-import",
+                "--review-set",
+                "review-set",
+                "--resolver-id",
+                "reviewer-c",
+                "--worksheet",
+                "resolver.txt",
+                "--keymap",
+                "resolver.keymap.json",
+            ],
+            "resolve-import",
+        ),
+    ],
+)
+def test_dual_review_cli_contracts_parse(argv: list[str], action: str) -> None:
+    assert build_parser().parse_args(argv).action == action
 
 
 def test_evaluate_export_end_to_end_through_main(tmp_path: Path) -> None:

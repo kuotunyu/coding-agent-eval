@@ -9,12 +9,15 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
+    "public_identity": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
     "reviewer_role": {
       "type": "object",
       "properties": {
         "reviewer_id": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          "$ref": "#/$defs/public_identity"
         },
         "independent_of_fixture_authors": {
           "type": "boolean"
@@ -64,7 +67,13 @@
     "findings_sha256": {
       "$ref": "#/$defs/sha256"
     },
+    "fixture_manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "candidate_set_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "candidate_materials_sha256": {
       "$ref": "#/$defs/sha256"
     },
     "trace_schema_version": {
@@ -78,13 +87,11 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "type": "string",
-        "minLength": 1
+        "$ref": "#/$defs/public_identity"
       }
     },
     "run_operator_id": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/public_identity"
     },
     "primary": {
       "$ref": "#/$defs/reviewer_role"
@@ -132,7 +139,9 @@
     "tree_checksum",
     "trace_sha256",
     "findings_sha256",
+    "fixture_manifest_sha256",
     "candidate_set_sha256",
+    "candidate_materials_sha256",
     "trace_schema_version",
     "environment_fingerprint",
     "fixture_author_ids",

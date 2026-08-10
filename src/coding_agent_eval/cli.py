@@ -51,13 +51,22 @@ def build_parser() -> argparse.ArgumentParser:
         elif name == "evaluate":
             sub.add_argument(
                 "action",
-                choices=("replay", "export", "import"),
+                choices=(
+                    "replay",
+                    "init",
+                    "export",
+                    "import",
+                    "resolve-export",
+                    "resolve-import",
+                ),
                 help=(
                     "replay: rescore a published run against a ledger. "
+                    "init: freeze a current trace into an empty dual-review set. "
                     "export: build a blinded worksheet of a run's unruled candidate "
                     "pairs, for a human to adjudicate offline (no AI may fill it in). "
                     "import: read a filled-in worksheet back and append its rulings "
-                    "to the formal ledger."
+                    "to the formal ledger. resolve-export/resolve-import: route only "
+                    "disagreements to a distinct human resolver."
                 ),
             )
             sub.add_argument(
@@ -66,14 +75,16 @@ def build_parser() -> argparse.ArgumentParser:
                 nargs="?",
                 help="replay/export: the run's evidence directory",
             )
-            sub.add_argument("--fixture", type=Path, help="replay: a fixture-spec JSON")
-            sub.add_argument("--bugs", type=Path, help="replay: a bug-set JSON")
+            sub.add_argument(
+                "--fixture", type=Path, help="replay: fixture-spec JSON; init: fixture directory"
+            )
+            sub.add_argument("--bugs", type=Path, help="replay/init: a bug-set JSON")
             sub.add_argument(
                 "--fixture-dir",
                 type=Path,
                 help="export: the fixture's own directory, e.g. fixtures/fx-taskq-py",
             )
-            sub.add_argument("--ledger", type=Path, required=True, help="the ledger file")
+            sub.add_argument("--ledger", type=Path, help="legacy replay/export/import ledger")
             sub.add_argument(
                 "--ledger-kind",
                 choices=("formal", "synthetic"),
@@ -95,6 +106,19 @@ def build_parser() -> argparse.ArgumentParser:
                 "--adjudicator-id",
                 help="import: who is ruling; must not start with SYNTHETIC-",
             )
+            sub.add_argument("--trace", type=Path, help="init: current public trace JSONL")
+            sub.add_argument("--review-set", type=Path, help="dual-review set directory")
+            sub.add_argument("--slot", choices=("primary", "independent"), help="dual-review slot")
+            sub.add_argument(
+                "--fixture-author-id",
+                action="append",
+                default=[],
+                help="init: fixture author ID; repeat for multiple authors",
+            )
+            sub.add_argument("--run-operator-id", help="init: operator of the measured run")
+            sub.add_argument("--primary-id", help="init: primary human reviewer")
+            sub.add_argument("--independent-id", help="init: independent human reviewer")
+            sub.add_argument("--resolver-id", help="resolve-import: third human reviewer")
         elif name == "store":
             sub.add_argument("action", choices=("prune",))
             sub.add_argument("--root", type=Path, default=Path(".run-store"))
@@ -402,8 +426,8 @@ def _run_evaluate_replay(args: argparse.Namespace) -> int:
     from coding_agent_eval.evaluator.metrics import EvaluationError
     from coding_agent_eval.evaluator.replay import replay_run
 
-    if args.run_dir is None or args.fixture is None or args.bugs is None:
-        print("replay needs run_dir, --fixture, and --bugs", file=sys.stderr)
+    if args.run_dir is None or args.fixture is None or args.bugs is None or args.ledger is None:
+        print("replay needs run_dir, --fixture, --bugs, and --ledger", file=sys.stderr)
         return 2
 
     trace = args.run_dir / "trace.jsonl"
@@ -435,10 +459,39 @@ def _run_evaluate_replay(args: argparse.Namespace) -> int:
 
 def _run_evaluate_export(args: argparse.Namespace) -> int:
     """Gate §8.3: build a blinded worksheet of a run's unruled candidate pairs."""
-    from coding_agent_eval.adjudication import AdjudicationError, export_for_review
+    from coding_agent_eval.adjudication import (
+        AdjudicationError,
+        export_for_review,
+        export_review_slot,
+    )
 
-    if args.run_dir is None or args.fixture_dir is None or args.out is None:
-        print("export needs run_dir, --fixture-dir, and --out", file=sys.stderr)
+    if args.review_set is not None:
+        if args.slot is None or args.worksheet is None or args.keymap is None:
+            print(
+                "dual-review export needs --review-set, --slot, --worksheet, and --keymap",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            result = export_review_slot(
+                review_set_dir=args.review_set,
+                slot=args.slot,
+                worksheet_path=args.worksheet,
+                keymap_path=args.keymap,
+            )
+        except AdjudicationError as exc:
+            print(f"export refused: {exc}", file=sys.stderr)
+            return 1
+        print(f"worksheet: {result.worksheet_path}")
+        print(f"key map:   {result.keymap_path}  (private; never commit it)")
+        print(
+            "No AI may fill DECISION or RATIONALE; a human reviewer must do so.",
+            file=sys.stderr,
+        )
+        return 0
+
+    if args.run_dir is None or args.fixture_dir is None or args.out is None or args.ledger is None:
+        print("legacy export needs run_dir, --fixture-dir, --ledger, and --out", file=sys.stderr)
         return 2
 
     try:
@@ -472,12 +525,45 @@ def _run_evaluate_import(args: argparse.Namespace) -> int:
     """Read a filled-in worksheet back and append its rulings to the formal ledger."""
     from datetime import UTC, datetime
 
-    from coding_agent_eval.adjudication import AdjudicationError, apply_review
+    from coding_agent_eval.adjudication import (
+        AdjudicationError,
+        apply_review,
+        apply_review_slot,
+    )
     from coding_agent_eval.evaluator.blinded_export import BlindingError
     from coding_agent_eval.evaluator.worksheet import WorksheetError
 
-    if args.worksheet is None or args.keymap is None or args.adjudicator_id is None:
-        print("import needs --worksheet, --keymap, and --adjudicator-id", file=sys.stderr)
+    if args.review_set is not None:
+        if args.slot is None or args.worksheet is None or args.keymap is None:
+            print(
+                "dual-review import needs --review-set, --slot, --worksheet, and --keymap",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            result = apply_review_slot(
+                review_set_dir=args.review_set,
+                slot=args.slot,
+                worksheet_path=args.worksheet,
+                keymap_path=args.keymap,
+                decided_at=datetime.now(UTC).date().isoformat(),
+            )
+        except (AdjudicationError, WorksheetError, BlindingError) as exc:
+            print(f"import refused: {exc}", file=sys.stderr)
+            return 1
+        print(f"recorded {result.ruled} ruling(s) in {result.ledger_path}")
+        return 0
+
+    if (
+        args.worksheet is None
+        or args.keymap is None
+        or args.adjudicator_id is None
+        or args.ledger is None
+    ):
+        print(
+            "legacy import needs --worksheet, --keymap, --ledger, and --adjudicator-id",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -493,6 +579,110 @@ def _run_evaluate_import(args: argparse.Namespace) -> int:
         return 1
 
     print(f"recorded {result.ruled} ruling(s) in {result.ledger_path}")
+    return 0
+
+
+def _run_evaluate_init(args: argparse.Namespace) -> int:
+    """Freeze one trace and its review inputs without creating rulings."""
+    from coding_agent_eval.adjudication import AdjudicationError, init_review_set
+
+    required = (
+        args.trace,
+        args.bugs,
+        args.fixture,
+        args.review_set,
+        args.run_operator_id,
+        args.primary_id,
+        args.independent_id,
+    )
+    if any(value is None for value in required) or not args.fixture_author_id:
+        print(
+            "init needs --trace, --bugs, --fixture, --review-set, at least one "
+            "--fixture-author-id, --run-operator-id, --primary-id, and --independent-id",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        result = init_review_set(
+            trace_path=args.trace,
+            bugs_path=args.bugs,
+            fixture_dir=args.fixture,
+            review_set_dir=args.review_set,
+            fixture_author_ids=tuple(args.fixture_author_id),
+            run_operator_id=args.run_operator_id,
+            primary_id=args.primary_id,
+            independent_id=args.independent_id,
+        )
+    except AdjudicationError as exc:
+        print(f"init refused: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"initialized {result.review_set_id} with {result.candidate_count} candidate(s) "
+        f"at {result.review_set_dir}"
+    )
+    print("No rulings were created; DECISION and RATIONALE remain human-only.", file=sys.stderr)
+    return 0
+
+
+def _run_evaluate_resolve_export(args: argparse.Namespace) -> int:
+    """Export only disagreements for a distinct human resolver."""
+    from coding_agent_eval.adjudication import AdjudicationError, export_resolver_review
+
+    if args.review_set is None or args.worksheet is None or args.keymap is None:
+        print(
+            "resolve-export needs --review-set, --worksheet, and --keymap",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        result = export_resolver_review(
+            review_set_dir=args.review_set,
+            worksheet_path=args.worksheet,
+            keymap_path=args.keymap,
+        )
+    except AdjudicationError as exc:
+        print(f"resolve-export refused: {exc}", file=sys.stderr)
+        return 1
+    print(f"exported {result.pending} disagreement(s) to {result.worksheet_path}")
+    print(f"key map: {result.keymap_path}  (private; never commit it)")
+    print(
+        "No AI may fill DECISION or RATIONALE; a distinct human resolver must do so.",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _run_evaluate_resolve_import(args: argparse.Namespace) -> int:
+    """Atomically import the distinct resolver's disagreement rulings."""
+    from datetime import UTC, datetime
+
+    from coding_agent_eval.adjudication import AdjudicationError, apply_resolver_review
+    from coding_agent_eval.evaluator.blinded_export import BlindingError
+    from coding_agent_eval.evaluator.worksheet import WorksheetError
+
+    if (
+        args.review_set is None
+        or args.resolver_id is None
+        or args.worksheet is None
+        or args.keymap is None
+    ):
+        print(
+            "resolve-import needs --review-set, --resolver-id, --worksheet, and --keymap",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        result = apply_resolver_review(
+            review_set_dir=args.review_set,
+            resolver_id=args.resolver_id,
+            worksheet_path=args.worksheet,
+            keymap_path=args.keymap,
+            decided_at=datetime.now(UTC).date().isoformat(),
+        )
+    except (AdjudicationError, WorksheetError, BlindingError) as exc:
+        print(f"resolve-import refused: {exc}", file=sys.stderr)
+        return 1
+    print(f"recorded {result.ruled} resolver ruling(s) in {result.ledger_path}")
     return 0
 
 
@@ -614,8 +804,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "evaluate":
         evaluate_actions = {
             "replay": _run_evaluate_replay,
+            "init": _run_evaluate_init,
             "export": _run_evaluate_export,
             "import": _run_evaluate_import,
+            "resolve-export": _run_evaluate_resolve_export,
+            "resolve-import": _run_evaluate_resolve_import,
         }
         return evaluate_actions[args.action](args)
     if args.command == "store":

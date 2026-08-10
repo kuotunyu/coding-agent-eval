@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import random
 import shutil
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -20,22 +21,31 @@ import yaml
 
 from coding_agent_eval.adjudication import (
     AdjudicationError,
+    apply_resolver_review,
     apply_review,
+    apply_review_slot,
     export_for_review,
+    export_resolver_review,
+    export_review_slot,
+    init_review_set,
 )
 from coding_agent_eval.evaluator.ledger import (
     SYNTHETIC_PREFIX,
+    LedgerKey,
     LedgerKind,
     load_ledger,
     read_entries,
     write_entries,
 )
+from coding_agent_eval.evaluator.review_set import ReviewSetEvidence, load_review_set
 from coding_agent_eval.evaluator.worksheet import (
     DECISION_MARKER,
     RATIONALE_MARKER,
 )
 
 ORIGINAL_AUTH = "def verify(a, b):\n    return compare_digest(a, b)\n"
+TREE_CHECKSUM = "sha256:" + "b" * 64
+ENV_FINGERPRINT = "sha256:" + "c" * 64
 
 AUTH_PATCH = """\
 --- a/src/auth.py
@@ -106,6 +116,8 @@ def write_fixture(root: Path) -> Path:
         "fixture_version": "1.0.0",
         "language": "python",
         "bugs": ["fx-demo/B-001"],
+        "clean_control": {"tree_checksum": TREE_CHECKSUM},
+        "environment": {"fingerprint": ENV_FINGERPRINT},
     }
     (fixture_dir / "fixture.yaml").write_text(
         yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8", newline="\n"
@@ -467,3 +479,395 @@ def test_a_missing_keymap_is_refused(fixture_dir: Path, ledger_path: Path, tmp_p
             adjudicator_id="A1",
             decided_at="2026-08-06",
         )
+
+
+# ---------------------------------------------------------- dual-review flow
+
+
+def write_review_inputs(
+    root: Path, fixture_dir: Path, findings: list[dict[str, Any]]
+) -> tuple[Path, Path]:
+    bug = yaml.safe_load((fixture_dir / "bugs" / "B-001.yaml").read_text(encoding="utf-8"))
+    bugs_path = root / "bugs.json"
+    bugs_path.write_text(json.dumps([bug]), encoding="utf-8")
+    manifest_digest = "sha256:" + "a" * 64
+    records = [
+        {
+            "schema_version": "0.2.0",
+            "seq": 0,
+            "ts": "2026-08-11T00:00:00+00:00",
+            "event": "run_header",
+            "payload": {
+                "run_id": "reference-fx-demo-mutated",
+                "fixture_id": "fx-demo",
+                "fixture_version": "1.0.0",
+                "fixture_tree_checksum": TREE_CHECKSUM,
+                "snapshot": "mutated",
+                "bug_set_hash": sha256(
+                    json.dumps([bug["bug_id"]], sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest(),
+                "env_fingerprint": ENV_FINGERPRINT,
+                "image_ref": "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py@" + manifest_digest,
+                "image_manifest_digest": manifest_digest,
+                "image_config_digest": "sha256:" + "d" * 64,
+                "sandbox_profile": "measure",
+                "tool_backend": "measure_container:" + manifest_digest,
+            },
+        },
+        {
+            "schema_version": "0.2.0",
+            "seq": 1,
+            "ts": "2026-08-11T00:00:01+00:00",
+            "event": "findings_submitted",
+            "payload": {"findings": findings},
+        },
+        {
+            "schema_version": "0.2.0",
+            "seq": 2,
+            "ts": "2026-08-11T00:00:02+00:00",
+            "event": "cost",
+            "payload": {},
+        },
+        {
+            "schema_version": "0.2.0",
+            "seq": 3,
+            "ts": "2026-08-11T00:00:03+00:00",
+            "event": "termination",
+            "payload": {},
+        },
+    ]
+    trace_path = root / "trace.jsonl"
+    trace_path.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    return trace_path, bugs_path
+
+
+def initialized_review_set(tmp_path: Path, fixture_dir: Path) -> Path:
+    trace, bugs = write_review_inputs(
+        tmp_path, fixture_dir, [FINDING_MATCHING, FINDING_ALSO_MATCHING]
+    )
+    review_set = tmp_path / "review-set"
+    init_review_set(
+        trace_path=trace,
+        bugs_path=bugs,
+        fixture_dir=fixture_dir,
+        review_set_dir=review_set,
+        fixture_author_ids=("kuotunyu",),
+        run_operator_id="kuotunyu",
+        primary_id="kuotunyu",
+        independent_id="reviewer-b",
+    )
+    return review_set
+
+
+def test_review_set_init_freezes_inputs_without_creating_rulings(
+    fixture_dir: Path, tmp_path: Path
+) -> None:
+    review_set = initialized_review_set(tmp_path, fixture_dir)
+    manifest = json.loads((review_set / "manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["trace_schema_version"] == "0.2.0"
+    assert manifest["candidate_set_sha256"].startswith("sha256:")
+    assert manifest["candidate_materials_sha256"].startswith("sha256:")
+    assert manifest["fixture_manifest_sha256"].startswith("sha256:")
+    assert (review_set / "primary.jsonl").read_bytes() == b""
+    assert (review_set / "independent.jsonl").read_bytes() == b""
+    assert (review_set / "resolutions.jsonl").read_bytes() == b""
+
+
+def test_review_set_export_refuses_candidate_material_drift(
+    fixture_dir: Path, tmp_path: Path
+) -> None:
+    review_set = initialized_review_set(tmp_path, fixture_dir)
+    materials_path = review_set / "candidates.json"
+    materials = json.loads(materials_path.read_text(encoding="utf-8"))
+    materials["items"][0]["item"]["bug_claim"] = "tampered reviewer context"
+    materials_path.write_text(json.dumps(materials), encoding="utf-8")
+
+    with pytest.raises(AdjudicationError, match="candidate materials"):
+        export_review_slot(
+            review_set,
+            slot="primary",
+            worksheet_path=tmp_path / "primary.txt",
+            keymap_path=tmp_path / "primary.keymap.json",
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    [
+        ("fixture_tree_checksum", "sha256:" + "e" * 64, "tree checksum"),
+        ("env_fingerprint", "sha256:" + "e" * 64, "environment fingerprint"),
+        ("bug_set_hash", "e" * 64, "bug-set hash"),
+    ],
+)
+def test_review_set_init_refuses_trace_fixture_identity_drift(
+    fixture_dir: Path,
+    tmp_path: Path,
+    field: str,
+    replacement: str,
+    message: str,
+) -> None:
+    trace, bugs = write_review_inputs(tmp_path, fixture_dir, [FINDING_MATCHING])
+    records = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+    records[0]["payload"][field] = replacement
+    trace.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AdjudicationError, match=message):
+        init_review_set(
+            trace_path=trace,
+            bugs_path=bugs,
+            fixture_dir=fixture_dir,
+            review_set_dir=tmp_path / "review-set",
+            fixture_author_ids=("kuotunyu",),
+            run_operator_id="kuotunyu",
+            primary_id="kuotunyu",
+            independent_id="reviewer-b",
+        )
+
+
+def test_review_set_init_refuses_host_process_trace(fixture_dir: Path, tmp_path: Path) -> None:
+    trace, bugs = write_review_inputs(tmp_path, fixture_dir, [FINDING_MATCHING])
+    records = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+    header = records[0]["payload"]
+    header.update(
+        {
+            "sandbox_profile": "host_process",
+            "image_ref": None,
+            "image_manifest_digest": None,
+            "image_config_digest": None,
+            "tool_backend": "host_process",
+        }
+    )
+    trace.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AdjudicationError, match="measure sandbox"):
+        init_review_set(
+            trace_path=trace,
+            bugs_path=bugs,
+            fixture_dir=fixture_dir,
+            review_set_dir=tmp_path / "review-set",
+            fixture_author_ids=("kuotunyu",),
+            run_operator_id="kuotunyu",
+            primary_id="kuotunyu",
+            independent_id="reviewer-b",
+        )
+
+
+@pytest.mark.parametrize(
+    ("fixture_author_ids", "run_operator_id"),
+    [("owner@example.com", "kuotunyu"), ("kuotunyu", "operator@example.com")],
+)
+def test_review_set_init_refuses_private_identity_data(
+    fixture_dir: Path,
+    tmp_path: Path,
+    fixture_author_ids: str,
+    run_operator_id: str,
+) -> None:
+    trace, bugs = write_review_inputs(tmp_path, fixture_dir, [FINDING_MATCHING])
+
+    with pytest.raises(AdjudicationError, match="manifest would be invalid"):
+        init_review_set(
+            trace_path=trace,
+            bugs_path=bugs,
+            fixture_dir=fixture_dir,
+            review_set_dir=tmp_path / "review-set",
+            fixture_author_ids=(fixture_author_ids,),
+            run_operator_id=run_operator_id,
+            primary_id="kuotunyu",
+            independent_id="reviewer-b",
+        )
+
+
+def test_primary_and_independent_exports_have_distinct_bound_shuffle_orders(
+    fixture_dir: Path, tmp_path: Path
+) -> None:
+    review_set = initialized_review_set(tmp_path, fixture_dir)
+    primary = export_review_slot(
+        review_set,
+        slot="primary",
+        worksheet_path=tmp_path / "primary.txt",
+        keymap_path=tmp_path / "primary.keymap.json",
+    )
+    independent = export_review_slot(
+        review_set,
+        slot="independent",
+        worksheet_path=tmp_path / "independent.txt",
+        keymap_path=tmp_path / "independent.keymap.json",
+    )
+    primary_map = json.loads(primary.keymap_path.read_text(encoding="utf-8"))
+    independent_map = json.loads(independent.keymap_path.read_text(encoding="utf-8"))
+
+    assert primary_map["review_set_id"] == independent_map["review_set_id"]
+    assert primary_map["slot"] == "primary"
+    assert independent_map["slot"] == "independent"
+    assert list(primary_map["entries"].values()) != list(independent_map["entries"].values())
+
+
+def test_cross_slot_keymap_and_malformed_import_leave_ledgers_unchanged(
+    fixture_dir: Path, tmp_path: Path
+) -> None:
+    review_set = initialized_review_set(tmp_path, fixture_dir)
+    exported = export_review_slot(
+        review_set,
+        slot="primary",
+        worksheet_path=tmp_path / "primary.txt",
+        keymap_path=tmp_path / "primary.keymap.json",
+    )
+    before = (review_set / "independent.jsonl").read_bytes()
+
+    with pytest.raises(AdjudicationError, match="slot"):
+        apply_review_slot(
+            review_set,
+            slot="independent",
+            worksheet_path=exported.worksheet_path,
+            keymap_path=exported.keymap_path,
+            decided_at="2026-08-11",
+        )
+    assert (review_set / "independent.jsonl").read_bytes() == before
+
+    malformed_keymap = tmp_path / "malformed.keymap.json"
+    malformed_keymap.write_text("{", encoding="utf-8")
+    with pytest.raises(AdjudicationError, match="well-formed key map"):
+        apply_review_slot(
+            review_set,
+            slot="primary",
+            worksheet_path=exported.worksheet_path,
+            keymap_path=malformed_keymap,
+            decided_at="2026-08-11",
+        )
+    assert (review_set / "primary.jsonl").read_bytes() == b""
+
+    with pytest.raises(Exception, match="no decision"):
+        apply_review_slot(
+            review_set,
+            slot="primary",
+            worksheet_path=exported.worksheet_path,
+            keymap_path=exported.keymap_path,
+            decided_at="2026-08-11",
+        )
+    assert (review_set / "primary.jsonl").read_bytes() == b""
+
+    tampered = exported.worksheet_path.read_text(encoding="utf-8").replace(
+        "Bug claim:", "Altered bug claim:", 1
+    )
+    exported.worksheet_path.write_text(
+        fill(
+            tampered,
+            {
+                1: ("same_root_cause", "Reviewed by the assigned human."),
+                2: ("same_root_cause", "Reviewed by the assigned human."),
+            },
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(AdjudicationError, match="worksheet content"):
+        apply_review_slot(
+            review_set,
+            slot="primary",
+            worksheet_path=exported.worksheet_path,
+            keymap_path=exported.keymap_path,
+            decided_at="2026-08-11",
+        )
+    assert (review_set / "primary.jsonl").read_bytes() == b""
+
+
+def test_disagreement_exports_one_resolver_item_and_round_trips(
+    fixture_dir: Path, tmp_path: Path
+) -> None:
+    review_set = initialized_review_set(tmp_path, fixture_dir)
+    primary = export_review_slot(
+        review_set,
+        slot="primary",
+        worksheet_path=tmp_path / "primary.txt",
+        keymap_path=tmp_path / "primary.keymap.json",
+    )
+    independent = export_review_slot(
+        review_set,
+        slot="independent",
+        worksheet_path=tmp_path / "independent.txt",
+        keymap_path=tmp_path / "independent.keymap.json",
+    )
+    primary.worksheet_path.write_text(
+        fill(
+            primary.worksheet_path.read_text(encoding="utf-8"),
+            {
+                1: ("same_root_cause", "Primary agrees."),
+                2: ("same_root_cause", "Primary agrees."),
+            },
+        ),
+        encoding="utf-8",
+    )
+    independent.worksheet_path.write_text(
+        fill(
+            independent.worksheet_path.read_text(encoding="utf-8"),
+            {
+                1: ("same_root_cause", "Independent agrees here."),
+                2: ("different_root_cause", "Independent disagrees here."),
+            },
+        ),
+        encoding="utf-8",
+    )
+    apply_review_slot(
+        review_set,
+        slot="primary",
+        worksheet_path=primary.worksheet_path,
+        keymap_path=primary.keymap_path,
+        decided_at="2026-08-11",
+    )
+    apply_review_slot(
+        review_set,
+        slot="independent",
+        worksheet_path=independent.worksheet_path,
+        keymap_path=independent.keymap_path,
+        decided_at="2026-08-11",
+    )
+
+    resolver = export_resolver_review(
+        review_set,
+        worksheet_path=tmp_path / "resolver.txt",
+        keymap_path=tmp_path / "resolver.keymap.json",
+    )
+    assert resolver.pending == 1
+    assert "reviewer-b" not in resolver.worksheet_path.read_text(encoding="utf-8")
+    resolver.worksheet_path.write_text(
+        fill(
+            resolver.worksheet_path.read_text(encoding="utf-8"),
+            {1: ("insufficient", "Resolver cannot establish equivalence.")},
+        ),
+        encoding="utf-8",
+    )
+    outcome = apply_resolver_review(
+        review_set,
+        resolver_id="reviewer-c",
+        worksheet_path=resolver.worksheet_path,
+        keymap_path=resolver.keymap_path,
+        decided_at="2026-08-11",
+    )
+
+    assert outcome.ruled == 1
+    assert len(read_entries(review_set / "resolutions.jsonl", kind=LedgerKind.FORMAL)) == 1
+
+    manifest = json.loads((review_set / "manifest.json").read_text(encoding="utf-8"))
+    materials = json.loads((review_set / "candidates.json").read_text(encoding="utf-8"))
+    evidence = ReviewSetEvidence(
+        run_id=manifest["run_id"],
+        fixture_id=manifest["fixture_id"],
+        fixture_version=manifest["fixture_version"],
+        tree_checksum=manifest["tree_checksum"],
+        trace_sha256=manifest["trace_sha256"],
+        findings_sha256=manifest["findings_sha256"],
+        fixture_manifest_sha256=manifest["fixture_manifest_sha256"],
+        trace_schema_version=manifest["trace_schema_version"],
+        environment_fingerprint=manifest["environment_fingerprint"],
+        candidate_keys=tuple(LedgerKey.from_dict(item["key"]) for item in materials["items"]),
+    )
+    assert load_review_set(review_set, evidence=evidence).publishable is True
