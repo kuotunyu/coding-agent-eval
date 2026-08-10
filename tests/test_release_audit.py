@@ -7,8 +7,13 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+import yaml
+
+from coding_agent_eval.fixtures.image_identity import PreparedImageIdentity
 from coding_agent_eval.release_audit import (
     audit_git_history,
+    audit_release,
     audit_release_metadata,
     audit_repository,
 )
@@ -20,6 +25,143 @@ def test_all_implementable_repository_release_contracts_are_clean(repo_root: Pat
 
     assert [finding.render() for finding in findings if finding.blocking] == []
     assert sum(finding.code == "trace.legacy" for finding in findings) == 8
+
+
+def test_default_audit_stays_green_while_publication_fails_closed(repo_root: Path) -> None:
+    default = audit_release(repo_root)
+    publication = audit_release(repo_root, publication=True)
+
+    assert [finding for finding in default if finding.blocking] == []
+    codes = {finding.code for finding in publication if finding.blocking}
+    assert {
+        "oci.identity",
+        "suite.registration",
+        "suite.coverage",
+        "suite.trace_contract",
+        "suite.outcomes",
+        "review.coverage",
+        "review.independence",
+        "review.resolution",
+        "results.replay",
+        "claims.scope",
+    } <= codes
+    assert "git.owner_only" not in codes
+    assert "artifact.private_data" not in codes
+    assert "oci.anonymous_pull" not in codes
+
+
+def test_offline_publication_audit_never_uses_the_online_probe(repo_root: Path) -> None:
+    def forbidden_probe(*args: object) -> tuple[str, str]:
+        raise AssertionError("offline audit invoked a registry/network probe")
+
+    audit_release(
+        repo_root,
+        publication=True,
+        online=False,
+        online_probe=forbidden_probe,
+    )
+
+
+def test_online_publication_audit_checks_anonymous_manifest_and_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coding_agent_eval.release_audit as release_audit
+
+    monkeypatch.setattr(release_audit, "audit_repository", lambda root: [])
+    observed: list[str] = []
+    for fixture_id, digit in (("fx-one", "a"), ("fx-two", "b")):
+        fixture = tmp_path / "fixtures" / fixture_id
+        fixture.mkdir(parents=True)
+        manifest = {
+            "fixture_id": fixture_id,
+            "fixture_version": "1.0.0",
+            "environment": {
+                "prepared_image_repository": f"ghcr.io/kuotunyu/{fixture_id}",
+                "prepared_image_tag": "1.0.0",
+                "prepared_image_manifest_digest": "sha256:" + digit * 64,
+                "prepared_image_config_digest": "sha256:" + digit * 64,
+                "fingerprint": "sha256:" + "c" * 64,
+            },
+        }
+        (fixture / "fixture.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+    def probe(identity: PreparedImageIdentity) -> tuple[str, str]:
+        observed.append(identity.immutable_ref)
+        return identity.manifest_digest, identity.config_digest
+
+    findings = audit_release(
+        tmp_path,
+        publication=True,
+        online=True,
+        online_probe=probe,
+    )
+
+    assert len(observed) == 2
+    assert not any(finding.code == "oci.anonymous_pull" for finding in findings)
+
+
+def test_online_publication_audit_rejects_registry_identity_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coding_agent_eval.release_audit as release_audit
+
+    monkeypatch.setattr(release_audit, "audit_repository", lambda root: [])
+    fixture = tmp_path / "fixtures" / "fx-one"
+    fixture.mkdir(parents=True)
+    manifest = {
+        "fixture_id": "fx-one",
+        "fixture_version": "1.0.0",
+        "environment": {
+            "prepared_image_repository": "ghcr.io/kuotunyu/fx-one",
+            "prepared_image_tag": "1.0.0",
+            "prepared_image_manifest_digest": "sha256:" + "a" * 64,
+            "prepared_image_config_digest": "sha256:" + "b" * 64,
+            "fingerprint": "sha256:" + "c" * 64,
+        },
+    }
+    (fixture / "fixture.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+    findings = audit_release(
+        tmp_path,
+        publication=True,
+        online=True,
+        online_probe=lambda identity: ("sha256:" + "d" * 64, identity.config_digest),
+    )
+
+    assert any(finding.code == "oci.anonymous_pull" for finding in findings)
+
+
+def test_publication_audit_maps_non_owner_history_to_owner_only(tmp_path: Path) -> None:
+    git(tmp_path, "init")
+    git(tmp_path, "config", "user.name", "someone-else")
+    git(tmp_path, "config", "user.email", "someone" + chr(64) + "example.invalid")
+    (tmp_path / "evidence.txt").write_text("identity\n", encoding="utf-8")
+    git(tmp_path, "add", "evidence.txt")
+    git(tmp_path, "commit", "-m", "test: wrong identity")
+
+    findings = audit_release(tmp_path, publication=True)
+
+    assert any(finding.code == "git.owner_only" for finding in findings)
+
+
+def test_publication_audit_rejects_tracked_private_review_keymaps(tmp_path: Path) -> None:
+    git(tmp_path, "init")
+    git(tmp_path, "config", "user.name", "kuotunyu")
+    git(
+        tmp_path,
+        "config",
+        "user.email",
+        "61350295+kuotunyu" + chr(64) + "users.noreply.github.com",
+    )
+    private = tmp_path / "ledger" / "review-sets" / "primary.keymap.json"
+    private.parent.mkdir(parents=True)
+    private.write_text("{}\n", encoding="utf-8")
+    git(tmp_path, "add", private.relative_to(tmp_path).as_posix())
+    git(tmp_path, "commit", "-m", "test: private artifact")
+
+    findings = audit_release(tmp_path, publication=True)
+
+    assert any(finding.code == "artifact.private_data" for finding in findings)
 
 
 def test_release_manifest_is_deterministic_and_covers_core_artifacts(repo_root: Path) -> None:

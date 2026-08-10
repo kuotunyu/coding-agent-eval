@@ -181,6 +181,17 @@ def test_suite_cli_contracts_parse(action: str) -> None:
     assert build_parser().parse_args(arguments).action == action
 
 
+def test_release_publication_flags_parse() -> None:
+    arguments = build_parser().parse_args(["release", "audit", "--publication", "--online"])
+
+    assert arguments.publication is True
+    assert arguments.online is True
+
+
+def test_release_online_requires_publication() -> None:
+    assert main(["release", "audit", "--online"]) == 2
+
+
 def test_evaluate_export_end_to_end_through_main(tmp_path: Path) -> None:
     """One real pass through `main()`, not just the underlying function — the
     argument wiring is what this test is actually for."""

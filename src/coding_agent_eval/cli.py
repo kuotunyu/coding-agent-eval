@@ -139,6 +139,16 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("action", choices=("audit",))
             sub.add_argument("--root", type=Path, default=Path("."))
             sub.add_argument("--check-git-history", action="store_true")
+            sub.add_argument(
+                "--publication",
+                action="store_true",
+                help="require complete offline publication evidence",
+            )
+            sub.add_argument(
+                "--online",
+                action="store_true",
+                help="also verify anonymous GHCR manifest/config identity",
+            )
         elif name == "fixture":
             sub.add_argument(
                 "action",
@@ -925,9 +935,15 @@ def _run_store(args: argparse.Namespace) -> int:
 
 
 def _run_release(args: argparse.Namespace) -> int:
-    from coding_agent_eval.release_audit import audit_repository
+    from coding_agent_eval.release_audit import audit_release, audit_repository
 
-    findings = audit_repository(args.root, check_git_history=args.check_git_history)
+    if args.online and not args.publication:
+        print("release audit --online requires --publication", file=sys.stderr)
+        return 2
+    if args.publication:
+        findings = audit_release(args.root, publication=True, online=args.online)
+    else:
+        findings = audit_repository(args.root, check_git_history=args.check_git_history)
     for finding in findings:
         print(finding.render(), file=sys.stderr if finding.blocking else sys.stdout)
     blocking = sum(finding.blocking for finding in findings)

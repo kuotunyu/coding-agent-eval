@@ -56,8 +56,8 @@ from coding_agent_eval.schemas.loader import load_schema, schema_dir, schema_nam
 directory = schema_dir()
 names = schema_names()
 assert "_schemas" in str(directory), f"resolved to {directory}, not the packaged copy"
-assert len(names) == 8, names
-assert "task" in names, names
+required = {"finding", "review-set", "suite-registration", "task", "trace-record"}
+assert required <= set(names), names
 load_schema("finding")
 print(f"{len(names)} schemas loaded from {directory.name}/")
 PY
