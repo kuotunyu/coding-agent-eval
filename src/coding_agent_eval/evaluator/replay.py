@@ -27,6 +27,7 @@ from coding_agent_eval.evaluator.metrics import (
     Usage,
     score_run,
 )
+from coding_agent_eval.schemas.validate import validate_document
 
 
 def _read_trace(path: Path) -> list[dict[str, Any]]:
@@ -37,9 +38,14 @@ def _read_trace(path: Path) -> list[dict[str, Any]]:
         if not line.strip():
             continue
         try:
-            records.append(json.loads(line))
+            record = json.loads(line)
         except json.JSONDecodeError as exc:
             raise EvaluationError(f"trace line {number} is not valid JSON: {exc}") from exc
+        problems = validate_document("trace-record", record)
+        if problems:
+            rendered = "; ".join(problem.render() for problem in problems)
+            raise EvaluationError(f"trace line {number} violates trace-record schema: {rendered}")
+        records.append(record)
     return records
 
 

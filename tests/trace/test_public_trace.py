@@ -42,9 +42,12 @@ RUN_HEADER: dict[str, Any] = {
     "system_prompt_version": "0.1.0",
     "params_hash": "d" * 64,
     "seed": 7,
-    "image_digest": "sha256:" + "e" * 64,
+    "image_ref": ("ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:" + "e" * 64),
+    "image_manifest_digest": "sha256:" + "e" * 64,
+    "image_config_digest": "sha256:" + "1" * 64,
     "env_fingerprint": "sha256:" + "f" * 64,
     "sandbox_profile": "measure",
+    "tool_backend": "measure_container:sha256:" + "e" * 64,
     "budget": {"max_tokens": 200000},
     "redaction_manifest_version": "0.1.0",
 }
@@ -59,6 +62,16 @@ def record(event: str, payload: dict[str, Any], seq: int = 0) -> dict[str, Any]:
 
 def test_a_public_field_is_classified_public() -> None:
     assert classify("run_header", "run_id") is FieldClass.PUBLIC
+
+
+@pytest.mark.parametrize("field", ["image_ref", "image_manifest_digest", "image_config_digest"])
+def test_trace_0_2_oci_identity_fields_are_public(field: str) -> None:
+    assert classify("run_header", field) is FieldClass.PUBLIC
+
+
+def test_legacy_ambiguous_image_digest_is_not_a_writer_field() -> None:
+    with pytest.raises(UnknownFieldError, match="image_digest"):
+        classify("run_header", "image_digest")
 
 
 def test_a_known_private_field_is_classified_private() -> None:
@@ -94,7 +107,7 @@ def test_the_envelope_is_preserved() -> None:
     public = project_record(record("run_header", RUN_HEADER, seq=5))
     assert public["seq"] == 5
     assert public["event"] == "run_header"
-    assert public["schema_version"]
+    assert public["schema_version"] == "0.2.0"
 
 
 def test_a_known_private_field_is_dropped_without_complaint() -> None:

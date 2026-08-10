@@ -103,6 +103,28 @@ def _structural_problems(name: str, document: Any) -> list[ValidationProblem]:
     if name == "finding":
         problems += _line_range_problems("", document)
 
+    if (
+        name == "trace-record"
+        and document.get("schema_version") == "0.2.0"
+        and document.get("event") == "run_header"
+    ):
+        payload = document.get("payload")
+        if isinstance(payload, dict) and payload.get("sandbox_profile") == "measure":
+            manifest_digest = payload.get("image_manifest_digest")
+            expected_ref_suffix = f"@{manifest_digest}"
+            expected_backend = f"measure_container:{manifest_digest}"
+            if (
+                not str(payload.get("image_ref", "")).endswith(expected_ref_suffix)
+                or payload.get("tool_backend") != expected_backend
+            ):
+                problems.append(
+                    ValidationProblem(
+                        pointer="/payload",
+                        message=("image_ref and tool_backend must identify image_manifest_digest"),
+                        rule="TRACE_OCI_IDENTITY_MATCH",
+                    )
+                )
+
     return problems
 
 

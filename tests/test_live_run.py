@@ -20,12 +20,17 @@ contract; see `docs/MANUAL_RUN.md`.
 from __future__ import annotations
 
 import json
+import shutil
+from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
 import pytest
+import yaml
 
+from coding_agent_eval.agent.backend import LocalTree
 from coding_agent_eval.agent.provider import (
     GPT_5_6_LUNA_PRICING,
     MAX_ERROR_MESSAGE_CHARS,
@@ -53,6 +58,10 @@ from tests.conftest import REPO_ROOT
 #: `redacted()` never includes the key whatever its shape.
 KEY = "placeholder-value-never-logged-4f19c2"
 FIXTURE = REPO_ROOT / "fixtures" / "fx-taskq-py"
+MANIFEST_DIGEST = "sha256:" + "a" * 64
+CONFIG_DIGEST = "sha256:" + "b" * 64
+IMAGE_REPOSITORY = "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py"
+IMMUTABLE_IMAGE_REF = f"{IMAGE_REPOSITORY}@{MANIFEST_DIGEST}"
 
 VALID = {
     "CAE_PROVIDER_API_KEY": KEY,
@@ -315,6 +324,29 @@ def submit_then_stop() -> Any:
     return handler, calls
 
 
+def current_fixture(tmp_path: Path, *, include_config_digest: bool = True) -> Path:
+    """Copy the legacy fixture and give the copy a current OCI identity."""
+    destination = tmp_path / "current-fixture"
+    shutil.copytree(FIXTURE, destination)
+    manifest_path = destination / "fixture.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    environment = manifest["environment"]
+    environment.pop("prepared_image_digest")
+    environment.update(
+        {
+            "prepared_image_repository": IMAGE_REPOSITORY,
+            "prepared_image_tag": manifest["fixture_version"],
+            "prepared_image_manifest_digest": MANIFEST_DIGEST,
+        }
+    )
+    if include_config_digest:
+        environment["prepared_image_config_digest"] = CONFIG_DIGEST
+    manifest_path.write_text(
+        yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8", newline="\n"
+    )
+    return destination
+
+
 def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
     """The whole path, end to end, against a mock transport."""
     handler, calls = submit_then_stop()
@@ -340,6 +372,125 @@ def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
     assert header["tool_backend"] == "host_process"
     assert header["provider"]["model"] == "gpt-5.6-luna"
     assert header["provider"]["api_key_present"] is True
+
+    raw_header = run.raw_store.read_events()[0]["payload"]
+    assert raw_header["image_ref"] is None
+    assert raw_header["image_manifest_digest"] is None
+    assert raw_header["image_config_digest"] is None
+
+    public_header = json.loads(
+        (directory / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert public_header["schema_version"] == "0.2.0"
+
+
+def test_current_isolated_run_binds_the_fixture_oci_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = current_fixture(tmp_path)
+
+    @contextmanager
+    def fake_tool_container(image: str, tree: Path) -> Any:
+        assert image == IMMUTABLE_IMAGE_REF
+        local = LocalTree(tree)
+        yield SimpleNamespace(
+            description=f"measure_container:{image}",
+            read_bytes=local.read_bytes,
+            list_entries=local.list_entries,
+            read_subtree=local.read_subtree,
+        )
+
+    import coding_agent_eval.sandbox.tool_container as tool_container_module
+
+    monkeypatch.setattr(tool_container_module, "tool_container", fake_tool_container)
+    handler, calls = submit_then_stop()
+    run = execute(
+        fixture,
+        configuration=configuration(),
+        snapshot="clean",
+        isolate_image=IMMUTABLE_IMAGE_REF,
+        workspace=tmp_path / "work",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    assert calls
+    trace_header = run.raw_store.read_events()[0]["payload"]
+    assert trace_header["image_ref"] == IMMUTABLE_IMAGE_REF
+    assert trace_header["image_manifest_digest"] == MANIFEST_DIGEST
+    assert trace_header["image_config_digest"] == CONFIG_DIGEST
+    assert trace_header["tool_backend"] == f"measure_container:{MANIFEST_DIGEST}"
+    assert trace_header["sandbox_profile"] == "measure"
+
+
+@pytest.mark.parametrize(
+    "image",
+    [
+        f"{IMAGE_REPOSITORY}:1.0.3",
+        f"{IMAGE_REPOSITORY}@sha256:" + "c" * 64,
+    ],
+)
+def test_tag_only_or_mismatched_isolate_is_refused_before_provider_initialization(
+    image: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coding_agent_eval.live as live_module
+
+    fixture = current_fixture(tmp_path)
+
+    def provider_must_not_be_built(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("provider initialized before image identity validation")
+
+    monkeypatch.setattr(live_module, "build_adapter", provider_must_not_be_built)
+
+    with pytest.raises(ValueError, match="fixture-derived immutable"):
+        execute(
+            fixture,
+            configuration=configuration(),
+            snapshot="clean",
+            isolate_image=image,
+            workspace=tmp_path / "work",
+        )
+
+
+def test_missing_config_digest_is_refused_before_provider_initialization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coding_agent_eval.live as live_module
+
+    fixture = current_fixture(tmp_path, include_config_digest=False)
+
+    def provider_must_not_be_built(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("provider initialized before image identity validation")
+
+    monkeypatch.setattr(live_module, "build_adapter", provider_must_not_be_built)
+
+    with pytest.raises(ValueError, match="prepared_image_config_digest"):
+        execute(
+            fixture,
+            configuration=configuration(),
+            snapshot="clean",
+            isolate_image=IMMUTABLE_IMAGE_REF,
+            workspace=tmp_path / "work",
+        )
+
+
+def test_legacy_fixture_cannot_claim_current_isolation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coding_agent_eval.live as live_module
+
+    def provider_must_not_be_built(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("provider initialized before image identity validation")
+
+    monkeypatch.setattr(live_module, "build_adapter", provider_must_not_be_built)
+
+    with pytest.raises(ValueError, match="current OCI identity"):
+        execute(
+            FIXTURE,
+            configuration=configuration(),
+            snapshot="clean",
+            isolate_image="sha256:" + "c" * 64,
+            workspace=tmp_path / "work",
+        )
 
 
 def test_a_live_run_persists_one_complete_private_event_sequence(tmp_path: Path) -> None:

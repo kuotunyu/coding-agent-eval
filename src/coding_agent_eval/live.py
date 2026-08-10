@@ -37,7 +37,7 @@ from typing import Any
 
 import httpx
 
-from coding_agent_eval import BENCHMARK_VERSION, REDACTION_MANIFEST_VERSION
+from coding_agent_eval import BENCHMARK_VERSION, REDACTION_MANIFEST_VERSION, TRACE_SCHEMA_VERSION
 from coding_agent_eval.agent.backend import LocalTree, TreeBackend
 from coding_agent_eval.agent.loop import Recorder, RunResult, run_agent
 from coding_agent_eval.agent.protocol import AgentAdapter, TerminationReason
@@ -48,12 +48,14 @@ from coding_agent_eval.agent.provider import (
 )
 from coding_agent_eval.agent.tools import ToolContext
 from coding_agent_eval.e2e import CLEAN, MUTATED, Fixture, load_fixture
+from coding_agent_eval.fixtures.image_identity import (
+    ImageIdentityError,
+    PreparedImageIdentity,
+)
 from coding_agent_eval.fixtures.patcher import apply_patch, materialise
 from coding_agent_eval.runconfig import RunConfiguration
 from coding_agent_eval.trace.raw_store import RawStore
 from coding_agent_eval.trace.sanitizer import sanitize_events
-
-TRACE_SCHEMA_VERSION = "0.1.0"
 
 
 @dataclass(frozen=True)
@@ -72,7 +74,7 @@ class LiveRun:
     adapter_name: str
     adapter_version: str
     raw_store: RawStore
-    isolate_image: str | None
+    image_identity: PreparedImageIdentity | None
     system_prompt: str
 
     def header(self) -> dict[str, Any]:
@@ -103,6 +105,15 @@ class LiveRun:
             "agent_adapter_version": self.adapter_version,
             "trace_schema_version": TRACE_SCHEMA_VERSION,
             "tool_backend": self.tool_backend,
+            "image_ref": (
+                self.image_identity.immutable_ref if self.image_identity is not None else None
+            ),
+            "image_manifest_digest": (
+                self.image_identity.manifest_digest if self.image_identity is not None else None
+            ),
+            "image_config_digest": (
+                self.image_identity.config_digest if self.image_identity is not None else None
+            ),
             "termination_reason": self.result.termination_reason.value,
             "steps": self.result.steps,
             "tool_calls": self.result.tool_calls,
@@ -185,9 +196,17 @@ class LiveRun:
             "system_prompt_version": SYSTEM_PROMPT_VERSION,
             "params_hash": _canonical_hash(params),
             "seed": None,
-            "image_digest": self.isolate_image,
+            "image_ref": (
+                self.image_identity.immutable_ref if self.image_identity is not None else None
+            ),
+            "image_manifest_digest": (
+                self.image_identity.manifest_digest if self.image_identity is not None else None
+            ),
+            "image_config_digest": (
+                self.image_identity.config_digest if self.image_identity is not None else None
+            ),
             "env_fingerprint": self.fixture.manifest["environment"]["fingerprint"],
-            "sandbox_profile": "measure" if self.isolate_image else "host_process",
+            "sandbox_profile": "measure" if self.image_identity is not None else "host_process",
             "tool_backend": self.tool_backend,
             "budget": self.configuration.budget.as_dict(),
             "redaction_manifest_version": REDACTION_MANIFEST_VERSION,
@@ -253,6 +272,28 @@ def build_adapter(configuration: RunConfiguration, *, client: httpx.Client | Non
     )
 
 
+def _bind_image_identity(
+    fixture: Fixture, isolate_image: str | None
+) -> PreparedImageIdentity | None:
+    """Bind isolation to the fixture declaration before a provider can be initialized."""
+    if isolate_image is None:
+        return None
+
+    environment = fixture.manifest["environment"]
+    if "prepared_image_repository" not in environment:
+        raise ImageIdentityError(
+            "--isolate requires a fixture with the current OCI identity contract"
+        )
+
+    identity = PreparedImageIdentity.from_environment(environment)
+    if isolate_image != identity.immutable_ref:
+        raise ImageIdentityError(
+            "--isolate must equal the fixture-derived immutable image reference "
+            f"{identity.immutable_ref!r}"
+        )
+    return identity
+
+
 def execute(
     fixture_dir: Path,
     *,
@@ -278,6 +319,7 @@ def execute(
     fixture = load_fixture(fixture_dir)
     if snapshot not in (CLEAN, MUTATED):
         raise ValueError(f"snapshot must be {CLEAN!r} or {MUTATED!r}, not {snapshot!r}")
+    image_identity = _bind_image_identity(fixture, isolate_image)
 
     root = Path(workspace or tempfile.mkdtemp(prefix="cae-live-"))
     tree = materialise(fixture.directory / "tree", root / fixture.fixture_id)
@@ -296,16 +338,20 @@ def execute(
     recorder = Recorder(sink=store.append_record)
 
     backend: Any
-    if isolate_image is None:
+    if image_identity is None:
         backend = nullcontext(LocalTree(tree))
     else:
         from coding_agent_eval.sandbox.tool_container import tool_container
 
-        backend = tool_container(isolate_image, tree)
+        backend = tool_container(image_identity.immutable_ref, tree)
 
     with backend as view:
         view_backend: TreeBackend = view
-        tool_backend = view_backend.description
+        tool_backend = (
+            view_backend.description
+            if image_identity is None
+            else f"measure_container:{image_identity.manifest_digest}"
+        )
         provisional = LiveRun(
             run_id=effective_run_id,
             fixture=fixture,
@@ -325,7 +371,7 @@ def execute(
             adapter_name=adapter.name,
             adapter_version=adapter.version,
             raw_store=store,
-            isolate_image=isolate_image,
+            image_identity=image_identity,
             system_prompt=getattr(adapter, "system_prompt", DEFAULT_SYSTEM_PROMPT),
         )
         recorder.emit("run_header", provisional.trace_header())
@@ -349,6 +395,6 @@ def execute(
         adapter_name=adapter.name,
         adapter_version=adapter.version,
         raw_store=store,
-        isolate_image=isolate_image,
+        image_identity=image_identity,
         system_prompt=getattr(adapter, "system_prompt", DEFAULT_SYSTEM_PROMPT),
     )

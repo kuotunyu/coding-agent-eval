@@ -6,8 +6,10 @@
   "type": "object",
   "properties": {
     "schema_version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "enum": [
+        "0.1.0",
+        "0.2.0"
+      ]
     },
     "seq": {
       "type": "integer",
@@ -39,6 +41,127 @@
     "ts",
     "event",
     "payload"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "0.2.0"
+          },
+          "event": {
+            "const": "run_header"
+          }
+        },
+        "required": [
+          "schema_version",
+          "event"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "image_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^ghcr\\.io/kuotunyu/[a-z0-9][a-z0-9._-]*@sha256:[0-9a-f]{64}$"
+              },
+              "image_manifest_digest": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "image_config_digest": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "sandbox_profile": {
+                "enum": [
+                  "measure",
+                  "host_process"
+                ]
+              },
+              "tool_backend": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "image_ref",
+              "image_manifest_digest",
+              "image_config_digest",
+              "sandbox_profile",
+              "tool_backend"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "sandbox_profile": {
+                      "const": "measure"
+                    }
+                  },
+                  "required": [
+                    "sandbox_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "image_ref": {
+                      "type": "string"
+                    },
+                    "image_manifest_digest": {
+                      "type": "string"
+                    },
+                    "image_config_digest": {
+                      "type": "string"
+                    },
+                    "tool_backend": {
+                      "pattern": "^measure_container:sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "sandbox_profile": {
+                      "const": "host_process"
+                    }
+                  },
+                  "required": [
+                    "sandbox_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "image_ref": {
+                      "type": "null"
+                    },
+                    "image_manifest_digest": {
+                      "type": "null"
+                    },
+                    "image_config_digest": {
+                      "type": "null"
+                    },
+                    "tool_backend": {
+                      "const": "host_process"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
   ],
   "additionalProperties": false
 }

@@ -140,10 +140,10 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--out", type=Path, required=True, help="where to write evidence")
             sub.add_argument(
                 "--isolate",
-                metavar="IMAGE_DIGEST",
+                metavar="IMMUTABLE_IMAGE_REF",
                 help=(
-                    "run the agent's tools inside the measure container, pinned to this "
-                    "image digest; without it they run in this process"
+                    "run tools inside the measure container using the fixture-derived "
+                    "repository@manifest-digest reference; without it they run in this process"
                 ),
             )
             sub.add_argument(

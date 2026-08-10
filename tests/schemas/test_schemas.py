@@ -375,6 +375,76 @@ def test_finding_absolute_path_is_rejected() -> None:
     assert not validator("finding").is_valid(doc)
 
 
+# ---------------------------------------------------------------- trace record
+
+TRACE_MANIFEST_DIGEST = "sha256:" + "a" * 64
+TRACE_CONFIG_DIGEST = "sha256:" + "b" * 64
+VALID_TRACE_0_2_HEADER: dict[str, Any] = {
+    "schema_version": "0.2.0",
+    "seq": 0,
+    "ts": "2026-08-11T00:00:00+00:00",
+    "event": "run_header",
+    "payload": {
+        "image_ref": ("ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py@" + TRACE_MANIFEST_DIGEST),
+        "image_manifest_digest": TRACE_MANIFEST_DIGEST,
+        "image_config_digest": TRACE_CONFIG_DIGEST,
+        "sandbox_profile": "measure",
+        "tool_backend": "measure_container:" + TRACE_MANIFEST_DIGEST,
+    },
+}
+
+
+def test_trace_0_2_measure_header_carries_a_complete_oci_identity() -> None:
+    assert validate_document("trace-record", VALID_TRACE_0_2_HEADER) == []
+
+
+def test_trace_0_2_host_header_is_explicitly_non_oci() -> None:
+    doc = deepcopy(VALID_TRACE_0_2_HEADER)
+    doc["payload"].update(
+        {
+            "image_ref": None,
+            "image_manifest_digest": None,
+            "image_config_digest": None,
+            "sandbox_profile": "host_process",
+            "tool_backend": "host_process",
+        }
+    )
+
+    assert validate_document("trace-record", doc) == []
+
+
+@pytest.mark.parametrize("field", ["image_ref", "image_manifest_digest", "image_config_digest"])
+def test_trace_0_2_header_requires_every_oci_identity_field(field: str) -> None:
+    doc = deepcopy(VALID_TRACE_0_2_HEADER)
+    del doc["payload"][field]
+
+    assert not validator("trace-record").is_valid(doc)
+
+
+def test_trace_0_2_rejects_a_tag_only_image_reference() -> None:
+    doc = deepcopy(VALID_TRACE_0_2_HEADER)
+    doc["payload"]["image_ref"] = "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py:1.0.0"
+
+    assert not validator("trace-record").is_valid(doc)
+
+
+def test_trace_0_2_rejects_a_backend_for_a_different_manifest() -> None:
+    doc = deepcopy(VALID_TRACE_0_2_HEADER)
+    doc["payload"]["tool_backend"] = "measure_container:sha256:" + "c" * 64
+
+    problems = validate_document("trace-record", doc)
+
+    assert [problem.rule for problem in problems] == ["TRACE_OCI_IDENTITY_MATCH"]
+
+
+def test_trace_0_1_header_remains_readable() -> None:
+    doc = deepcopy(VALID_TRACE_0_2_HEADER)
+    doc["schema_version"] = "0.1.0"
+    doc["payload"] = {"image_digest": TRACE_MANIFEST_DIGEST}
+
+    assert validate_document("trace-record", doc) == []
+
+
 # --------------------------------------------------- known residual defects
 
 

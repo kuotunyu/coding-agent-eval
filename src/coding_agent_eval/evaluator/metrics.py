@@ -29,23 +29,33 @@ from typing import Any
 from coding_agent_eval import (
     ADJUDICATION_PROTOCOL_VERSION,
     BENCHMARK_VERSION,
+    PUBLICATION_TRACE_SCHEMA_VERSION,
+    READABLE_TRACE_SCHEMA_VERSIONS,
     REDACTION_MANIFEST_VERSION,
-    TRACE_SCHEMA_VERSION,
 )
 from coding_agent_eval.evaluator.dedup import deduplicate
 from coding_agent_eval.evaluator.hashing import finding_hash
 from coding_agent_eval.evaluator.ledger import Decision, Ledger, LedgerKey
 from coding_agent_eval.evaluator.matcher import candidate_pairs, localization_recall
+from coding_agent_eval.fixtures.image_identity import SHA256_DIGEST
 
 Finding = dict[str, Any]
 Bug = dict[str, Any]
 
 #: Trace schema versions this evaluator understands.
-SUPPORTED_TRACE_SCHEMA_VERSIONS = frozenset({TRACE_SCHEMA_VERSION})
+SUPPORTED_TRACE_SCHEMA_VERSIONS = READABLE_TRACE_SCHEMA_VERSIONS
 
 
 class EvaluationError(RuntimeError):
     """Scoring refused. The result would not have meant what it appeared to."""
+
+
+def _is_measure_backend(tool_backend: str) -> bool:
+    prefix = "measure_container:"
+    return (
+        tool_backend.startswith(prefix)
+        and SHA256_DIGEST.fullmatch(tool_backend.removeprefix(prefix)) is not None
+    )
 
 
 @dataclass
@@ -296,7 +306,11 @@ def score_run(
         },
         verified_bug_ids=tuple(sorted(verified_bug_ids)),
         ledger_kind=ledger.kind.value,
-        publishable=ledger.publishable,
+        publishable=(
+            ledger.publishable
+            and context.trace_schema_version == PUBLICATION_TRACE_SCHEMA_VERSION
+            and _is_measure_backend(context.tool_backend)
+        ),
         context=context,
         fixture=fixture,
     )

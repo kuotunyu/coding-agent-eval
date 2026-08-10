@@ -190,14 +190,31 @@ def test_a_trace_without_findings_refuses(tmp_path: Path) -> None:
     assert result.counts["findings_scored"] == 0
 
 
+def test_trace_0_2_replay_refuses_a_legacy_header_shape(tmp_path: Path) -> None:
+    records = [json.loads(line) for line in TRACE.read_text(encoding="utf-8").splitlines()]
+    records[0]["schema_version"] = "0.2.0"
+    path = write_trace(tmp_path / "trace.jsonl", records)
+
+    with pytest.raises(EvaluationError, match="image_config_digest"):
+        run_replay(path)
+
+
 # ------------------------------------------------------------ publishability
 
 
 def test_the_golden_result_is_marked_unpublishable() -> None:
-    """It comes from a synthetic ledger, so it is evaluator validation only."""
+    """The historical 0.1 trace stays readable but cannot be publication evidence."""
     expected = json.loads(EXPECTED.read_text(encoding="utf-8"))
+    assert expected["trace_schema_version"] == "0.1.0"
     assert expected["ledger_kind"] == "synthetic"
     assert expected["publishable"] is False
+
+
+def test_the_trace_0_1_golden_still_replays_as_read_only_history() -> None:
+    result = run_replay()
+
+    assert result.context.trace_schema_version == "0.1.0"
+    assert result.publishable is False
 
 
 # ----------------------------------------------------------------- CLI

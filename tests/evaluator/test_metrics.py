@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from coding_agent_eval import TRACE_SCHEMA_VERSION
 from coding_agent_eval.evaluator.hashing import finding_hash
 from coding_agent_eval.evaluator.ledger import (
     SYNTHETIC_PREFIX,
@@ -50,7 +51,7 @@ CONTEXT = RunContext(
     run_id="run-1",
     fixture_version=FIXTURE_VERSION,
     tree_checksum=TREE_CHECKSUM,
-    trace_schema_version="0.1.0",
+    trace_schema_version=TRACE_SCHEMA_VERSION,
     snapshot="mutated",
     tool_backend="host_process",
     pricing_table_version="none-offline",
@@ -364,6 +365,17 @@ def test_unsupported_trace_schema_version_refuses_to_score() -> None:
         score([], [], ledger_of([]), context=context)
 
 
+def test_legacy_trace_contract_remains_readable_but_is_not_publishable() -> None:
+    context = deepcopy(CONTEXT)
+    context.trace_schema_version = "0.1.0"
+    ledger = ledger_of([], kind=LedgerKind.FORMAL)
+
+    result = score([], [], ledger, context=context)
+
+    assert result.context.trace_schema_version == "0.1.0"
+    assert result.publishable is False
+
+
 def test_unadjudicated_count_is_reported_in_the_error() -> None:
     b1 = bug("B-001", file="src/auth.py", start=100, end=110)
     b2 = bug("B-002", file="src/auth.py", start=105, end=115)
@@ -387,9 +399,23 @@ def test_a_formal_ledger_produces_a_publishable_result() -> None:
     b = bug("B-001", file="src/auth.py", start=100, end=110)
     f = finding("F-001", file="src/auth.py", start=104, end=104)
     ledger = ledger_of([(f, b, "same_root_cause")], kind=LedgerKind.FORMAL)
-    result = score([f], [b], ledger)
+    context = deepcopy(CONTEXT)
+    context.tool_backend = "measure_container:sha256:" + "b" * 64
+    result = score([f], [b], ledger, context=context)
     assert result.ledger_kind == "formal"
     assert result.publishable is True
+
+
+def test_host_process_trace_0_2_is_not_publication_evidence() -> None:
+    b = bug("B-001", file="src/auth.py", start=100, end=110)
+    f = finding("F-001", file="src/auth.py", start=104, end=104)
+    ledger = ledger_of([(f, b, "same_root_cause")], kind=LedgerKind.FORMAL)
+
+    result = score([f], [b], ledger)
+
+    assert result.context.trace_schema_version == TRACE_SCHEMA_VERSION
+    assert result.context.tool_backend == "host_process"
+    assert result.publishable is False
 
 
 def test_results_document_carries_every_version_field() -> None:

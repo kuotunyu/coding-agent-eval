@@ -737,9 +737,9 @@
       "sha256": "89166bd11f3965a644286d74666061ab91301c7b38b02614a5482f9a64b460a8"
     },
     {
-      "bytes": 1030,
+      "bytes": 4304,
       "path": "schemas/trace-record.schema.json",
-      "sha256": "cd5d1d7c1cb96d296f5cfc3134d09a7d4bada4e7434085d07406b9e843bb2f09"
+      "sha256": "7462efc19c0a83b803651abab83702298448c417470216bbd92400681f1bd314"
     },
     {
       "bytes": 3863,

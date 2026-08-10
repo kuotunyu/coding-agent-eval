@@ -43,9 +43,12 @@ CLEAN_HEADER: dict[str, Any] = {
     "system_prompt_version": "0.1.0",
     "params_hash": "d" * 64,
     "seed": 7,
-    "image_digest": "sha256:" + "e" * 64,
+    "image_ref": ("ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:" + "e" * 64),
+    "image_manifest_digest": "sha256:" + "e" * 64,
+    "image_config_digest": "sha256:" + "1" * 64,
     "env_fingerprint": "sha256:" + "f" * 64,
     "sandbox_profile": "measure",
+    "tool_backend": "measure_container:sha256:" + "e" * 64,
     "budget": {"max_tokens": 200000},
     "redaction_manifest_version": "0.1.0",
 }
