@@ -24,6 +24,7 @@ _SUBCOMMANDS: dict[str, str] = {
     "store": "Inspect or prune the private raw evidence store",
     "hygiene": "Leak scanning and hygiene policy inspection",
     "release": "Audit local release artifacts and immutable contributor provenance",
+    "suite": "Pre-register, execute, and replay the immutable 10-task reference suite",
 }
 
 
@@ -125,6 +126,15 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("action", choices=("prune",))
             sub.add_argument("--root", type=Path, default=Path(".run-store"))
             sub.add_argument("--retention-days", type=int, default=30)
+        elif name == "suite":
+            sub.add_argument("action", choices=("dry-run", "register", "run", "replay"))
+            sub.add_argument("--tasks", type=Path, default=Path("tasks"))
+            sub.add_argument("--fixtures", type=Path, default=Path("fixtures"))
+            sub.add_argument("--env-file", type=Path, default=Path(".env"))
+            sub.add_argument("--out", type=Path, required=True)
+            sub.add_argument("--plan", type=Path)
+            sub.add_argument("--registration", type=Path)
+            sub.add_argument("--review-sets", type=Path)
         elif name == "release":
             sub.add_argument("action", choices=("audit",))
             sub.add_argument("--root", type=Path, default=Path("."))
@@ -762,6 +772,148 @@ def _run_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _suite_registry_path(path: Path) -> Path:
+    return path / "v0.1.json" if path.is_dir() else path
+
+
+def _run_suite(args: argparse.Namespace) -> int:
+    """Plan or execute all ten tasks without ever retrying a provider call."""
+    from datetime import UTC, datetime
+
+    from coding_agent_eval.runconfig import (
+        DEFAULT_BASE_URL,
+        ConfigurationError,
+        load_configuration,
+    )
+    from coding_agent_eval.suite import (
+        SuiteError,
+        build_registration,
+        load_registration,
+        run_suite,
+        write_registration,
+    )
+
+    registry = _suite_registry_path(args.tasks)
+    try:
+        if args.action == "dry-run":
+            configuration = load_configuration(dotenv_path=args.env_file)
+            registration = build_registration(
+                task_registry_path=registry,
+                fixture_root=args.fixtures,
+                configuration=configuration,
+                provider="openai",
+                created_date=datetime.now(UTC).date().isoformat(),
+            )
+            write_registration(registration, args.out)
+            total = registration.budgets["suite_total"]["max_estimated_cost_usd"]
+            print(f"planned {len(registration.ordered_task_ids)} task(s)")
+            print(f"aggregate maximum cost: ${float(total):.2f}")
+            print(f"plan: {args.out}")
+            print("dry run: configuration is valid and no provider call was made", file=sys.stderr)
+            return 0
+
+        if args.action == "register":
+            if args.plan is None:
+                print("suite register needs --plan", file=sys.stderr)
+                return 2
+            registration = load_registration(
+                args.plan,
+                task_registry_path=registry,
+                fixture_root=args.fixtures,
+            )
+            write_registration(registration, args.out)
+            print(f"registered {registration.suite_id}: {args.out}")
+            return 0
+
+        if args.action == "replay":
+            if args.registration is None or args.review_sets is None:
+                print("suite replay needs --registration and --review-sets", file=sys.stderr)
+                return 2
+            print(
+                "suite replay requires completed task outcomes and is enabled by the "
+                "publication-evidence phase",
+                file=sys.stderr,
+            )
+            return 2
+
+        if args.registration is None:
+            print("suite run needs --registration", file=sys.stderr)
+            return 2
+        configuration = load_configuration(dotenv_path=args.env_file)
+        registration = load_registration(
+            args.registration,
+            task_registry_path=registry,
+            fixture_root=args.fixtures,
+        )
+        expected_budget = dict(registration.budgets["per_task"])
+        if (
+            configuration.model != registration.model
+            or configuration.base_url != DEFAULT_BASE_URL
+            or configuration.api != registration.api
+            or configuration.reasoning_effort != registration.reasoning_effort
+            or configuration.budget.as_dict() != expected_budget
+        ):
+            raise SuiteError("runtime provider/model/config differs from the registration")
+
+        from coding_agent_eval.e2e import load_fixture
+        from coding_agent_eval.live import execute, write_evidence
+
+        def execute_registered(task: dict[str, object], directory: Path) -> str:
+            fixture_id = str(task["fixture_id"])
+            fixture_dir = args.fixtures / fixture_id
+            snapshot = str(task["snapshot"])
+            bug_index = 0
+            if snapshot == "mutated":
+                fixture = load_fixture(fixture_dir)
+                bug_id = str(task["bug_id"])
+                bug_index = next(
+                    index for index, bug in enumerate(fixture.bugs) if str(bug["bug_id"]) == bug_id
+                )
+            run_id = f"{registration.suite_id}-{str(task['task_id']).replace('/', '-')}"
+            live_run = execute(
+                fixture_dir,
+                configuration=configuration,
+                snapshot=snapshot,
+                bug_index=bug_index,
+                isolate_image=registration.image_identities[fixture_id].immutable_ref,
+                run_id=run_id,
+                raw_store_root=Path(".run-store"),
+            )
+            write_evidence(live_run, directory)
+            reason = live_run.result.termination_reason.value
+            if reason in {"completed", "partial"}:
+                return "completed"
+            if reason in {"provider_error", "adapter_error"}:
+                return "provider_error"
+            if reason == "budget_exhausted_wallclock":
+                return "timeout"
+            if reason in {
+                "budget_exhausted_tokens",
+                "budget_exhausted_cost",
+                "step_exhausted",
+                "loop_detected",
+                "no_output",
+            }:
+                return "budget_exhausted"
+            return "harness_error"
+
+        summary = run_suite(
+            args.registration,
+            task_registry_path=registry,
+            fixture_root=args.fixtures,
+            out=args.out,
+            executor=execute_registered,
+        )
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+    except ConfigurationError as exc:
+        print(f"suite not configured: {exc}", file=sys.stderr)
+        return 2
+    except SuiteError as exc:
+        print(f"suite refused: {exc}", file=sys.stderr)
+        return 1
+
+
 def _run_store(args: argparse.Namespace) -> int:
     from coding_agent_eval.trace.raw_store import RawStore
 
@@ -819,6 +971,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return evaluate_actions[args.action](args)
     if args.command == "store":
         return _run_store(args)
+    if args.command == "suite":
+        return _run_suite(args)
     if args.command == "release":
         return _run_release(args)
     if args.command == "run":

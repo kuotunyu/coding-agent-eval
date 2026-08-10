@@ -28,6 +28,7 @@ EXPECTED_SCHEMAS = {
     "results",
     "known-residual-defects",
     "review-set",
+    "suite-registration",
     "task",
 }
 

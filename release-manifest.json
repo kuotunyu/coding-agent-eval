@@ -47,6 +47,11 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
+      "bytes": 4205,
+      "path": "docs/REFERENCE_SUITE.md",
+      "sha256": "7fb60d2cea0f6b5de4f30442617b28b82e330f068358b30113da2c2239dc2a61"
+    },
+    {
       "bytes": 7291,
       "path": "docs/RELEASE_READINESS.md",
       "sha256": "c80fa9c4583a8674fbd2e2270efee606c2aadcd775fa876137617196612bca7d"
@@ -740,6 +745,11 @@
       "bytes": 3659,
       "path": "schemas/review-set.schema.json",
       "sha256": "a5a7fce2c32a93edcfe4d90d4b5a4fadb362943b45e32760668f271f85f3a027"
+    },
+    {
+      "bytes": 3054,
+      "path": "schemas/suite-registration.schema.json",
+      "sha256": "69651c4a4a723fe58845648ead80c0159d6dcb21a8efebcb2335dea70c8bcd9b"
     },
     {
       "bytes": 2499,

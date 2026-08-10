@@ -26,6 +26,7 @@ EXPECTED_SUBCOMMANDS = {
     "store",
     "hygiene",
     "release",
+    "suite",
 }
 
 
@@ -164,6 +165,20 @@ def test_evaluate_import_requires_worksheet_keymap_and_adjudicator_id() -> None:
 )
 def test_dual_review_cli_contracts_parse(argv: list[str], action: str) -> None:
     assert build_parser().parse_args(argv).action == action
+
+
+@pytest.mark.parametrize("action", ["dry-run", "register", "run", "replay"])
+def test_suite_cli_contracts_parse(action: str) -> None:
+    arguments = ["suite", action, "--out", "suite-output"]
+    if action == "dry-run":
+        arguments += ["--tasks", "tasks", "--env-file", ".env"]
+    elif action == "register":
+        arguments += ["--plan", "plan.json"]
+    else:
+        arguments += ["--registration", "registration.json"]
+    if action == "replay":
+        arguments += ["--review-sets", "ledger/review-sets"]
+    assert build_parser().parse_args(arguments).action == action
 
 
 def test_evaluate_export_end_to_end_through_main(tmp_path: Path) -> None:

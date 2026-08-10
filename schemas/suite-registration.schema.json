@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/suite-registration.schema.json",
+  "title": "Immutable 10-task reference-suite registration",
+  "type": "object",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "per_task_budget": {
+      "type": "object",
+      "properties": {
+        "max_tokens": {"type": "integer", "minimum": 1},
+        "max_tool_calls": {"type": "integer", "minimum": 1},
+        "max_wallclock_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "max_estimated_cost_usd": {"type": "number", "exclusiveMinimum": 0}
+      },
+      "required": [
+        "max_tokens",
+        "max_tool_calls",
+        "max_wallclock_seconds",
+        "max_estimated_cost_usd"
+      ],
+      "additionalProperties": false
+    },
+    "image_identity": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^ghcr\\.io/kuotunyu/[a-z0-9][a-z0-9._-]*$"
+        },
+        "manifest_digest": {"$ref": "#/$defs/sha256"},
+        "config_digest": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["repository", "manifest_digest", "config_digest"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "suite_id": {"type": "string", "pattern": "^suite-[0-9a-f]{64}$"},
+    "task_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "ordered_task_ids": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^fx-[a-z0-9-]+/(clean|B-[0-9]{3})$"}
+    },
+    "provider": {"const": "openai"},
+    "model": {"type": "string", "minLength": 1, "maxLength": 128},
+    "api": {"enum": ["chat_completions", "responses"]},
+    "reasoning_effort": {"type": ["string", "null"], "maxLength": 64},
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "per_task": {"$ref": "#/$defs/per_task_budget"},
+        "suite_total": {"$ref": "#/$defs/per_task_budget"}
+      },
+      "required": ["per_task", "suite_total"],
+      "additionalProperties": false
+    },
+    "retry_policy": {"const": "no_automatic_retry"},
+    "image_identities": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^fx-[a-z0-9-]+$"},
+      "additionalProperties": {"$ref": "#/$defs/image_identity"}
+    },
+    "environment_fingerprints": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^fx-[a-z0-9-]+$"},
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "created_date": {"type": "string", "format": "date"}
+  },
+  "required": [
+    "schema_version",
+    "suite_id",
+    "task_registry_sha256",
+    "ordered_task_ids",
+    "provider",
+    "model",
+    "api",
+    "reasoning_effort",
+    "budgets",
+    "retry_policy",
+    "image_identities",
+    "environment_fingerprints",
+    "created_date"
+  ],
+  "additionalProperties": false
+}
