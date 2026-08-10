@@ -29,3 +29,17 @@ def test_pull_request_jobs_use_owner_head_and_authenticated_registry(repo_root: 
         "username": "${{ github.actor }}",
         "password": "${{ secrets.GITHUB_TOKEN }}",
     }
+
+    witness_step = next(step for step in docker_steps if step.get("name", "").startswith("G2"))
+    witness_commands = witness_step["run"]
+    assert "docker pull --platform" not in witness_commands
+    assert (
+        "docker pull "
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
+        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+    ) in witness_commands
+    assert (
+        "docker pull "
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@"
+        "sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312"
+    ) in witness_commands

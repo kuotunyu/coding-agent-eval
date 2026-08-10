@@ -90,8 +90,8 @@ jobs:
 
       - name: G2 — witness contracts
         run: |
-          docker pull --platform linux/amd64 ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
-          docker pull --platform linux/amd64 ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312
+          docker pull ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
+          docker pull ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312
           uv run cae fixture verify fixtures/fx-taskq-py
           uv run cae fixture verify fixtures/fx-ledger-ts
           uv run pytest -q -m docker tests/fixtures
