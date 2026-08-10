@@ -212,12 +212,18 @@ def resolve_image_digest(tag: str) -> str:
     here means a missing image is reported as a missing image rather than as a
     malformed argument.
     """
-    proc = subprocess.run(
-        ["docker", "image", "inspect", "--format", "{{.Id}}", tag],
-        capture_output=True,
-        text=True,
-        timeout=_DOCKER_TIMEOUT,
-    )
+    try:
+        proc = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{.Id}}", tag],
+            capture_output=True,
+            text=True,
+            timeout=_DOCKER_TIMEOUT,
+        )
+    except OSError as exc:
+        raise WitnessError(
+            f"prepared image {tag!r} is not present locally because the Docker CLI "
+            f"is unavailable ({exc})"
+        ) from exc
     if proc.returncode != 0:
         raise WitnessError(
             f"prepared image {tag!r} is not present locally; build it from the "

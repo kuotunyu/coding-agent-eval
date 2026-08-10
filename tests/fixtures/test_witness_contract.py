@@ -281,6 +281,16 @@ def test_running_against_a_missing_image_names_the_image() -> None:
         resolve_image_digest("cae/definitely-not-built:0.0.0")
 
 
+def test_missing_docker_cli_is_a_witness_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing_docker(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError(2, "No such file or directory", "docker")
+
+    monkeypatch.setattr(subprocess, "run", missing_docker)
+
+    with pytest.raises(WitnessError, match="Docker CLI is unavailable"):
+        resolve_image_digest("cae/definitely-not-built:0.0.0")
+
+
 # --------------------------------------------------------------- answer leak
 
 

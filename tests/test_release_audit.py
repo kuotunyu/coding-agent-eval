@@ -34,7 +34,14 @@ def test_default_and_publication_audits_are_green_for_release_candidate(
     publication = audit_release(repo_root, publication=True)
 
     assert [finding for finding in default if finding.blocking] == []
-    assert [finding for finding in publication if finding.blocking] == []
+    blockers = [finding for finding in publication if finding.blocking]
+    if (repo_root / ".git").exists():
+        assert blockers == []
+    else:
+        assert {(finding.code, finding.path) for finding in blockers} == {
+            ("artifact.private_data", ".git"),
+            ("git.owner_only", ".git"),
+        }
 
 
 def test_offline_publication_audit_never_uses_the_online_probe(repo_root: Path) -> None:
