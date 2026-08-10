@@ -18,7 +18,7 @@ import yaml
 from coding_agent_eval.cli import main
 from coding_agent_eval.schemas.fixture_dir import validate_fixture_dir, validate_fixture_root
 
-from .test_schemas import VALID_BUG, VALID_FIXTURE
+from .test_schemas import VALID_BUG, VALID_CURRENT_FIXTURE, VALID_FIXTURE
 
 
 def write_fixture(
@@ -66,6 +66,10 @@ def rules(problems: list[Any]) -> list[str]:
 
 def test_valid_fixture_directory_passes(tmp_path: Path) -> None:
     assert validate_fixture_dir(write_fixture(tmp_path)) == []
+
+
+def test_valid_current_oci_fixture_directory_passes(tmp_path: Path) -> None:
+    assert validate_fixture_dir(write_fixture(tmp_path, fixture=VALID_CURRENT_FIXTURE)) == []
 
 
 def test_missing_fixture_manifest_is_reported(tmp_path: Path) -> None:

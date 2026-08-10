@@ -712,9 +712,9 @@
       "sha256": "ea2eed7bb89b5377a36a1a0393167c6a9a96b169d76fc6e27457a1e8de4b3166"
     },
     {
-      "bytes": 5676,
+      "bytes": 7128,
       "path": "schemas/fixture.schema.json",
-      "sha256": "2355f30e8208e7885c62321df5a5ae77f6686f70be0c255645510fa7e7be0936"
+      "sha256": "a407c07262b7ea5a880f4c3cede4b358df374325c35ad68d7df193a5d99e0147"
     },
     {
       "bytes": 1006,

@@ -18,6 +18,7 @@ from typing import Any
 
 import yaml
 
+from coding_agent_eval.fixtures.image_identity import PreparedImageIdentity
 from coding_agent_eval.schemas.validate import ValidationProblem, validate_document
 
 FIXTURE_MANIFEST = "fixture.yaml"
@@ -95,6 +96,12 @@ def validate_fixture_dir(fixture_dir: Path) -> list[FixtureProblem]:
     if schema_problems:
         # Cross-file checks read fields that the schema has just rejected.
         return problems
+
+    environment = manifest["environment"]
+    if "prepared_image_manifest_digest" in environment:
+        # Keep one typed construction point for later publication consumers.
+        # Legacy manifests intentionally have no current PreparedImageIdentity.
+        PreparedImageIdentity.from_environment(environment)
 
     problems += _check_bugs(fixture_dir, manifest)
     problems += _check_residual_defects(fixture_dir, manifest)

@@ -137,10 +137,24 @@
           "minLength": 1,
           "pattern": "\\S"
         },
+        "prepared_image_repository": {
+          "type": "string",
+          "pattern": "^ghcr\\.io/kuotunyu/[a-z0-9][a-z0-9._-]*$"
+        },
+        "prepared_image_manifest_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "The immutable OCI registry manifest digest used in repository@digest pulls."
+        },
+        "prepared_image_config_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "The local Docker image configuration digest returned by image inspect .Id."
+        },
         "prepared_image_digest": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "The prepared image the fingerprint was computed from. The tag alone cannot pin it — a tag can be repointed — so without this nothing can check that the image being run is the image the fingerprint describes."
+          "description": "Legacy v0.1 local image identity. Historical fixtures remain readable, but this field is never publication eligible."
         },
         "lock_manifest": {
           "type": "string",
@@ -161,11 +175,43 @@
       },
       "required": [
         "base_image_digest",
-        "prepared_image_tag",
-        "prepared_image_digest",
         "lock_manifest",
         "rebuild_recipe",
         "fingerprint"
+      ],
+      "oneOf": [
+        {
+          "title": "Legacy prepared image identity (read-only)",
+          "required": [
+            "prepared_image_tag",
+            "prepared_image_digest"
+          ],
+          "not": {
+            "anyOf": [
+              {"required": ["prepared_image_repository"]},
+              {"required": ["prepared_image_manifest_digest"]},
+              {"required": ["prepared_image_config_digest"]}
+            ]
+          }
+        },
+        {
+          "title": "Current OCI prepared image identity",
+          "properties": {
+            "prepared_image_tag": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            }
+          },
+          "required": [
+            "prepared_image_repository",
+            "prepared_image_tag",
+            "prepared_image_manifest_digest",
+            "prepared_image_config_digest"
+          ],
+          "not": {
+            "required": ["prepared_image_digest"]
+          }
+        }
       ],
       "additionalProperties": false
     },

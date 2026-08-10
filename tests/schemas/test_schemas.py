@@ -96,9 +96,48 @@ VALID_FIXTURE: dict[str, Any] = {
     "bugs": ["fx-demo-py/B-001"],
 }
 
+VALID_CURRENT_FIXTURE = deepcopy(VALID_FIXTURE)
+VALID_CURRENT_FIXTURE["environment"] = {
+    "base_image_digest": "sha256:" + "b" * 64,
+    "prepared_image_repository": "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py",
+    "prepared_image_tag": "1.0.4",
+    "prepared_image_manifest_digest": "sha256:" + "d" * 64,
+    "prepared_image_config_digest": "sha256:" + "e" * 64,
+    "lock_manifest": "env/env.lock.json",
+    "rebuild_recipe": "env/Dockerfile",
+    "fingerprint": "sha256:" + "c" * 64,
+}
+
 
 def test_valid_fixture_passes() -> None:
     assert validate_document("fixture", VALID_FIXTURE) == []
+
+
+def test_valid_current_oci_fixture_passes() -> None:
+    assert validate_document("fixture", VALID_CURRENT_FIXTURE) == []
+
+
+def test_fixture_rejects_mixed_legacy_and_current_image_identity() -> None:
+    doc = deepcopy(VALID_CURRENT_FIXTURE)
+    doc["environment"]["prepared_image_digest"] = "sha256:" + "f" * 64
+
+    assert not validator("fixture").is_valid(doc)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "prepared_image_repository",
+        "prepared_image_tag",
+        "prepared_image_manifest_digest",
+        "prepared_image_config_digest",
+    ],
+)
+def test_current_oci_fixture_requires_every_identity_field(field: str) -> None:
+    doc = deepcopy(VALID_CURRENT_FIXTURE)
+    del doc["environment"][field]
+
+    assert not validator("fixture").is_valid(doc)
 
 
 def test_fixture_rejects_non_first_party_provenance_at_v0_1() -> None:
