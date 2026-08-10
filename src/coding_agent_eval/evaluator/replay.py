@@ -13,12 +13,25 @@ property rather than an assertion in a README.
 
 from __future__ import annotations
 
+import hashlib
 import json
+from collections.abc import Sequence
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from coding_agent_eval.evaluator.ledger import LedgerKind, load_ledger
+import yaml
+
+from coding_agent_eval.evaluator.dedup import deduplicate
+from coding_agent_eval.evaluator.hashing import finding_hash
+from coding_agent_eval.evaluator.ledger import (
+    DecisionSource,
+    LedgerError,
+    LedgerKey,
+    LedgerKind,
+    load_ledger,
+)
+from coding_agent_eval.evaluator.matcher import candidate_pairs
 from coding_agent_eval.evaluator.metrics import (
     EvaluationError,
     FixtureSpec,
@@ -26,6 +39,11 @@ from coding_agent_eval.evaluator.metrics import (
     ScoredRun,
     Usage,
     score_run,
+)
+from coding_agent_eval.evaluator.review_set import (
+    ReviewSetError,
+    ReviewSetEvidence,
+    load_review_set,
 )
 from coding_agent_eval.schemas.validate import validate_document
 
@@ -129,38 +147,165 @@ def _findings(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return findings
 
 
-def _load_json(path: Path, what: str) -> Any:
+def _load_document(path: Path, what: str) -> Any:
     if not path.is_file():
         raise EvaluationError(f"no {what} at {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        text = path.read_text(encoding="utf-8")
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            return yaml.safe_load(text)
+        return json.loads(text)
+    except (OSError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise EvaluationError(f"{what} is not readable structured data: {exc}") from exc
+
+
+def _load_fixture(path: Path) -> tuple[FixtureSpec, dict[str, Any]]:
+    loaded = _load_document(path, "fixture manifest")
+    if not isinstance(loaded, dict):
+        raise EvaluationError("fixture manifest must be an object")
+    document: dict[str, Any] = loaded
+    try:
+        if "clean_control" in document:
+            scope = document["scope"]
+            fixture = FixtureSpec(
+                fixture_id=str(document["fixture_id"]),
+                fixture_version=str(document["fixture_version"]),
+                tree_checksum=str(document["clean_control"]["tree_checksum"]),
+                in_scope_paths=list(scope["in_scope_paths"]),
+                out_of_scope_paths=list(scope["out_of_scope_paths"]),
+                in_scope_loc=int(scope["in_scope_loc"]),
+            )
+        else:
+            fixture = FixtureSpec(
+                fixture_id=str(document["fixture_id"]),
+                fixture_version=str(document["fixture_version"]),
+                tree_checksum=str(document["tree_checksum"]),
+                in_scope_paths=list(document["in_scope_paths"]),
+                out_of_scope_paths=list(document["out_of_scope_paths"]),
+                in_scope_loc=int(document["in_scope_loc"]),
+            )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise EvaluationError(f"fixture manifest lacks evaluator fields: {exc}") from exc
+    return fixture, document
+
+
+def _load_bugs(*, bugs_path: Path | None, bug_paths: Sequence[Path] | None) -> list[dict[str, Any]]:
+    if (bugs_path is None) == (bug_paths is None):
+        raise EvaluationError("replay needs exactly one bug input: bugs_path or bug_paths")
+    loaded_bugs: list[Any]
+    if bugs_path is not None:
+        loaded = _load_document(bugs_path, "bug set")
+        if not isinstance(loaded, list):
+            raise EvaluationError("bug set must be an array")
+        loaded_bugs = loaded
+    else:
+        assert bug_paths is not None
+        loaded_bugs = [_load_document(path, f"bug spec {path}") for path in bug_paths]
+
+    bugs: list[dict[str, Any]] = []
+    for index, bug in enumerate(loaded_bugs):
+        if not isinstance(bug, dict):
+            raise EvaluationError(f"bug input {index} must be an object")
+        bugs.append(bug)
+    return bugs
+
+
+def _prefixed_sha256(payload: bytes) -> str:
+    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
+def _canonical_sha256(payload: Any) -> str:
+    encoded = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    ).encode()
+    return _prefixed_sha256(encoded)
+
+
+def _review_evidence(
+    *,
+    trace_path: Path,
+    fixture_path: Path,
+    records: list[dict[str, Any]],
+    header: dict[str, Any],
+    findings: list[dict[str, Any]],
+    bugs: list[dict[str, Any]],
+    fixture: FixtureSpec,
+) -> ReviewSetEvidence:
+    scored_findings, _ = deduplicate(findings)
+    keys = tuple(
+        LedgerKey(
+            fixture_version=fixture.fixture_version,
+            bug_id=str(bug["bug_id"]),
+            finding_hash=finding_hash(finding),
+        )
+        for finding, bug in candidate_pairs(scored_findings, bugs)
+    )
+    return ReviewSetEvidence(
+        run_id=str(header["run_id"]),
+        fixture_id=fixture.fixture_id,
+        fixture_version=fixture.fixture_version,
+        tree_checksum=fixture.tree_checksum,
+        trace_sha256=_prefixed_sha256(trace_path.read_bytes()),
+        findings_sha256=_canonical_sha256(findings),
+        bugs_sha256=_canonical_sha256(bugs),
+        fixture_manifest_sha256=_prefixed_sha256(fixture_path.read_bytes()),
+        trace_schema_version=str(records[0]["schema_version"]),
+        environment_fingerprint=str(header["env_fingerprint"]),
+        candidate_keys=keys,
+    )
 
 
 def replay_run(
     *,
     trace_path: Path,
     fixture_path: Path,
-    bugs_path: Path,
-    ledger_path: Path,
-    ledger_kind: LedgerKind = LedgerKind.SYNTHETIC,
+    bugs_path: Path | None = None,
+    bug_paths: Sequence[Path] | None = None,
+    ledger_path: Path | None = None,
+    ledger_kind: LedgerKind | None = None,
+    review_set_path: Path | None = None,
 ) -> ScoredRun:
     """Rescore from published artifacts. Raises rather than guessing at a gap."""
+    has_legacy = ledger_path is not None
+    has_review_set = review_set_path is not None
+    if has_legacy == has_review_set or (not has_legacy and ledger_kind is not None):
+        raise EvaluationError(
+            "replay needs exactly one decision source: a legacy ledger or a review set"
+        )
+
     records = _read_trace(trace_path)
     header = _single_payload(records, "run_header")
     termination = _single_payload(records, "termination")
     cost = _single_payload(records, "cost")
     _validate_event_sequence(records)
 
-    fixture_data = _load_json(fixture_path, "fixture manifest")
-    bugs = _load_json(bugs_path, "bug set")
+    fixture, _ = _load_fixture(fixture_path)
+    bugs = _load_bugs(bugs_path=bugs_path, bug_paths=bug_paths)
+    findings = _findings(records)
 
-    fixture = FixtureSpec(
-        fixture_id=fixture_data["fixture_id"],
-        fixture_version=fixture_data["fixture_version"],
-        tree_checksum=fixture_data["tree_checksum"],
-        in_scope_paths=fixture_data["in_scope_paths"],
-        out_of_scope_paths=fixture_data["out_of_scope_paths"],
-        in_scope_loc=fixture_data["in_scope_loc"],
-    )
+    try:
+        decision_source: DecisionSource
+        if ledger_path is not None:
+            decision_source = load_ledger(
+                ledger_path,
+                kind=ledger_kind or LedgerKind.SYNTHETIC,
+            )
+        else:
+            assert review_set_path is not None
+            decision_source = load_review_set(
+                review_set_path,
+                evidence=_review_evidence(
+                    trace_path=trace_path,
+                    fixture_path=fixture_path,
+                    records=records,
+                    header=header,
+                    findings=findings,
+                    bugs=bugs,
+                    fixture=fixture,
+                ),
+            )
+    except (LedgerError, ReviewSetError) as exc:
+        raise EvaluationError(f"decision evidence refused: {exc}") from exc
 
     llm_usage, summed_call_cost = _sum_llm_usage(records)
     _validate_aggregate_cost(cost, summed_call_cost)
@@ -188,9 +333,9 @@ def replay_run(
     )
 
     return score_run(
-        findings=_findings(records),
+        findings=findings,
         bugs=bugs,
-        ledger=load_ledger(ledger_path, kind=ledger_kind),
+        ledger=decision_source,
         fixture=fixture,
         context=context,
         usage=usage,

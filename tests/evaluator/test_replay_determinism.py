@@ -15,12 +15,15 @@ the three.
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
 
+from coding_agent_eval.evaluator.ledger import LedgerKey, LedgerKind, build_entry, write_entries
 from coding_agent_eval.evaluator.metrics import EvaluationError
 from coding_agent_eval.evaluator.replay import replay_run
+from coding_agent_eval.evaluator.review_set import candidate_set_sha256
 
 GOLDEN = Path(__file__).parent / "golden"
 TRACE = GOLDEN / "trace.jsonl"
@@ -49,6 +52,253 @@ def write_trace(path: Path, records: list[dict[str, object]]) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def _canonical_sha256(payload: object) -> str:
+    encoded = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    ).encode()
+    return f"sha256:{sha256(encoded).hexdigest()}"
+
+
+def write_complete_review_set(root: Path, trace_path: Path) -> Path:
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+    header = records[0]["payload"]
+    findings = next(
+        record["payload"]["findings"]
+        for record in records
+        if record["event"] == "findings_submitted"
+    )
+    legacy_entry = json.loads(LEDGER.read_text(encoding="utf-8"))
+    key = LedgerKey.from_dict(legacy_entry["key"])
+    candidate_hash = candidate_set_sha256((key,))
+    review_set_id = "rs-golden-deterministic-001"
+    materials = {
+        "review_set_id": review_set_id,
+        "candidate_set_sha256": candidate_hash,
+        "fixture_version": header["fixture_version"],
+        "items": [{"key": key.as_dict(), "item": {"blinded_context": "golden"}}],
+    }
+    fixture = json.loads(FIXTURE_MANIFEST.read_text(encoding="utf-8"))
+    manifest = {
+        "schema_version": "1.0.0",
+        "review_set_id": review_set_id,
+        "run_id": header["run_id"],
+        "fixture_id": fixture["fixture_id"],
+        "fixture_version": fixture["fixture_version"],
+        "tree_checksum": fixture["tree_checksum"],
+        "trace_sha256": f"sha256:{sha256(trace_path.read_bytes()).hexdigest()}",
+        "findings_sha256": _canonical_sha256(findings),
+        "bugs_sha256": _canonical_sha256(json.loads(BUGS.read_text(encoding="utf-8"))),
+        "fixture_manifest_sha256": f"sha256:{sha256(FIXTURE_MANIFEST.read_bytes()).hexdigest()}",
+        "candidate_set_sha256": candidate_hash,
+        "candidate_materials_sha256": _canonical_sha256(materials),
+        "trace_schema_version": "0.2.0",
+        "environment_fingerprint": header["env_fingerprint"],
+        "fixture_author_ids": ["kuotunyu"],
+        "run_operator_id": "kuotunyu",
+        "primary": {
+            "reviewer_id": "kuotunyu",
+            "independent_of_fixture_authors": False,
+            "independent_of_run_operator": False,
+            "independent_of_other_reviewers": False,
+        },
+        "independent": {
+            "reviewer_id": "reviewer-b",
+            "independent_of_fixture_authors": True,
+            "independent_of_run_operator": True,
+            "independent_of_other_reviewers": True,
+        },
+        "resolver": None,
+        "ledgers": {
+            "primary": "primary.jsonl",
+            "independent": "independent.jsonl",
+            "resolutions": "resolutions.jsonl",
+        },
+    }
+    root.mkdir()
+    (root / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (root / "candidates.json").write_text(
+        json.dumps(materials, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    write_entries(
+        root / "primary.jsonl",
+        [
+            build_entry(
+                key=key,
+                decision="same_root_cause",
+                rationale="Primary human reviewed the blinded candidate.",
+                adjudicator_id="kuotunyu",
+                decided_at="2026-08-11",
+            )
+        ],
+    )
+    write_entries(
+        root / "independent.jsonl",
+        [
+            build_entry(
+                key=key,
+                decision="same_root_cause",
+                rationale="Independent human reviewed the blinded candidate.",
+                adjudicator_id="reviewer-b",
+                decided_at="2026-08-11",
+            )
+        ],
+    )
+    write_entries(root / "resolutions.jsonl", [])
+    return root
+
+
+def write_current_trace(path: Path) -> Path:
+    records = [json.loads(line) for line in TRACE.read_text(encoding="utf-8").splitlines()]
+    for record in records:
+        record["schema_version"] = "0.2.0"
+    header = records[0]["payload"]
+    header.pop("image_digest")
+    manifest_digest = "sha256:" + "5e" * 32
+    header.update(
+        {
+            "image_ref": "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py@" + manifest_digest,
+            "image_manifest_digest": manifest_digest,
+            "image_config_digest": "sha256:" + "1f" * 32,
+        }
+    )
+    return write_trace(path, records)
+
+
+# -------------------------------------------------------- decision source
+
+
+def test_replay_requires_exactly_one_decision_source(tmp_path: Path) -> None:
+    with pytest.raises(EvaluationError, match="exactly one decision source"):
+        replay_run(
+            trace_path=TRACE,
+            fixture_path=FIXTURE_MANIFEST,
+            bugs_path=BUGS,
+        )
+
+    with pytest.raises(EvaluationError, match="exactly one decision source"):
+        replay_run(
+            trace_path=TRACE,
+            fixture_path=FIXTURE_MANIFEST,
+            bugs_path=BUGS,
+            ledger_path=LEDGER,
+            ledger_kind=LedgerKind.SYNTHETIC,
+            review_set_path=tmp_path / "review-set",
+        )
+
+
+def test_complete_dual_review_is_the_only_publishable_source(tmp_path: Path) -> None:
+    trace = write_current_trace(tmp_path / "trace.jsonl")
+    review_set = write_complete_review_set(tmp_path / "review-set", trace)
+
+    result = replay_run(
+        trace_path=trace,
+        fixture_path=FIXTURE_MANIFEST,
+        bugs_path=BUGS,
+        review_set_path=review_set,
+    )
+
+    assert result.decision_source == "dual_review"
+    assert result.publication_reason == "dual_review_complete"
+    assert result.publishable is True
+    assert result.publication_provenance["review_set_id"] == "rs-golden-deterministic-001"
+
+
+def test_replay_refuses_incomplete_or_drifted_dual_review(tmp_path: Path) -> None:
+    trace = write_current_trace(tmp_path / "trace.jsonl")
+    review_set = write_complete_review_set(tmp_path / "review-set", trace)
+    (review_set / "independent.jsonl").write_bytes(b"")
+
+    with pytest.raises(EvaluationError, match="coverage"):
+        replay_run(
+            trace_path=trace,
+            fixture_path=FIXTURE_MANIFEST,
+            bugs_path=BUGS,
+            review_set_path=review_set,
+        )
+
+    write_entries(
+        review_set / "independent.jsonl",
+        [
+            build_entry(
+                key=LedgerKey.from_dict(json.loads(LEDGER.read_text(encoding="utf-8"))["key"]),
+                decision="same_root_cause",
+                rationale="Independent human reviewed the blinded candidate.",
+                adjudicator_id="reviewer-b",
+                decided_at="2026-08-11",
+            )
+        ],
+    )
+    manifest_path = review_set / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["trace_sha256"] = "sha256:" + "f" * 64
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(EvaluationError, match="trace_sha256 drift"):
+        replay_run(
+            trace_path=trace,
+            fixture_path=FIXTURE_MANIFEST,
+            bugs_path=BUGS,
+            review_set_path=review_set,
+        )
+
+
+def test_replay_binds_dual_review_to_exact_bug_content(tmp_path: Path) -> None:
+    trace = write_current_trace(tmp_path / "trace.jsonl")
+    review_set = write_complete_review_set(tmp_path / "review-set", trace)
+    bugs = json.loads(BUGS.read_text(encoding="utf-8"))
+    bugs[0]["canonical_root_cause"] = "Changed after the humans reviewed it."
+    changed_bugs = tmp_path / "bugs.json"
+    changed_bugs.write_text(json.dumps(bugs), encoding="utf-8")
+
+    with pytest.raises(EvaluationError, match="bugs_sha256 drift"):
+        replay_run(
+            trace_path=trace,
+            fixture_path=FIXTURE_MANIFEST,
+            bugs_path=changed_bugs,
+            review_set_path=review_set,
+        )
+
+
+def test_legacy_formal_and_synthetic_sources_remain_unpublishable(tmp_path: Path) -> None:
+    synthetic = replay_run(
+        trace_path=TRACE,
+        fixture_path=FIXTURE_MANIFEST,
+        bugs_path=BUGS,
+        ledger_path=LEDGER,
+        ledger_kind=LedgerKind.SYNTHETIC,
+    )
+    old = json.loads(LEDGER.read_text(encoding="utf-8"))
+    formal_ledger = tmp_path / "formal.jsonl"
+    write_entries(
+        formal_ledger,
+        [
+            build_entry(
+                key=LedgerKey.from_dict(old["key"]),
+                decision=old["decision"],
+                rationale="Owner human reviewed this legacy candidate.",
+                adjudicator_id="kuotunyu",
+                decided_at="2026-08-11",
+            )
+        ],
+    )
+    formal = replay_run(
+        trace_path=TRACE,
+        fixture_path=FIXTURE_MANIFEST,
+        bugs_path=BUGS,
+        ledger_path=formal_ledger,
+        ledger_kind=LedgerKind.FORMAL,
+    )
+
+    assert formal.metrics == synthetic.metrics
+    assert formal.decision_source == "legacy_formal"
+    assert formal.publication_reason == "single_adjudicator_legacy"
+    assert formal.publishable is False
+    assert synthetic.publication_reason == "synthetic_adjudication"
+    assert synthetic.publishable is False
 
 
 # ------------------------------------------------------------ golden inputs

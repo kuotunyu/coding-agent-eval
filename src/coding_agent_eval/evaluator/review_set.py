@@ -33,6 +33,7 @@ class ReviewSetEvidence:
     tree_checksum: str
     trace_sha256: str
     findings_sha256: str
+    bugs_sha256: str
     fixture_manifest_sha256: str
     trace_schema_version: str
     environment_fingerprint: str
@@ -122,6 +123,7 @@ def _check_evidence(manifest: Mapping[str, Any], evidence: ReviewSetEvidence) ->
         "tree_checksum": evidence.tree_checksum,
         "trace_sha256": evidence.trace_sha256,
         "findings_sha256": evidence.findings_sha256,
+        "bugs_sha256": evidence.bugs_sha256,
         "fixture_manifest_sha256": evidence.fixture_manifest_sha256,
         "trace_schema_version": evidence.trace_schema_version,
         "environment_fingerprint": evidence.environment_fingerprint,

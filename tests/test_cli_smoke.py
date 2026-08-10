@@ -69,6 +69,20 @@ def test_evaluate_replay_requires_run_dir_fixture_and_bugs() -> None:
     assert main(["evaluate", "replay", "--ledger", "x.jsonl"]) == 2
 
 
+def test_evaluate_replay_requires_exactly_one_decision_source() -> None:
+    base = [
+        "evaluate",
+        "replay",
+        "run",
+        "--fixture",
+        "fixture.json",
+        "--bugs",
+        "bugs.json",
+    ]
+    assert main(base) == 2
+    assert main([*base, "--ledger", "ledger.jsonl", "--review-set", "review-set"]) == 2
+
+
 def test_evaluate_export_requires_run_dir_fixture_dir_and_out() -> None:
     assert main(["evaluate", "export", "--ledger", "x.jsonl"]) == 2
 

@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
                     "resolve-import",
                 ),
                 help=(
-                    "replay: rescore a published run against a ledger. "
+                    "replay: rescore a published run against one ledger or review set. "
                     "init: freeze a current trace into an empty dual-review set. "
                     "export: build a blinded worksheet of a run's unruled candidate "
                     "pairs, for a human to adjudicate offline (no AI may fill it in). "
@@ -76,7 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
                 help="replay/export: the run's evidence directory",
             )
             sub.add_argument(
-                "--fixture", type=Path, help="replay: fixture-spec JSON; init: fixture directory"
+                "--fixture",
+                type=Path,
+                help="replay: fixture-spec JSON or fixture.yaml; init: fixture directory",
             )
             sub.add_argument("--bugs", type=Path, help="replay/init: a bug-set JSON")
             sub.add_argument(
@@ -426,8 +428,11 @@ def _run_evaluate_replay(args: argparse.Namespace) -> int:
     from coding_agent_eval.evaluator.metrics import EvaluationError
     from coding_agent_eval.evaluator.replay import replay_run
 
-    if args.run_dir is None or args.fixture is None or args.bugs is None or args.ledger is None:
-        print("replay needs run_dir, --fixture, --bugs, and --ledger", file=sys.stderr)
+    if args.run_dir is None or args.fixture is None or args.bugs is None:
+        print("replay needs run_dir, --fixture, and --bugs", file=sys.stderr)
+        return 2
+    if (args.ledger is None) == (args.review_set is None):
+        print("replay needs exactly one of --ledger or --review-set", file=sys.stderr)
         return 2
 
     trace = args.run_dir / "trace.jsonl"
@@ -437,7 +442,8 @@ def _run_evaluate_replay(args: argparse.Namespace) -> int:
             fixture_path=args.fixture,
             bugs_path=args.bugs,
             ledger_path=args.ledger,
-            ledger_kind=LedgerKind(args.ledger_kind),
+            ledger_kind=LedgerKind(args.ledger_kind) if args.ledger is not None else None,
+            review_set_path=args.review_set,
         )
     except EvaluationError as exc:
         print(f"evaluation refused: {exc}", file=sys.stderr)

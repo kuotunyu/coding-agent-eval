@@ -552,9 +552,9 @@
       "sha256": "4de59b27929bf164cb9dda57bb92060ff40078b92cd8804b1714a30fdd3efe6a"
     },
     {
-      "bytes": 3730,
+      "bytes": 3742,
       "path": "ledger/review-sets/README.md",
-      "sha256": "04b53963274eabeed1881fbb1c2bd7d113aef23e75e0c0fff97e9b1200f06864"
+      "sha256": "92e9121e0c05e816f029fd192e4850b130bd9e45109c8341e369f8d9068cf4fa"
     },
     {
       "bytes": 2124,
@@ -737,9 +737,9 @@
       "sha256": "dca890dca757e9fc59523c7378d9fa93a22dda8a93eb717b82711ccc93903679"
     },
     {
-      "bytes": 3581,
+      "bytes": 3659,
       "path": "schemas/review-set.schema.json",
-      "sha256": "537b635016536303d71c5a839da584dff3934ea3d5c64e7901aa9f872618e7fc"
+      "sha256": "a5a7fce2c32a93edcfe4d90d4b5a4fadb362943b45e32760668f271f85f3a027"
     },
     {
       "bytes": 2499,

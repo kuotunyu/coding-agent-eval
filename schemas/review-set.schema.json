@@ -67,6 +67,9 @@
     "findings_sha256": {
       "$ref": "#/$defs/sha256"
     },
+    "bugs_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "fixture_manifest_sha256": {
       "$ref": "#/$defs/sha256"
     },
@@ -139,6 +142,7 @@
     "tree_checksum",
     "trace_sha256",
     "findings_sha256",
+    "bugs_sha256",
     "fixture_manifest_sha256",
     "candidate_set_sha256",
     "candidate_materials_sha256",

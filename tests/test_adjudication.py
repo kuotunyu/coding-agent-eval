@@ -572,6 +572,7 @@ def test_review_set_init_freezes_inputs_without_creating_rulings(
     assert manifest["candidate_set_sha256"].startswith("sha256:")
     assert manifest["candidate_materials_sha256"].startswith("sha256:")
     assert manifest["fixture_manifest_sha256"].startswith("sha256:")
+    assert manifest["bugs_sha256"].startswith("sha256:")
     assert (review_set / "primary.jsonl").read_bytes() == b""
     assert (review_set / "independent.jsonl").read_bytes() == b""
     assert (review_set / "resolutions.jsonl").read_bytes() == b""
@@ -664,7 +665,10 @@ def test_review_set_init_refuses_host_process_trace(fixture_dir: Path, tmp_path:
 
 @pytest.mark.parametrize(
     ("fixture_author_ids", "run_operator_id"),
-    [("owner@example.com", "kuotunyu"), ("kuotunyu", "operator@example.com")],
+    [
+        (f"owner{chr(64)}example.invalid", "kuotunyu"),
+        ("kuotunyu", f"operator{chr(64)}example.invalid"),
+    ],
 )
 def test_review_set_init_refuses_private_identity_data(
     fixture_dir: Path,
@@ -865,6 +869,7 @@ def test_disagreement_exports_one_resolver_item_and_round_trips(
         tree_checksum=manifest["tree_checksum"],
         trace_sha256=manifest["trace_sha256"],
         findings_sha256=manifest["findings_sha256"],
+        bugs_sha256=manifest["bugs_sha256"],
         fixture_manifest_sha256=manifest["fixture_manifest_sha256"],
         trace_schema_version=manifest["trace_schema_version"],
         environment_fingerprint=manifest["environment_fingerprint"],

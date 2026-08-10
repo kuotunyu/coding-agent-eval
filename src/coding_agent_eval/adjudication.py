@@ -511,6 +511,7 @@ def init_review_set(
         "tree_checksum": str(header["fixture_tree_checksum"]),
         "trace_sha256": _sha256_bytes(trace_path.read_bytes()),
         "findings_sha256": _sha256_bytes(_canonical_bytes(findings)),
+        "bugs_sha256": _sha256_bytes(_canonical_bytes(bugs)),
         "fixture_manifest_sha256": _sha256_bytes(manifest_path.read_bytes()),
         "candidate_set_sha256": candidate_hash,
         "trace_schema_version": "0.2.0",

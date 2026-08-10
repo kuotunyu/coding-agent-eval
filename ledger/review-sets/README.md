@@ -1,7 +1,7 @@
 # Dual blinded human adjudication review sets
 
 本目錄保存 current-contract run 的公開 review-set evidence。每個 review set 綁定單一
-`run_id`、完整 trace bytes、findings、fixture manifest、candidate set 與 environment
+`run_id`、完整 trace bytes、findings、bug specs、fixture manifest、candidate set 與 environment
 fingerprint；任一輸入改變都必須建立新的 review set，舊裁決不會自動沿用。
 
 ## 不可跨越的 human-only boundary
