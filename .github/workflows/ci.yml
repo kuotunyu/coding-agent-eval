@@ -88,4 +88,4 @@ jobs:
         run: uv run pytest -q -m docker tests/sandbox
 
       - name: G9 — deterministic baseline end-to-end
-        run: uv run pytest -q -m docker tests/e2e
+        run: uv run pytest -q -m docker tests/test_e2e_baseline.py

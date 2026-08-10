@@ -350,7 +350,9 @@ def test_a_committed_executable_file_fails(demo: Path) -> None:
     """
     repo = demo.parents[1]
     git(repo, "update-index", "--chmod=+x", "fixtures/fx-demo/tree/src/app.py")
-    commit(repo, "make app.py executable")
+    # The mode change already lives in the index. Running `git add -A` here
+    # would replace it with the non-executable working-tree mode on POSIX.
+    git(repo, "commit", "-q", "-m", "make app.py executable")
 
     report = run_g3(demo)
     assert "portable_file_modes" in failed_names(report)
