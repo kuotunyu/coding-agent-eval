@@ -1,0 +1,21 @@
+{
+  "name": "ledger",
+  "version": "1.0.0",
+  "description": "A double-entry ledger with an HTTP API, an append-only journal, and batch settlement",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "test": "tsc && node --test \"dist/tests/*.test.js\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "5.7.2",
+    "@types/node": "22.10.2"
+  }
+}

@@ -1,0 +1,82 @@
+# fx-ledger-ts/B-001 — a settlement batch stops half applied.
+#
+# The suite covers the case where the transfer that changed state is the first
+# candidate, so the batch fails before marking anything and all-or-nothing holds
+# whether or not the guard is there. Only a later candidate tells them apart.
+schema_version: "0.1"
+bug_id: fx-ledger-ts/B-001
+fixture_id: fx-ledger-ts
+fixture_version: 1.0.2
+
+category: concurrency
+subcategory: lost_atomicity
+severity: high
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-001.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/settlement.ts
+    line_start: 63
+    line_end: 68
+  line_tolerance: 4
+  acceptable_alternates:
+    - file: src/settlement.ts
+      line_start: 45
+      line_end: 51
+
+canonical_claim: >-
+  Settlement marks each candidate in turn without first confirming that every
+  one of them is still pending. A transfer that settles in the window between
+  the batch choosing its candidates and the batch taking its locks is therefore
+  discovered only when the marking reaches it, by which point the candidates
+  ahead of it have already been settled. The caller receives an error for a
+  batch that was partly applied, and a retry settles the survivors a second
+  time or refuses outright.
+
+canonical_root_cause: >-
+  The candidate list is assembled outside the locks and then acted on inside
+  them, so the two are not taken atomically. Nothing re-reads the candidates
+  once the locks are held, which is the only point at which their state is
+  stable, so the first divergent transfer is found mid-write rather than before
+  the first write.
+
+witness:
+  contract_version: "0.1"
+  # The tree is TypeScript; the witness is plain JavaScript against the built
+  # output. `prepare` compiles first, so the witness never runs against a stale
+  # dist/ left over from whatever the tree was last built as.
+  prepare: ["npm", "run", "build"]
+  command: ["node", "--test", "--test-reporter=tap", "witness/B-001/witness.test.js"]
+  workdir: "."
+  timeout_seconds: 300
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    NODE_OPTIONS: ""
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  # The reporter is pinned: node's default switches on whether stdout is a
+  # terminal, and `tap` prints "# fail 0" even on success, so "not ok" is the
+  # only marker that appears solely on failure.
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "# pass 2"
+      - "# fail 0"
+    stdout_not_contains:
+      - "not ok"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "# fail 1"
+      - "not ok"
+    stdout_not_contains:
+      - "# fail 0"
+  artifacts:
+    - path: witness/B-001/witness.test.js
+      sha256: eac1e3a87e4aa5861451ef2c2073eef156089acce9de36e6671632772ee2f8f1
+  deterministic: true
+  overlay_target: "/workspace/witness"

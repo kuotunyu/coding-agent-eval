@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/finding.schema.json",
+  "title": "Agent finding",
+  "description": "One reported defect. Strict on purpose: this document is also handed to providers as a tool-call schema, and a permissive schema wastes turns on rejected payloads. Spec section 6.4.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+    },
+    "line_start": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "line_end": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "category": {
+      "enum": [
+        "correctness",
+        "security",
+        "concurrency",
+        "data_boundary",
+        "release_claim"
+      ]
+    },
+    "severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "claim": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "\\S"
+    },
+    "root_cause": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 800,
+      "pattern": "\\S"
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 800,
+      "pattern": "\\S",
+      "description": "What was actually observed. Part of finding_hash and of the ruling."
+    },
+    "suggested_verification": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "\\S"
+    }
+  },
+  "required": [
+    "id",
+    "file",
+    "line_start",
+    "line_end",
+    "category",
+    "severity",
+    "claim",
+    "root_cause",
+    "evidence",
+    "suggested_verification"
+  ],
+  "additionalProperties": false
+}

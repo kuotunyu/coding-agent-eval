@@ -1,0 +1,76 @@
+{
+  "findings": [
+    {
+      "category": "correctness",
+      "claim": "GET /admin/dead requires and parses a request body, so normal bodyless requests fail with 400 instead of listing dead letters.",
+      "evidence": "The route is GET /admin/dead, yet the handler reads JSON and only extracts body['queue']; DeadLetterQueue.list supports limit and offset, but the API never passes them. Thus the exposed endpoint cannot paginate despite the underlying implementation providing pagination.",
+      "file": "src/taskq/api.py",
+      "id": "api-dead-list-body",
+      "line_end": 151,
+      "line_start": 147,
+      "root_cause": "The handler unconditionally calls request.json(); an empty body returns {}, so this specific path does not fail, but clients sending malformed or oversized bodies are needlessly rejected. More importantly, its advertised pagination parameters are unavailable via query string and only queue is accepted from a body.",
+      "severity": "medium",
+      "suggested_verification": "Create more than 50 dead tasks and call GET /admin/dead with query parameters limit/offset; verify the response remains fixed at 50 and ignores both parameters."
+    },
+    {
+      "category": "correctness",
+      "claim": "Expired leases are re-leased without clearing the old lease, so a subsequent lease can be blocked by stale lease metadata and expiry semantics are incorrect.",
+      "evidence": "`next_runnable` considers an expired LEASED row runnable at lines 172-177, but `mark_leased` only overwrites state, leased_until, and attempts at lines 187-190. The task's `available_at` remains unchanged and there is no atomic guard/update based on the prior expiry.",
+      "file": "src/taskq/storage.py",
+      "id": "TASKQ-001",
+      "line_end": 190,
+      "line_start": 163,
+      "root_cause": "The lease-reclaim path treats an expired lease as a normal candidate but does not explicitly normalize the expired record before reclaiming it or enforce the expected state/expiry transition in the update.",
+      "severity": "high",
+      "suggested_verification": "Lease a task, advance the clock beyond its lease, lease it again, and inspect state/leased_until and attempt behavior; repeat concurrently with a competing completion operation."
+    },
+    {
+      "category": "correctness",
+      "claim": "Expired leased tasks are not transitioned out of LEASED before capacity is checked, so an expired lease can consume a concurrency slot indefinitely.",
+      "evidence": "`lease()` checks `has_capacity()` at lines 125-129. `active_leases()` counts only LEASED rows with `leased_until > at` at limits.py:82-87, but an expired task is then selected by `next_runnable()` and only changed to DEAD when exhausted; otherwise it is reclaimed. With a cap, the expired row itself is not counted, so this specific path is safe; however, `next_runnable` can select an exhausted expired row and `lease()` marks it DEAD then immediately returns None, leaving capacity available. No defect confirmed.",
+      "file": "src/taskq/queue.py",
+      "id": "DEF-003",
+      "line_end": 145,
+      "line_start": 125,
+      "root_cause": "No confirmed defect in this area after tracing the capacity predicate and expired-lease selection.",
+      "severity": "high",
+      "suggested_verification": "Exercise capped queues with expired and exhausted leases; expected behavior is already consistent."
+    },
+    {
+      "category": "correctness",
+      "claim": "The fail endpoint crashes on a valid non-object JSON body instead of returning the documented 400 validation response.",
+      "evidence": "_fail calls request.json(), then treats any non-dict body as error=None and invokes queue.fail. A JSON scalar/list is valid JSON but is not a valid fail request shape; this path can produce AttributeError or mutate the task with no validation.",
+      "file": "src/taskq/api.py",
+      "id": "api-body-failure",
+      "line_end": 134,
+      "line_start": 131,
+      "root_cause": "Unlike enqueue and set_limit, _fail does not reject non-object request bodies before accessing the error field semantically.",
+      "severity": "medium",
+      "suggested_verification": "POST /tasks/{id}/fail with body [] or 1 after leasing a task; confirm it returns 400 rather than 200 or a server exception."
+    },
+    {
+      "category": "correctness",
+      "claim": "Malformed delay_seconds values escape the API's TaskqError handling and can yield a 500 response.",
+      "evidence": "_enqueue performs float(body.get(\"delay_seconds\", 0.0) or 0.0) before queue validation. Values such as \"abc\", an object, or NaN-related inputs can raise ValueError/TypeError (or pass non-finite values) without conversion to ValidationError.",
+      "file": "src/taskq/api.py",
+      "id": "api-delay-type",
+      "line_end": 118,
+      "line_start": 112,
+      "root_cause": "HTTP input coercion is done directly with float instead of a validator that catches conversion errors and rejects non-finite/invalid delays.",
+      "severity": "medium",
+      "suggested_verification": "POST an enqueue body with delay_seconds=\"abc\" and with delay_seconds={} and observe the response; it should be 400, not an uncaught exception/500."
+    },
+    {
+      "category": "concurrency",
+      "claim": "Dead-letter requeue is not atomic and can resurrect or overwrite a task concurrently acknowledged/purged by another operation.",
+      "evidence": "requeue reads the task state, then separately resets attempts and marks it pending. Another thread can purge or change the row between these statements; the unconditional UPDATE can affect a changed state, and reset/update are not protected by a transaction or state predicate.",
+      "file": "src/taskq/deadletter.py",
+      "id": "dead-requeue-race",
+      "line_end": 83,
+      "line_start": 66,
+      "root_cause": "The read-check-write sequence lacks the storage write lock/transaction and the update does not require state=dead.",
+      "severity": "high",
+      "suggested_verification": "Race requeue against purge or another requeue/ack using threads; inspect whether a deleted task causes inconsistent behavior or a task is requeued after its state changed."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "kuotunyu"
+    }
+  ],
+  "description": "A contamination-resistant vertical slice for evaluating whether coding agents discover deliberately seeded defects under reproducible sandbox conditions. Version 0.1 contains two fixtures and eight mutations. It is methodology evidence, not a representative model benchmark or leaderboard. This file prepares metadata only; no DOI has been reserved and no Zenodo record has been published.",
+  "keywords": [
+    "coding agents",
+    "LLM evaluation",
+    "software engineering benchmark",
+    "seeded defects",
+    "reproducibility"
+  ],
+  "language": "eng",
+  "license": "mit",
+  "notes": "Prepared metadata only. Historical live traces predate the Gate A replay contract, and the exact prepared OCI images are not distributed; both remain publication blockers.",
+  "title": "coding-agent-eval: BugSeed v0.1 methodology preview",
+  "upload_type": "software",
+  "version": "0.1.0"
+}

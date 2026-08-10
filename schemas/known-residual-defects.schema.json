@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/known-residual-defects.schema.json",
+  "title": "Known residual defects",
+  "description": "v0.1 requires this list to be empty. Excluding a finding on position alone would hand a free pass to any wrong finding that landed nearby, so a clean fixture must actually be clean. Spec section 6.8.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "fixture_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "defects": {
+      "type": "array",
+      "maxItems": 0,
+      "description": "Must be empty in v0.1; a non-empty list makes the fixture release-ineligible."
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "fixture_version",
+    "defects"
+  ],
+  "additionalProperties": false
+}

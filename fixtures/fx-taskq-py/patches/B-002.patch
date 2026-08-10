@@ -1,0 +1,16 @@
+diff --git a/src/taskq/metrics.py b/src/taskq/metrics.py
+index cc3abf9..232c5cc 100644
+--- a/src/taskq/metrics.py
++++ b/src/taskq/metrics.py
+@@ -82,9 +82,9 @@ class Metrics:
+             counts[row["state"]] = int(row["n"])
+ 
+         oldest = connection.execute(
+-            "SELECT id, created_at FROM tasks WHERE queue = ? AND state = ? "
++            "SELECT id, created_at FROM tasks WHERE state = ? "
+             "ORDER BY created_at ASC, id ASC LIMIT 1",
+-            (queue, TaskState.PENDING.value),
++            (TaskState.PENDING.value,),
+         ).fetchone()
+ 
+         ready = connection.execute(

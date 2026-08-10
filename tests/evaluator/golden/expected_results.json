@@ -1,0 +1,47 @@
+{
+  "adjudication_protocol_version": "0.1.0",
+  "agent_adapter": "deterministic",
+  "agent_adapter_version": "0.1.0",
+  "benchmark_version": "0.1.0",
+  "budget": {
+    "max_estimated_cost_usd": null,
+    "max_tokens": null,
+    "max_tool_calls": 25,
+    "max_wallclock_seconds": null
+  },
+  "counts": {
+    "bugs": 2,
+    "findings_scored": 2,
+    "matched_findings": 1,
+    "unadjudicated_pairs": 0,
+    "verified_bugs": 1
+  },
+  "fixture_id": "fx-demo-py",
+  "fixture_version": "1.0.0",
+  "ledger_kind": "synthetic",
+  "metrics": {
+    "benchmark_unsupported_findings_per_kloc": 0.5,
+    "cost_per_verified_bug": null,
+    "exact_duplicates_removed": 0,
+    "localization_recall": 0.5,
+    "out_of_scope_findings": 0,
+    "tokens_per_verified_bug": 50000.0,
+    "unsupported_findings": 1,
+    "verified_bug_recall": 0.5,
+    "verified_finding_precision": 0.5
+  },
+  "model": null,
+  "pricing_table_version": "none-offline",
+  "provider": null,
+  "publishable": false,
+  "redaction_manifest_version": "0.1.0",
+  "run_id": "golden-deterministic-001",
+  "schema_version": "0.1",
+  "snapshot": "mutated",
+  "termination_reason": "completed",
+  "tool_backend": "measure_container:sha256:5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e",
+  "trace_schema_version": "0.1.0",
+  "undefined_reasons": {
+    "cost_per_verified_bug": "cost_not_reported"
+  }
+}

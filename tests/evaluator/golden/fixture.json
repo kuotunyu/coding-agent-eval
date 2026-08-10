@@ -1,0 +1,12 @@
+{
+  "fixture_id": "fx-demo-py",
+  "fixture_version": "1.0.0",
+  "in_scope_loc": 2000,
+  "in_scope_paths": [
+    "src/**"
+  ],
+  "out_of_scope_paths": [
+    "tests/**"
+  ],
+  "tree_checksum": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+}

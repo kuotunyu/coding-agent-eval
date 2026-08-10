@@ -1,0 +1,79 @@
+# fx-ledger-ts/B-004 — a wrong-length token is rejected without comparing.
+#
+# The suite pins that comparison goes through the constant-time routine, but
+# only for tokens whose length already matches.
+schema_version: "0.1"
+bug_id: fx-ledger-ts/B-004
+fixture_id: fx-ledger-ts
+fixture_version: 1.0.2
+
+category: security
+subcategory: timing_side_channel
+severity: medium
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-004.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/auth.ts
+    line_start: 40
+    line_end: 48
+  line_tolerance: 4
+  acceptable_alternates:
+    - file: src/auth.ts
+      line_start: 36
+      line_end: 51
+
+canonical_claim: >-
+  A presented token whose length differs from the configured one is refused
+  immediately, without the comparison the equal-length path performs. The
+  refusal therefore returns measurably sooner, and how soon depends only on
+  whether the length was right, so an attacker can recover the length of the
+  configured token by timing rejections and then only has to search strings of
+  that length.
+
+canonical_root_cause: >-
+  The branch handling a length mismatch returns its result directly. The
+  padding it builds beforehand is still constructed and then discarded, so the
+  code reads as though both sides do the same work while only one of them
+  does.
+
+witness:
+  contract_version: "0.1"
+  # The tree is TypeScript; the witness is plain JavaScript against the built
+  # output. `prepare` compiles first, so the witness never runs against a stale
+  # dist/ left over from whatever the tree was last built as.
+  prepare: ["npm", "run", "build"]
+  command: ["node", "--test", "--test-reporter=tap", "witness/B-004/witness.test.js"]
+  workdir: "."
+  timeout_seconds: 300
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    NODE_OPTIONS: ""
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  # The reporter is pinned: node's default switches on whether stdout is a
+  # terminal, and `tap` prints "# fail 0" even on success, so "not ok" is the
+  # only marker that appears solely on failure.
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "# pass 3"
+      - "# fail 0"
+    stdout_not_contains:
+      - "not ok"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "# fail 1"
+      - "not ok"
+    stdout_not_contains:
+      - "# fail 0"
+  artifacts:
+    - path: witness/B-004/witness.test.js
+      sha256: dc6e9757b36890437057321fafb1dde16c042398ea57d62cf4d0ec3d6195cc7d
+  deterministic: true
+  overlay_target: "/workspace/witness"

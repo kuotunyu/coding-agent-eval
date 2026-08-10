@@ -1,0 +1,1 @@
+{"event": "termination", "payload": {"provider_error": {"exception": "HTTPStatusError", "param": "reasoning_effort", "status": 400, "type": "invalid_request_error"}, "reason": "provider_error", "steps": 1, "tool_calls": 0, "wall_clock_ms": 322}, "schema_version": "0.1.0", "seq": 0, "ts": "2026-08-06T03:22:30.719+00:00"}

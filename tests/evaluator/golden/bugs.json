@@ -1,0 +1,34 @@
+[
+  {
+    "bug_id": "fx-demo-py/B-001",
+    "canonical_claim": "Session token comparison is not constant time.",
+    "canonical_root_cause": "Uses == on secrets, so timing depends on the prefix.",
+    "category": "security",
+    "compound_group": null,
+    "localization": {
+      "acceptable_alternates": [],
+      "line_tolerance": 8,
+      "primary": {
+        "file": "src/demo/auth.py",
+        "line_end": 110,
+        "line_start": 100
+      }
+    }
+  },
+  {
+    "bug_id": "fx-demo-py/B-002",
+    "canonical_claim": "The retry counter is compared with the wrong operator.",
+    "canonical_root_cause": "Uses <= where < is required, allowing one extra attempt.",
+    "category": "correctness",
+    "compound_group": null,
+    "localization": {
+      "acceptable_alternates": [],
+      "line_tolerance": 8,
+      "primary": {
+        "file": "src/demo/queue.py",
+        "line_end": 44,
+        "line_start": 40
+      }
+    }
+  }
+]

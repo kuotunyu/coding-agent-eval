@@ -1,0 +1,12 @@
+diff --git a/src/auth.ts b/src/auth.ts
+index c6b3a78..fc1acf2 100644
+--- a/src/auth.ts
++++ b/src/auth.ts
+@@ -45,7 +45,6 @@ function constantTimeEquals(presented: string, expected: string): boolean {
+     const other = Buffer.alloc(padded.length);
+     left.copy(padded);
+     right.copy(other);
+-    crypto.timingSafeEqual(padded, other);
+     return false;
+   }
+   return crypto.timingSafeEqual(left, right);

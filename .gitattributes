@@ -1,0 +1,12 @@
+# Line-ending policy (design spec §6.7).
+#
+# Tree checksums are computed over committed bytes with no normalisation, so
+# LF -> CRLF is a real change and MUST alter the checksum. Cross-platform
+# stability therefore has to come from checkout policy, not from the checksum.
+#
+# General sources and docs: normalise, so collaboration across platforms is sane.
+* text=auto eol=lf
+
+# Byte-stable assets: never transformed on checkout, whatever the platform.
+fixtures/**  -text
+*.patch      -text

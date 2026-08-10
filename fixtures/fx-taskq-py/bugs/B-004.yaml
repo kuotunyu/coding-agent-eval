@@ -1,0 +1,68 @@
+# fx-taskq-py/B-004 — the payload limit is off by one against its own README.
+#
+# The README says "larger than max_payload_bytes is rejected with 413". A
+# payload of exactly that size is not larger than it. The suite only ever sends
+# one comfortably over the limit, so the boundary itself is unchecked.
+schema_version: "0.1"
+bug_id: fx-taskq-py/B-004
+fixture_id: fx-taskq-py
+fixture_version: 1.0.3
+
+category: release_claim
+subcategory: documented_boundary_off_by_one
+severity: low
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-004.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/taskq/api.py
+    line_start: 45
+    line_end: 47
+  line_tolerance: 3
+  acceptable_alternates: []
+
+canonical_claim: >-
+  Request.json refuses a body whose length is exactly the configured maximum,
+  although the documented rule turns away only what sits above that size. The
+  largest request the documentation undertakes to accept is therefore answered
+  with 413, and a client that sizes its requests to the published ceiling finds
+  every one of them refused.
+
+canonical_root_cause: >-
+  The size comparison uses a non-strict operator where the documented boundary
+  is strict. Nothing else changes: the refusal carries its usual status and
+  wording, and only a body of precisely the configured size behaves differently
+  from what is written down, which is why no existing case notices.
+
+witness:
+  contract_version: "0.1"
+  prepare: []
+  command: ["python3", "-m", "pytest", "-q", "witness/B-004", "-p", "no:cacheprovider"]
+  workdir: "."
+  timeout_seconds: 120
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    PYTHONHASHSEED: "0"
+    PYTHONPATH: "src"
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "3 passed"
+    stdout_not_contains:
+      - "failed"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "1 failed"
+    stdout_not_contains:
+      - "3 passed"
+  artifacts:
+    - path: witness/B-004/test_witness.py
+      sha256: bfddd23a35df7c9de35e3ed8731fa67ab488a4ef8daad379721ee9dfce0efc3c
+  deterministic: true
+  overlay_target: "/workspace/witness"

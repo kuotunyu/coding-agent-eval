@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/bug.schema.json",
+  "title": "BugSeed bug manifest",
+  "description": "A seeded defect: where it is, what it is, and the executable contract that proves it exists. Spec sections 6.2 and 7.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "bug_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+/B-[0-9]{3}$"
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "fixture_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "category": {
+      "enum": [
+        "correctness",
+        "security",
+        "concurrency",
+        "data_boundary",
+        "release_claim"
+      ]
+    },
+    "subcategory": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "provenance": {
+      "const": "injected",
+      "description": "v0.1 seeds bugs by mutation only."
+    },
+    "authored_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "patch": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+    },
+    "compound_group": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "localization": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+              "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+            },
+            "line_start": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "line_end": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "file",
+            "line_start",
+            "line_end"
+          ],
+          "additionalProperties": false,
+          "$comment": "line_end >= line_start is a sibling comparison, which JSON Schema cannot express. It is enforced by structural rule LINE_RANGE_ORDER in schemas/validate.py."
+        },
+        "line_tolerance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "acceptable_alternates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+                "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+              },
+              "line_start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "line_end": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "file",
+              "line_start",
+              "line_end"
+            ],
+            "additionalProperties": false,
+            "$comment": "line_end >= line_start is a sibling comparison, which JSON Schema cannot express. It is enforced by structural rule LINE_RANGE_ORDER in schemas/validate.py."
+          }
+        }
+      },
+      "required": [
+        "primary",
+        "line_tolerance",
+        "acceptable_alternates"
+      ],
+      "additionalProperties": false
+    },
+    "canonical_claim": {
+      "type": "string",
+      "minLength": 10,
+      "pattern": "\\S"
+    },
+    "canonical_root_cause": {
+      "type": "string",
+      "minLength": 10,
+      "pattern": "\\S"
+    },
+    "witness": {
+      "type": "object",
+      "description": "Machine-executable proof that the bug exists. The contract must differ between the clean and mutated trees, or it proves nothing.",
+      "$comment": "expected_clean != expected_mutated is a sibling comparison, enforced by structural rule WITNESS_DISTINGUISHES in schemas/validate.py.",
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "prepare": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "workdir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "environment": {
+          "type": "object",
+          "properties": {
+            "TZ": {
+              "const": "UTC"
+            },
+            "LC_ALL": {
+              "const": "C.UTF-8"
+            }
+          },
+          "required": [
+            "TZ",
+            "LC_ALL"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "expected_clean": {
+          "type": "object",
+          "properties": {
+            "exit_code": {
+              "type": "integer"
+            },
+            "stdout_contains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            },
+            "stdout_not_contains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          },
+          "required": [
+            "exit_code",
+            "stdout_contains",
+            "stdout_not_contains"
+          ],
+          "additionalProperties": false
+        },
+        "expected_mutated": {
+          "type": "object",
+          "properties": {
+            "exit_code": {
+              "type": "integer"
+            },
+            "stdout_contains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            },
+            "stdout_not_contains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          },
+          "required": [
+            "exit_code",
+            "stdout_contains",
+            "stdout_not_contains"
+          ],
+          "additionalProperties": false
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+                "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "deterministic": {
+          "const": true,
+          "description": "v0.1 admits deterministic witnesses only."
+        },
+        "overlay_target": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Absolute path inside the container where witness artifacts are placed."
+        }
+      },
+      "required": [
+        "contract_version",
+        "prepare",
+        "command",
+        "workdir",
+        "timeout_seconds",
+        "environment",
+        "expected_clean",
+        "expected_mutated",
+        "artifacts",
+        "deterministic",
+        "overlay_target"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "bug_id",
+    "fixture_id",
+    "fixture_version",
+    "category",
+    "subcategory",
+    "severity",
+    "provenance",
+    "authored_at",
+    "patch",
+    "compound_group",
+    "localization",
+    "canonical_claim",
+    "canonical_root_cause",
+    "witness"
+  ],
+  "additionalProperties": false
+}

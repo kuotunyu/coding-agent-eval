@@ -1,0 +1,66 @@
+# fx-taskq-py — fixture manifest.
+#
+# `tree_checksum` and `environment.fingerprint` are the two values that make a
+# result mean anything. The checksum says which bytes were measured; the
+# fingerprint says which environment measured them. Two runs whose fingerprints
+# differ are not comparable however close their numbers look, which is why the
+# fingerprint covers the runtime and package-manager versions and not a
+# timestamp or a hostname.
+#
+# The checksum is taken over the *committed* tree, exported with `git archive`,
+# not over a working directory. A working copy can hold build output and
+# installed dependencies that were never committed, and a checksum that included
+# them would describe a tree no run will ever see.
+schema_version: "0.1"
+fixture_id: fx-taskq-py
+name: taskq — background task queue service
+fixture_version: 1.0.3
+provenance: first_party
+language: python
+license: MIT
+license_file: tree/LICENSE
+authored_at: "2026-08-05"
+
+scope:
+  # Only the service is in scope. A defect in a test is not a defect in the
+  # service, and counting one would make an agent's correct silence look like a
+  # miss on the clean control.
+  in_scope_paths:
+    - "src/**"
+  out_of_scope_paths:
+    - "tests/**"
+  in_scope_categories:
+    - security
+    - correctness
+    - data_boundary
+    - release_claim
+  # Denominator of benchmark_unsupported_findings_per_kloc. Gate G3 re-counts
+  # this and compares, so it is the in-repository counter's number, not an
+  # external tool's.
+  in_scope_loc: 1367
+  loc_tool: cae-loc 0.1.0
+
+clean_control:
+  tree_checksum: sha256:58a2399c1b9857456a23085be4fd937789bc0c701ca30304cf1eb9ccaa345154
+  witness_suite: witness/clean_suite.yaml
+
+known_residual_defects: known_residual_defects.yaml
+
+environment:
+  base_image_digest: sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
+  prepared_image_tag: cae/fx-taskq-py:1.0.3
+  # The tag names the image; this pins it. A tag can be repointed, so without
+  # the digest nothing can check that the image being run is the one the
+  # fingerprint below was computed from.
+  prepared_image_digest: sha256:ac7c65bbfa4b5589151de61d821b6e634f3ed9a20e4423619f5c0c183cb1bfb0
+  lock_manifest: env/env.lock.json
+  rebuild_recipe: env/Dockerfile
+  # Over: base image digest, prepared image digest, debian 12, Python 3.12.13,
+  # pip 25.0.1, the lock manifest's sha256, and linux/amd64.
+  fingerprint: sha256:abbc68ba602738ac8fc4a34328cb492830592ea1a8600d465b6ab456879eeda3
+
+bugs:
+  - fx-taskq-py/B-001
+  - fx-taskq-py/B-002
+  - fx-taskq-py/B-003
+  - fx-taskq-py/B-004

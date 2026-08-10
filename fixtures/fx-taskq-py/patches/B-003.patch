@@ -1,0 +1,22 @@
+diff --git a/src/taskq/deadletter.py b/src/taskq/deadletter.py
+index 8e5eb41..257f3ee 100644
+--- a/src/taskq/deadletter.py
++++ b/src/taskq/deadletter.py
+@@ -43,7 +43,7 @@ class DeadLetterQueue:
+         if queue is None:
+             rows = connection.execute(
+                 "SELECT * FROM tasks WHERE state = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+-                (TaskState.DEAD.value, limit, offset),
++                (TaskState.DEAD.value, limit, 0),
+             ).fetchall()
+             total = connection.execute(
+                 "SELECT COUNT(*) AS n FROM tasks WHERE state = ?", (TaskState.DEAD.value,)
+@@ -52,7 +52,7 @@ class DeadLetterQueue:
+             rows = connection.execute(
+                 "SELECT * FROM tasks WHERE state = ? AND queue = ? "
+                 "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+-                (TaskState.DEAD.value, queue, limit, offset),
++                (TaskState.DEAD.value, queue, limit, 0),
+             ).fetchall()
+             total = connection.execute(
+                 "SELECT COUNT(*) AS n FROM tasks WHERE state = ? AND queue = ?",

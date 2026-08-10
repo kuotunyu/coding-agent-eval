@@ -1,0 +1,1 @@
+{"event": "termination", "payload": {"reason": "provider_error", "steps": 1, "tool_calls": 0, "wall_clock_ms": 2206}, "schema_version": "0.1.0", "seq": 0, "ts": "2026-08-06T03:12:49.886+00:00"}

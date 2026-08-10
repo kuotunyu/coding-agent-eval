@@ -1,0 +1,17 @@
+diff --git a/src/taskq/auth.py b/src/taskq/auth.py
+index e80e968..c617ab1 100644
+--- a/src/taskq/auth.py
++++ b/src/taskq/auth.py
+@@ -50,7 +50,11 @@ def verify_admin_token(presented: str | None, expected: str | None) -> None:
+     if presented is None:
+         raise Unauthorized(_FAILURE_MESSAGE)
+ 
+-    if not hmac.compare_digest(presented.encode("utf-8"), expected.encode("utf-8")):
++    # Compare a fixed number of bytes, so the work done does not depend on how
++    # long the presented token happens to be.
++    expected_bytes = expected.encode("utf-8")
++    presented_bytes = presented.encode("utf-8")[: len(expected_bytes)]
++    if not hmac.compare_digest(presented_bytes, expected_bytes):
+         raise Unauthorized(_FAILURE_MESSAGE)
+ 
+ 

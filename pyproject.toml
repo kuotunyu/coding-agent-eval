@@ -1,0 +1,88 @@
+[project]
+name = "coding-agent-eval"
+version = "0.1.0"
+description = "A ground-truth benchmark for measuring whether coding agents discover known defects"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "kuotunyu" }]
+dependencies = [
+    "jsonschema>=4.21",
+    "pyyaml>=6.0",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+cae = "coding_agent_eval.cli:run"
+
+[dependency-groups]
+dev = [
+    "types-jsonschema>=4.21",
+    "pytest>=8",
+    "ruff>=0.14",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coding_agent_eval"]
+
+# The schema documents are the contract, and the library cannot validate anything
+# without them. They are authored at the repository root so they stay readable and
+# diffable on their own, and copied into the package so an installed wheel is
+# self-contained. An isolated-install smoke test asserts this actually happened.
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "coding_agent_eval/_schemas"
+
+[tool.hatch.build.targets.sdist]
+# The benchmark is the product: fixtures, schemas, and the frozen ledger ship with it.
+# The private evidence store and generated caches never do.
+include = [
+    "src/coding_agent_eval",
+    "schemas",
+    "tasks",
+    "fixtures",
+    "ledger",
+    "runs",
+    "tests",
+    "docs",
+    ".zenodo.json",
+    "CITATION.cff",
+    "release-manifest.json",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+exclude = [
+    ".run-store",
+    "runs/**/.run-store",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/.mypy_cache",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "docker: requires a running Docker daemon (excluded from the default run)",
+]
+addopts = "-m 'not docker'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["fixtures/*/tree"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/coding_agent_eval"]
+warn_unused_configs = true

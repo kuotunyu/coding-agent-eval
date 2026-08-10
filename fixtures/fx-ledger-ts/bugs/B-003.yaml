@@ -1,0 +1,76 @@
+# fx-ledger-ts/B-003 — internal failure text reaches the client.
+#
+# Nothing in the suite drives an unexpected failure through Api.handle, so
+# nothing checks what the response says when one happens.
+schema_version: "0.1"
+bug_id: fx-ledger-ts/B-003
+fixture_id: fx-ledger-ts
+fixture_version: 1.0.2
+
+category: data_boundary
+subcategory: internal_detail_exposure
+severity: high
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-003.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/api.ts
+    line_start: 99
+    line_end: 103
+  line_tolerance: 4
+  acceptable_alternates: []
+
+canonical_claim: >-
+  Api.handle answers an unrecognised failure with the text of the underlying
+  error instead of letting it escape to the caller that knows how to answer
+  safely. Whatever the failure carried — a filesystem path, a database message,
+  the shape of an internal call — is serialised into the response body and sent
+  to whoever made the request, including callers that never authenticated.
+
+canonical_root_cause: >-
+  The catch block returns a response for errors that are not the module's own
+  types, and builds its detail field from the raw error. Errors of the module's
+  own types were always safe to describe, because their messages are written
+  for callers; unrecognised ones were previously re-raised precisely because
+  nothing had vetted what they say.
+
+witness:
+  contract_version: "0.1"
+  # The tree is TypeScript; the witness is plain JavaScript against the built
+  # output. `prepare` compiles first, so the witness never runs against a stale
+  # dist/ left over from whatever the tree was last built as.
+  prepare: ["npm", "run", "build"]
+  command: ["node", "--test", "--test-reporter=tap", "witness/B-003/witness.test.js"]
+  workdir: "."
+  timeout_seconds: 300
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    NODE_OPTIONS: ""
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  # The reporter is pinned: node's default switches on whether stdout is a
+  # terminal, and `tap` prints "# fail 0" even on success, so "not ok" is the
+  # only marker that appears solely on failure.
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "# pass 2"
+      - "# fail 0"
+    stdout_not_contains:
+      - "not ok"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "# fail 1"
+      - "not ok"
+    stdout_not_contains:
+      - "# fail 0"
+  artifacts:
+    - path: witness/B-003/witness.test.js
+      sha256: b5f296af49fc116354773218f40a5ac44223d5c1c6ad90429cb177c3fc390019
+  deterministic: true
+  overlay_target: "/workspace/witness"

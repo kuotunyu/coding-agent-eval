@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/fixture.schema.json",
+  "title": "BugSeed fixture manifest",
+  "description": "A benchmark fixture: one bounded first-party service plus the metadata needed to rebuild, checksum, and score it. Spec section 6.1.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "fixture_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "provenance": {
+      "const": "first_party",
+      "description": "v0.1 ships first-party fixtures only; upstream provenance arrives in v0.2."
+    },
+    "language": {
+      "enum": [
+        "python",
+        "typescript",
+        "go"
+      ]
+    },
+    "license": {
+      "const": "MIT",
+      "description": "v0.1 restricts fixtures to MIT so trace excerpts are redistributable."
+    },
+    "license_file": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+    },
+    "authored_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "in_scope_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "minItems": 1
+        },
+        "out_of_scope_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "in_scope_categories": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "correctness",
+              "security",
+              "concurrency",
+              "data_boundary",
+              "release_claim"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "in_scope_loc": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Denominator of benchmark_unsupported_findings_per_kloc."
+        },
+        "loc_tool": {
+          "type": "string",
+          "pattern": "^cae-loc \\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "required": [
+        "in_scope_paths",
+        "out_of_scope_paths",
+        "in_scope_categories",
+        "in_scope_loc",
+        "loc_tool"
+      ],
+      "additionalProperties": false
+    },
+    "clean_control": {
+      "type": "object",
+      "properties": {
+        "tree_checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "witness_suite": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+          "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+        }
+      },
+      "required": [
+        "tree_checksum",
+        "witness_suite"
+      ],
+      "additionalProperties": false
+    },
+    "known_residual_defects": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "base_image_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "prepared_image_tag": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "prepared_image_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "The prepared image the fingerprint was computed from. The tag alone cannot pin it — a tag can be repointed — so without this nothing can check that the image being run is the image the fingerprint describes."
+        },
+        "lock_manifest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+          "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+        },
+        "rebuild_recipe": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(^|/)\\.\\.(/|$)).+$",
+          "description": "Repo-relative POSIX path: no drive letter, backslash, leading slash, or traversal."
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "base_image_digest",
+        "prepared_image_tag",
+        "prepared_image_digest",
+        "lock_manifest",
+        "rebuild_recipe",
+        "fingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "bugs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+/B-[0-9]{3}$"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "name",
+    "fixture_version",
+    "provenance",
+    "language",
+    "license",
+    "license_file",
+    "authored_at",
+    "scope",
+    "clean_control",
+    "known_residual_defects",
+    "environment",
+    "bugs"
+  ],
+  "additionalProperties": false
+}

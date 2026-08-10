@@ -1,0 +1,76 @@
+# fx-taskq-py/B-002 — a queue's metrics describe another queue's task.
+#
+# The suite checks that per-queue *counts* are separate, and never checks which
+# task the "oldest pending" fields name. Counts and identities are different
+# claims, and only one of them was being tested.
+schema_version: "0.1"
+bug_id: fx-taskq-py/B-002
+fixture_id: fx-taskq-py
+fixture_version: 1.0.3
+
+category: data_boundary
+subcategory: cross_tenant_identifier_exposure
+severity: high
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-002.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/taskq/metrics.py
+    line_start: 84
+    line_end: 87
+  line_tolerance: 3
+  acceptable_alternates:
+    # Naming the method rather than the statement is a correct localisation.
+    - file: src/taskq/metrics.py
+      line_start: 67
+      line_end: 75
+
+canonical_claim: >-
+  Metrics.for_queue selects the oldest pending task without restricting the
+  query to the queue being asked about, so oldest_pending_id and
+  oldest_pending_age describe whichever pending task in the database is oldest,
+  whatever queue it belongs to. GET /admin/metrics therefore reports one
+  queue's task identifier under another queue's name, and a queue whose own
+  backlog is empty still reports an age and an id.
+
+canonical_root_cause: >-
+  The WHERE clause lists only the state predicate; the queue predicate present
+  in the surrounding count and ready queries is absent from this one. The
+  counts stay correct, which is what makes the result look plausible: the queue
+  reports its own totals beside a task identifier it does not own.
+
+witness:
+  contract_version: "0.1"
+  prepare: []
+  command: ["python3", "-m", "pytest", "-q", "witness/B-002", "-p", "no:cacheprovider"]
+  workdir: "."
+  timeout_seconds: 120
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    PYTHONHASHSEED: "0"
+    PYTHONPATH: "src"
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "2 passed"
+    stdout_not_contains:
+      - "failed"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      # Both witness tests probe the queue filter this mutation removes, so both
+      # fail. The contract said "1 failed" from the day it was written, which
+      # meant G2 could never have passed for this bug however it was reported.
+      - "2 failed"
+    stdout_not_contains:
+      - "2 passed"
+  artifacts:
+    - path: witness/B-002/test_witness.py
+      sha256: 0f44037fda16087bd80b311c41c78902d471c16afeba397d8e645031794fce7e
+  deterministic: true
+  overlay_target: "/workspace/witness"

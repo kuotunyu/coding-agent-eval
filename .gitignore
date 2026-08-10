@@ -1,0 +1,38 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+
+# --- private raw evidence store (see docs spec §8) ---
+# Full tool I/O may contain third-party source, host paths, or sensitive data.
+# It NEVER enters version control. Public artifacts are produced by the sanitizer.
+.run-store/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# --- Node (TypeScript fixture toolchain) ---
+node_modules/
+
+# --- tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- adjudication scratch (see ledger/README.md) ---
+# `cae evaluate export` writes a worksheet and a key map beside it. The key map
+# names which bug each item is really about — it must never enter version
+# control regardless of what the worksheet was named via --out.
+*.keymap.json
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/

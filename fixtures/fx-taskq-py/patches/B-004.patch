@@ -1,0 +1,13 @@
+diff --git a/src/taskq/api.py b/src/taskq/api.py
+index d13cbc9..e5e74cb 100644
+--- a/src/taskq/api.py
++++ b/src/taskq/api.py
+@@ -43,7 +43,7 @@ class Request:
+         return self.headers.get(name.lower())
+ 
+     def json(self, limit: int) -> Any:
+-        if len(self.body) > limit:
++        if len(self.body) >= limit:
+             raise PayloadTooLarge(f"request body exceeds {limit} bytes")
+         if not self.body:
+             return {}

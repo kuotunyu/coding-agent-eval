@@ -1,0 +1,50 @@
+{
+  "adjudication_protocol_version": "0.1.0",
+  "agent_adapter": "baseline-high-noise",
+  "agent_adapter_version": "0.1.0",
+  "benchmark_version": "0.1.0",
+  "budget": {
+    "max_estimated_cost_usd": null,
+    "max_tokens": null,
+    "max_tool_calls": null,
+    "max_wallclock_seconds": null
+  },
+  "counts": {
+    "bugs": 0,
+    "findings_scored": 5,
+    "matched_findings": 0,
+    "unadjudicated_pairs": 0,
+    "verified_bugs": 0
+  },
+  "fixture_id": "fx-ledger-ts",
+  "fixture_version": "1.0.2",
+  "ledger_kind": "synthetic",
+  "metrics": {
+    "benchmark_unsupported_findings_per_kloc": 4.22654268808115,
+    "cost_per_verified_bug": null,
+    "exact_duplicates_removed": 0,
+    "localization_recall": null,
+    "out_of_scope_findings": 5,
+    "tokens_per_verified_bug": null,
+    "unsupported_findings": 5,
+    "verified_bug_recall": null,
+    "verified_finding_precision": 0.0
+  },
+  "model": null,
+  "pricing_table_version": "none-offline",
+  "provider": null,
+  "publishable": false,
+  "redaction_manifest_version": "0.1.0",
+  "run_id": "e2e",
+  "schema_version": "0.1",
+  "snapshot": "clean",
+  "termination_reason": "completed",
+  "tool_backend": "host_process",
+  "trace_schema_version": "0.1.0",
+  "undefined_reasons": {
+    "cost_per_verified_bug": "no_verified_bugs",
+    "localization_recall": "no_bugs_in_snapshot",
+    "tokens_per_verified_bug": "no_verified_bugs",
+    "verified_bug_recall": "no_bugs_in_snapshot"
+  }
+}

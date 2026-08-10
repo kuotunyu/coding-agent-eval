@@ -1,0 +1,19 @@
+# Known benchmark-scope defects remaining in the clean tree.
+#
+# v0.1 requires this list to be empty, and the schema enforces it with
+# maxItems: 0. Excluding a finding because it sits near a known-but-unfixed
+# defect would hand a free pass to any wrong finding that happened to land
+# nearby, so clean fixtures are required to be genuinely clean instead.
+#
+# If a clean-control run surfaces something real, the procedure is not to add it
+# here. Scoring stops, the defect is confirmed by a person, the tree is fixed,
+# the fixture version is bumped, and the witness, checksum, answer-leak, and
+# scoring steps all re-run (design spec §6.8).
+#
+# The audit behind the empty list is in defects.md. That audit found and fixed
+# one real defect before this file was written; the list is empty because the
+# tree was repaired, not because nothing was found.
+schema_version: "0.1"
+fixture_id: fx-ledger-ts
+fixture_version: 1.0.2
+defects: []

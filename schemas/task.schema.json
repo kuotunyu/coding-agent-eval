@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/task.schema.json",
+  "title": "BugSeed task registry",
+  "description": "The immutable public v0.1 task set. References fixture artifacts without copying canonical answers.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "benchmark_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^fx-[a-z0-9-]+/(clean|B-[0-9]{3})$"
+          },
+          "fixture_id": {
+            "type": "string",
+            "pattern": "^fx-[a-z0-9-]+$"
+          },
+          "fixture_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "snapshot": {
+            "enum": ["clean", "mutated"]
+          },
+          "bug_id": {
+            "type": ["string", "null"],
+            "pattern": "^fx-[a-z0-9-]+/B-[0-9]{3}$"
+          },
+          "patch": {
+            "type": ["string", "null"],
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.patch$"
+          },
+          "witness": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.ya?ml$"
+          },
+          "tree_checksum": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "split": {
+            "const": "public"
+          }
+        },
+        "required": [
+          "task_id",
+          "fixture_id",
+          "fixture_version",
+          "snapshot",
+          "bug_id",
+          "patch",
+          "witness",
+          "tree_checksum",
+          "split"
+        ],
+        "allOf": [
+          {
+            "if": {"properties": {"snapshot": {"const": "clean"}}},
+            "then": {
+              "properties": {
+                "bug_id": {"type": "null"},
+                "patch": {"type": "null"}
+              }
+            },
+            "else": {
+              "properties": {
+                "bug_id": {"type": "string"},
+                "patch": {"type": "string"}
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "benchmark_version", "tasks"],
+  "additionalProperties": false
+}

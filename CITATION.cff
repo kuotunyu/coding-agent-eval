@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: >-
+  If you use this methodology preview, please cite the software metadata below and state
+  that v0.1 is not suitable for model ranking.
+title: "coding-agent-eval: BugSeed v0.1 methodology preview"
+version: 0.1.0
+type: software
+license: MIT
+abstract: >-
+  A contamination-resistant vertical slice for evaluating whether coding agents discover
+  deliberately seeded defects under reproducible sandbox conditions. Version 0.1 contains
+  two fixtures and eight mutations and is methodology evidence, not a representative model
+  benchmark or leaderboard.
+authors:
+  - name: kuotunyu
+keywords:
+  - coding agents
+  - LLM evaluation
+  - software engineering benchmark
+  - seeded defects
+  - reproducibility

@@ -1,0 +1,75 @@
+# fx-taskq-py/B-003 — dead-letter paging never advances.
+#
+# The suite pages with a limit and never with an offset, so nothing checks that
+# the second page differs from the first.
+schema_version: "0.1"
+bug_id: fx-taskq-py/B-003
+fixture_id: fx-taskq-py
+fixture_version: 1.0.3
+
+category: correctness
+subcategory: pagination
+severity: medium
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-003.patch
+compound_group: null
+
+localization:
+  # Both branches of the listing carry it; the scoped one is primary because
+  # that is the path the admin route actually takes.
+  primary:
+    file: src/taskq/deadletter.py
+    line_start: 52
+    line_end: 56
+  line_tolerance: 4
+  acceptable_alternates:
+    - file: src/taskq/deadletter.py
+      line_start: 44
+      line_end: 47
+    - file: src/taskq/deadletter.py
+      line_start: 35
+      line_end: 41
+
+canonical_claim: >-
+  DeadLetterQueue.list validates the offset argument and then passes a literal
+  0 to the query instead, so every page is the first page. A caller paging
+  through the dead-letter queue receives the same rows for every offset and
+  never reaches the rest, while total keeps reporting the full count so the
+  paging loop looks correct and simply never terminates or never progresses.
+
+canonical_root_cause: >-
+  The bound parameter tuple for the SELECT passes 0 where it should pass
+  offset, in both the scoped and unscoped branches. The OFFSET placeholder is
+  still present in the SQL, so the statement is well formed and the argument
+  count is right, which is why nothing fails loudly.
+
+witness:
+  contract_version: "0.1"
+  prepare: []
+  command: ["python3", "-m", "pytest", "-q", "witness/B-003", "-p", "no:cacheprovider"]
+  workdir: "."
+  timeout_seconds: 120
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    PYTHONHASHSEED: "0"
+    PYTHONPATH: "src"
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "2 passed"
+    stdout_not_contains:
+      - "failed"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "2 failed"
+    stdout_not_contains:
+      - "2 passed"
+  artifacts:
+    - path: witness/B-003/test_witness.py
+      sha256: ccef189a7aa1b3939e44200ee8c4aaf316e0c2165dc6032c3b3340970628532b
+  deterministic: true
+  overlay_target: "/workspace/witness"

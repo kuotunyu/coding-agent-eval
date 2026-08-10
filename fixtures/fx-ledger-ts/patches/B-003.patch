@@ -1,0 +1,13 @@
+diff --git a/src/api.ts b/src/api.ts
+index 4077213..f96202e 100644
+--- a/src/api.ts
++++ b/src/api.ts
+@@ -99,7 +99,7 @@ export class Api {
+       if (isLedgerError(error)) {
+         return { status: error.status, body: { error: error.code, detail: error.message } };
+       }
+-      throw error;
++      return { status: 500, body: { error: "internal_error", detail: String(error) } };
+     }
+   }
+ 

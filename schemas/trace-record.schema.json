@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/trace-record.schema.json",
+  "title": "Public sanitized trace record",
+  "description": "One line of a public trace. Only allowlisted fields survive projection; an unknown raw field makes the sanitizer fail closed. Spec section 10.2.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ts": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event": {
+      "enum": [
+        "run_header",
+        "llm_call",
+        "tool_call",
+        "tool_result",
+        "context_compression",
+        "findings_submitted",
+        "termination",
+        "cost"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "seq",
+    "ts",
+    "event",
+    "payload"
+  ],
+  "additionalProperties": false
+}

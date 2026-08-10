@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kuotunyu.github.io/coding-agent-eval/schemas/results.schema.json",
+  "title": "Evaluation results",
+  "description": "Scored output for one run. Carries every version field, because a result is only comparable to another when the relevant versions match. Spec sections 6.11 and 8.5.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "benchmark_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "adjudication_protocol_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "trace_schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "pricing_table_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "redaction_manifest_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "fixture_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "snapshot": {
+      "enum": [
+        "clean",
+        "mutated"
+      ]
+    },
+    "tool_backend": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "agent_adapter": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "agent_adapter_version": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "max_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_tool_calls": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_wallclock_seconds": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_estimated_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "max_tokens",
+        "max_tool_calls",
+        "max_wallclock_seconds",
+        "max_estimated_cost_usd"
+      ],
+      "additionalProperties": false
+    },
+    "termination_reason": {
+      "enum": [
+        "completed",
+        "partial",
+        "budget_exhausted_tokens",
+        "budget_exhausted_cost",
+        "budget_exhausted_wallclock",
+        "step_exhausted",
+        "loop_detected",
+        "no_output",
+        "adapter_error",
+        "provider_error",
+        "sandbox_error",
+        "harness_error"
+      ]
+    },
+    "ledger_kind": {
+      "enum": [
+        "formal",
+        "synthetic"
+      ]
+    },
+    "publishable": {
+      "type": "boolean",
+      "description": "False whenever scoring used the synthetic ledger."
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "localization_recall": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "verified_bug_recall": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "verified_finding_precision": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unsupported_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benchmark_unsupported_findings_per_kloc": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cost_per_verified_bug": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tokens_per_verified_bug": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "out_of_scope_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exact_duplicates_removed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "localization_recall",
+        "verified_bug_recall",
+        "verified_finding_precision",
+        "unsupported_findings",
+        "benchmark_unsupported_findings_per_kloc",
+        "cost_per_verified_bug",
+        "tokens_per_verified_bug",
+        "out_of_scope_findings",
+        "exact_duplicates_removed"
+      ],
+      "additionalProperties": false
+    },
+    "undefined_reasons": {
+      "type": "object",
+      "description": "Why a metric is null. A null with no reason is a defect, not a value.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "bugs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings_scored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verified_bugs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unadjudicated_pairs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "bugs",
+        "findings_scored",
+        "verified_bugs",
+        "matched_findings",
+        "unadjudicated_pairs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "benchmark_version",
+    "adjudication_protocol_version",
+    "trace_schema_version",
+    "pricing_table_version",
+    "redaction_manifest_version",
+    "run_id",
+    "fixture_id",
+    "fixture_version",
+    "snapshot",
+    "tool_backend",
+    "agent_adapter",
+    "agent_adapter_version",
+    "provider",
+    "model",
+    "budget",
+    "termination_reason",
+    "ledger_kind",
+    "publishable",
+    "metrics",
+    "undefined_reasons",
+    "counts"
+  ],
+  "additionalProperties": false
+}

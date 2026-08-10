@@ -1,0 +1,76 @@
+# fx-ledger-ts/B-002 — an idempotency key outlives its own expiry.
+#
+# The suite checks a key just before expiry and well after it, never at the
+# instant itself, so the boundary is unconstrained in either direction.
+schema_version: "0.1"
+bug_id: fx-ledger-ts/B-002
+fixture_id: fx-ledger-ts
+fixture_version: 1.0.2
+
+category: correctness
+subcategory: boundary_off_by_one
+severity: medium
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-002.patch
+compound_group: null
+
+localization:
+  primary:
+    file: src/idempotency.ts
+    line_start: 45
+    line_end: 51
+  line_tolerance: 4
+  acceptable_alternates: []
+
+canonical_claim: >-
+  A key is treated as live at the exact moment it expires. A caller replaying
+  a request at that instant receives the transfer the key was first bound to
+  rather than a new one, so a retry that should have created work silently
+  returns something already completed. The purge disagrees with the lookup
+  about the same instant, so a record the reader still honours is one the purge
+  has already removed.
+
+canonical_root_cause: >-
+  The comparison between the record's expiry and the current instant is
+  strict where it needs to include the boundary. Every value except that one
+  instant behaves identically, which is why nothing either side of it
+  notices.
+
+witness:
+  contract_version: "0.1"
+  # The tree is TypeScript; the witness is plain JavaScript against the built
+  # output. `prepare` compiles first, so the witness never runs against a stale
+  # dist/ left over from whatever the tree was last built as.
+  prepare: ["npm", "run", "build"]
+  command: ["node", "--test", "--test-reporter=tap", "witness/B-002/witness.test.js"]
+  workdir: "."
+  timeout_seconds: 300
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    NODE_OPTIONS: ""
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  # The reporter is pinned: node's default switches on whether stdout is a
+  # terminal, and `tap` prints "# fail 0" even on success, so "not ok" is the
+  # only marker that appears solely on failure.
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "# pass 3"
+      - "# fail 0"
+    stdout_not_contains:
+      - "not ok"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "# fail 1"
+      - "not ok"
+    stdout_not_contains:
+      - "# fail 0"
+  artifacts:
+    - path: witness/B-002/witness.test.js
+      sha256: f9cbb2736d9d3281f8b42f5c0052537b1071d32cfefe80b682ed3c0c3b7c1e7d
+  deterministic: true
+  overlay_target: "/workspace/witness"

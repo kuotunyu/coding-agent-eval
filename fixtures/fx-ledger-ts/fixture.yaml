@@ -1,0 +1,56 @@
+# fx-ledger-ts — fixture manifest.
+#
+# See fx-taskq-py/fixture.yaml for why the checksum is taken over the committed
+# tree rather than a working directory. It matters more here: a working copy of
+# this fixture holds `node_modules/` and `dist/`, neither of which is committed,
+# and both of which would otherwise land in the checksum.
+schema_version: "0.1"
+fixture_id: fx-ledger-ts
+name: ledger — double-entry ledger service
+fixture_version: 1.0.2
+provenance: first_party
+language: typescript
+license: MIT
+license_file: tree/LICENSE
+authored_at: "2026-08-05"
+
+scope:
+  in_scope_paths:
+    - "src/**"
+  # `node_modules/` and `dist/` are not in the committed tree, but they exist in
+  # any tree that has been built, which is every tree a run measures. Listing
+  # them says they are not the fixture rather than leaving it to be inferred
+  # from their absence at rest.
+  out_of_scope_paths:
+    - "tests/**"
+    - "node_modules/**"
+    - "dist/**"
+  in_scope_categories:
+    - concurrency
+    - correctness
+    - data_boundary
+    - security
+  in_scope_loc: 1183
+  loc_tool: cae-loc 0.1.0
+
+clean_control:
+  tree_checksum: sha256:31c77dbc4b9ee81c948f66a7e9ddcdfe4afbfd8d91b89ab87605bd041a9e853b
+  witness_suite: witness/clean_suite.yaml
+
+known_residual_defects: known_residual_defects.yaml
+
+environment:
+  base_image_digest: sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
+  prepared_image_tag: cae/fx-ledger-ts:1.0.2
+  prepared_image_digest: sha256:ae4d00186cc3d56c44c4956dbb8ec065e1afae2e03b8a64100b9baf347f12c5c
+  lock_manifest: env/env.lock.json
+  rebuild_recipe: env/Dockerfile
+  # Over: base image digest, prepared image digest, debian 12, Node 22.23.2,
+  # npm 10.9.8, the lock manifest's sha256, and linux/amd64.
+  fingerprint: sha256:805b2a6faf0c5e49f170e58f8bb288d0f59a48d08ef53fd3fa7d27915a17e826
+
+bugs:
+  - fx-ledger-ts/B-001
+  - fx-ledger-ts/B-002
+  - fx-ledger-ts/B-003
+  - fx-ledger-ts/B-004

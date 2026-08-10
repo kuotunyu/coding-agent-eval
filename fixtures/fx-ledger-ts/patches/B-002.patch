@@ -1,0 +1,13 @@
+diff --git a/src/idempotency.ts b/src/idempotency.ts
+index 7407151..afdf31a 100644
+--- a/src/idempotency.ts
++++ b/src/idempotency.ts
+@@ -45,7 +45,7 @@ export class IdempotencyStore {
+   lookup(key: string, at: number): KeyRecord | undefined {
+     const validated = validateKey(key);
+     const record = this.records.get(validated);
+-    if (record === undefined || record.expiresAt <= at) {
++    if (record === undefined || record.expiresAt < at) {
+       return undefined;
+     }
+     return record;

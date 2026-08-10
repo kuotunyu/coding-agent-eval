@@ -1,0 +1,88 @@
+# fx-taskq-py/B-001 — the canary bug.
+#
+# Authored so gate G2 has something real to prove itself against before any
+# further bug exists (plan D2a). Everything about it is deliberately ordinary:
+# a mutation a person could plausibly write, in a file the fixture's own suite
+# already covers heavily, that the suite nonetheless does not catch.
+#
+# That last property is the point. A seeded defect the fixture's tests fail on
+# would be findable by running pytest, and would measure whether an agent runs
+# a test suite rather than whether it can read code. `tests/` still reports
+# 183 passed on the mutated tree; only the overlaid witness distinguishes it.
+schema_version: "0.1"
+bug_id: fx-taskq-py/B-001
+fixture_id: fx-taskq-py
+fixture_version: 1.0.3
+
+category: security
+subcategory: authentication_bypass
+severity: critical
+provenance: injected
+authored_at: "2026-08-05"
+
+patch: patches/B-001.patch
+compound_group: null
+
+localization:
+  # The truncation and the comparison it feeds. Lines are against the mutated
+  # tree, which is the tree an agent reads.
+  primary:
+    file: src/taskq/auth.py
+    line_start: 55
+    line_end: 57
+  line_tolerance: 3
+  acceptable_alternates:
+    # Naming the function rather than the statement is a correct localisation:
+    # the defect is a property of how this function compares, and a reviewer
+    # who says "verify_admin_token accepts extended tokens" has found it.
+    - file: src/taskq/auth.py
+      line_start: 41
+      line_end: 48
+
+canonical_claim: >-
+  verify_admin_token truncates the presented token to the length of the
+  configured one before comparing, so any token that begins with the configured
+  admin token is accepted. A caller who learns or guesses the token can append
+  arbitrary bytes and still authenticate, and every admin route — including
+  /admin/purge — is reachable with such a token.
+
+canonical_root_cause: >-
+  The presented token is sliced to len(expected_bytes) before being handed to
+  hmac.compare_digest. compare_digest already returns False for inputs of
+  differing lengths, so the slice adds nothing except the removal of the
+  length check: a longer token becomes an exact match once its tail is
+  discarded. The rejection of shorter and equal-length tokens is unaffected,
+  which is why the existing suite still passes.
+
+witness:
+  contract_version: "0.1"
+  prepare: []
+  command: ["python3", "-m", "pytest", "-q", "witness/B-001"]
+  workdir: "."
+  timeout_seconds: 120
+  environment:
+    TZ: "UTC"
+    LC_ALL: "C.UTF-8"
+    PYTHONHASHSEED: "0"
+    PYTHONPATH: "src"
+  # Two assertions, so the contract distinguishes the trees at the unit level
+  # and again through the API. A witness that only held at one level would not
+  # show that the defect is reachable by a request.
+  expected_clean:
+    exit_code: 0
+    stdout_contains:
+      - "2 passed"
+    stdout_not_contains:
+      - "failed"
+      - "error"
+  expected_mutated:
+    exit_code: 1
+    stdout_contains:
+      - "2 failed"
+    stdout_not_contains:
+      - "2 passed"
+  artifacts:
+    - path: witness/B-001/test_witness.py
+      sha256: 7ca0dacf0125ff78507dbc170600d1bc38731dd80807e0fa3b7d9e7502609f17
+  deterministic: true
+  overlay_target: "/workspace/witness"

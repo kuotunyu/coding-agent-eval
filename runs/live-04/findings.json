@@ -1,0 +1,148 @@
+{
+  "findings": [
+    {
+      "category": "concurrency",
+      "claim": "Enqueue with an idempotency key is not atomic and can create duplicate tasks under concurrent retries.",
+      "evidence": "The code performs lookup at lines 88-92, inserts the task at line 107, and only then remembers the key at lines 108-111. There is no transaction or uniqueness-conflict handling spanning these operations.",
+      "file": "src/taskq/queue.py",
+      "id": "queue-001",
+      "line_end": 111,
+      "line_start": 83,
+      "root_cause": "Idempotency lookup, task insertion, and key recording are separate autocommit operations on a shared connection. Two requests can both observe no key before either records it, then both insert tasks; the later key update merely points to one task.",
+      "severity": "high",
+      "suggested_verification": "Run two threads concurrently calling enqueue with the same queue and idempotency_key, then inspect storage.all_tasks(); duplicate tasks can be observed."
+    },
+    {
+      "category": "concurrency",
+      "claim": "Ack and fail can mutate a task after its lease has expired and been reassigned, allowing a stale worker to complete another worker's attempt.",
+      "evidence": "acknowledge/fail first read the task at lines 159 and 173, then perform an unconditional update by task id at lines 163 and 180-193. Lease expiry and re-leasing are not checked in the update predicate, and no lease token identifies the worker's lease.",
+      "file": "src/taskq/queue.py",
+      "id": "queue-002",
+      "line_end": 195,
+      "line_start": 157,
+      "root_cause": "Completion operations authenticate only the task id and current state at read time. A stale worker can read LEASED, another worker can acquire the expired lease, and the stale update can then set DONE or PENDING/DEAD for the new lease.",
+      "severity": "high",
+      "suggested_verification": "Use a controllable clock: lease a task, advance past lease expiry, lease it again, then invoke acknowledge or fail using the first lease's task id and observe that the second lease is changed."
+    },
+    {
+      "category": "correctness",
+      "claim": "Closing Storage while server threads or workers are active can raise cross-thread SQLite errors and terminate requests.",
+      "evidence": "close() directly closes the shared connection, while the server explicitly serves requests on worker threads (server.py lines 6-8) and Storage exposes the same connection to all modules. There is no close lock or lifecycle coordination.",
+      "file": "src/taskq/storage.py",
+      "id": "storage-001",
+      "line_end": 95,
+      "line_start": 94,
+      "root_cause": "check_same_thread=False permits cross-thread use but does not make closing safe against concurrent operations; a close racing with a query/write causes sqlite3.ProgrammingError or a closed-database error.",
+      "severity": "medium",
+      "suggested_verification": "Start concurrent request/lease activity and call Storage.close() from another thread; observe closed-database exceptions or failed requests."
+    },
+    {
+      "category": "correctness",
+      "claim": "The fail endpoint accepts malformed JSON as an empty body instead of returning a validation error.",
+      "evidence": "Request.json raises ValidationError for invalid JSON at lines 51-53, but an empty body returns {} at line 49. _fail then treats any non-dict as no error and calls queue.fail at lines 132-134; unlike enqueue, it does not require an object.",
+      "file": "src/taskq/api.py",
+      "id": "api-001",
+      "line_end": 134,
+      "line_start": 131,
+      "root_cause": "The fail handler does not enforce its documented/request schema and silently converts missing or non-object input into a failure with no error detail.",
+      "severity": "medium",
+      "suggested_verification": "POST invalid JSON or a JSON scalar to /tasks/{id}/fail for a leased task and observe HTTP 200 plus a state transition rather than HTTP 400."
+    },
+    {
+      "category": "security",
+      "claim": "Admin authentication accepts any token with the expected token as a prefix.",
+      "evidence": "verify_admin_token truncates the presented token to len(expected) before compare_digest, so a token such as expected+'attacker' compares equal. An attacker who obtains/guesses the configured prefix can authenticate with an extended credential.",
+      "file": "src/taskq/auth.py",
+      "id": "F1",
+      "line_end": 58,
+      "line_start": 53,
+      "root_cause": "The comparison normalizes only the presented value and never rejects length mismatches.",
+      "severity": "high",
+      "suggested_verification": "Configure admin_token='secret', send Authorization: Bearer secret-extra to /admin/stats, and observe a successful response."
+    },
+    {
+      "category": "correctness",
+      "claim": "Concurrent enqueue can corrupt idempotency guarantees and leave a task without its key mapping.",
+      "evidence": "enqueue inserts the task and then remembers the key as separate autocommit operations, with no transaction or write lock. Two requests using the same new key can both pass lookup, insert separate tasks, and then overwrite the single mapping.",
+      "file": "src/taskq/queue.py",
+      "id": "F2",
+      "line_end": 111,
+      "line_start": 83,
+      "root_cause": "Idempotency lookup, task insertion, and key insertion are not atomic.",
+      "severity": "high",
+      "suggested_verification": "Run many concurrent enqueue calls with one queue/key against one Storage and assert exactly one task exists and every response has the same id; observe duplicate task rows."
+    },
+    {
+      "category": "correctness",
+      "claim": "A dead-letter requeue can race with another requeue and report success twice while resetting/interleaving state updates.",
+      "evidence": "requeue reads the task state, then separately resets attempts and marks it pending without a transaction or conditional update. Two concurrent admin requests can both observe DEAD and both mutate it, violating the single-operation state transition.",
+      "file": "src/taskq/deadletter.py",
+      "id": "F3",
+      "line_end": 86,
+      "line_start": 66,
+      "root_cause": "The check-and-update sequence is not serialized or conditional on state=DEAD.",
+      "severity": "high",
+      "suggested_verification": "Issue two concurrent requeue calls for the same dead task and inspect responses/attempts; both should not be accepted as one logical transition."
+    },
+    {
+      "category": "correctness",
+      "claim": "The HTTP body reader silently truncates bodies above 1 MiB instead of rejecting them or consuming the declared body.",
+      "evidence": "_read_body reads min(length, MAX_REQUEST_BYTES). The API then parses the truncated bytes, commonly returning a JSON validation error rather than the documented payload-size response, and leftover bytes remain on keep-alive connections to be parsed as the next request.",
+      "file": "src/taskq/server.py",
+      "id": "F4",
+      "line_end": 58,
+      "line_start": 50,
+      "root_cause": "A transport-level cap is implemented by partial reading without a 413 response or draining/closing the connection.",
+      "severity": "medium",
+      "suggested_verification": "Send a Content-Length greater than MAX_REQUEST_BYTES with a valid JSON body and keep the connection alive; observe truncation/error and protocol desynchronization."
+    },
+    {
+      "category": "correctness",
+      "claim": "GET /admin/dead reads its filter from a request body, which standard HTTP clients and proxies may discard, so queue filtering is unusable through the documented API.",
+      "evidence": "`_dead_list` obtains `queue = body.get(\"queue\")` after `request.json(...)`; `TaskqClient.dead_letters` invokes `_request(\"GET\", \"/admin/dead\", body, ...)`, while `_dispatch` always reads a GET body based on Content-Length. GET request bodies have no portable semantics and are commonly stripped or rejected.",
+      "file": "src/taskq/api.py",
+      "id": "api-dead-list-get-body",
+      "line_end": 151,
+      "line_start": 147,
+      "root_cause": "The handler calls Request.json() for a GET route instead of parsing query parameters; the client also sends a body on GET, which is not reliably supported.",
+      "severity": "medium",
+      "suggested_verification": "Send GET /admin/dead?queue=name with no body and compare with a body-bearing request; verify the query filter is ignored and common clients cannot express it."
+    },
+    {
+      "category": "concurrency",
+      "claim": "Ack and fail can modify a task after its lease expires and is re-leased to another worker, allowing a stale worker to complete or reschedule the newer attempt.",
+      "evidence": "`acknowledge` reads the task, checks only its state, then calls `mark_state` by ID; `fail` does likewise. An expired LEASED task can be selected and marked LEASED again between those operations, after which the old worker's ack/fail still updates the same row.",
+      "file": "src/taskq/queue.py",
+      "id": "storage-mark-state-race",
+      "line_end": 195,
+      "line_start": 157,
+      "root_cause": "Completion paths fetch and update by task ID only; they do not condition the update on the original lease token/lease interval or perform the check and update atomically.",
+      "severity": "high",
+      "suggested_verification": "Use two workers with a short lease: let worker A's lease expire, lease to B, then call A's ack/fail and observe B's lease becomes DONE or PENDING."
+    },
+    {
+      "category": "correctness",
+      "claim": "An expired lease on the final attempt is returned as no task but is not transitioned to DEAD, leaving the task permanently LEASED until another lease call happens.",
+      "evidence": "The candidate is explicitly marked DEAD before return, so this path does transition the task. This finding is not a defect.",
+      "file": "src/taskq/queue.py",
+      "id": "expired-exhausted-not-dead",
+      "line_end": 145,
+      "line_start": 135,
+      "root_cause": "The exhausted-candidate branch calls `mark_state` without the transaction connection and returns immediately; although the update executes, the surrounding write transaction is later committed, but no issue? Actually mark_state uses same connection. The branch marks DEAD and returns None, so behavior is deliberate. No defect.",
+      "severity": "medium",
+      "suggested_verification": "No verification needed."
+    },
+    {
+      "category": "security",
+      "claim": "The token comparison truncates a longer presented token to the expected length, so any token with the correct expected prefix is accepted despite having extra attacker-controlled bytes.",
+      "evidence": "The code compares `presented_bytes`—explicitly truncated—to `expected_bytes`; `hmac.compare_digest` then sees equal-length values. For expected `secret`, `secret-extra` is compared as `secret` and accepted.",
+      "file": "src/taskq/auth.py",
+      "id": "auth-prefix-length",
+      "line_end": 58,
+      "line_start": 53,
+      "root_cause": "`presented.encode(...)[:len(expected_bytes)]` removes the length difference before `compare_digest`, making prefix matches equivalent to exact matches.",
+      "severity": "high",
+      "suggested_verification": "Configure admin token `secret` and request an admin endpoint with `Authorization: Bearer secret-extra`; it currently returns 200."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# The clean contract for fx-ledger-ts.
+#
+# Gate G2 runs this full suite once as the fixture-wide clean control. Each bug's
+# focused witness separately runs clean, mutated, and clean-after-revert.
+#
+# Same shape as a bug witness contract, minus expected_mutated: this asserts the
+# tree is healthy rather than that one specific defect is present.
+#
+# The reporter is pinned to `tap`. Node's default reporter switches on whether
+# stdout is a terminal, and a contract whose expected output depends on how it
+# was invoked is not a contract. `tap` also prints `# fail 0` on success, so
+# "fail" cannot be used as a negative marker — `not ok` is the one that only
+# appears when something failed.
+contract_version: "0.1"
+prepare: ["npm", "run", "build"]
+command: ["node", "--test", "--test-reporter=tap", "dist/tests/*.test.js"]
+workdir: "."
+timeout_seconds: 300
+environment:
+  TZ: "UTC"
+  LC_ALL: "C.UTF-8"
+  NODE_OPTIONS: ""
+  NPM_CONFIG_UPDATE_NOTIFIER: "false"
+expected_clean:
+  exit_code: 0
+  stdout_contains:
+    - "# pass 174"
+    - "# fail 0"
+  stdout_not_contains:
+    - "not ok"
+artifacts: []
+deterministic: true
+overlay_target: "/workspace/witness"

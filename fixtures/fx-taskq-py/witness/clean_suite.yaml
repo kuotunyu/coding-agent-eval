@@ -1,0 +1,27 @@
+# The clean contract for fx-taskq-py.
+#
+# Gate G2 runs this full suite once as the fixture-wide clean control. Each bug's
+# focused witness separately runs clean, mutated, and clean-after-revert.
+#
+# Same shape as a bug witness contract, minus expected_mutated: this asserts the
+# tree is healthy rather than that one specific defect is present.
+contract_version: "0.1"
+prepare: []
+command: ["python3", "-m", "pytest", "-q", "tests"]
+workdir: "."
+timeout_seconds: 300
+environment:
+  TZ: "UTC"
+  LC_ALL: "C.UTF-8"
+  PYTHONHASHSEED: "0"
+  PYTHONPATH: "src"
+expected_clean:
+  exit_code: 0
+  stdout_contains:
+    - "205 passed"
+  stdout_not_contains:
+    - "failed"
+    - "error"
+artifacts: []
+deterministic: true
+overlay_target: "/workspace/witness"

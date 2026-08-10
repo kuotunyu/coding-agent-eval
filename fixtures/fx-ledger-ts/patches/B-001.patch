@@ -1,0 +1,32 @@
+diff --git a/src/settlement.ts b/src/settlement.ts
+index c9a62b0..56cf443 100644
+--- a/src/settlement.ts
++++ b/src/settlement.ts
+@@ -10,7 +10,7 @@
+  * nothing has changed yet.
+  */
+ 
+-import { ConflictError, ValidationError } from "./errors.js";
++import { ValidationError } from "./errors.js";
+ import { LockManager } from "./locks.js";
+ import type { Transfer } from "./transfers.js";
+ import { TransferService } from "./transfers.js";
+@@ -63,18 +63,6 @@ export class SettlementService {
+     return this.locks.withLocks(accountIds, () => {
+       const batchId = this.nextBatchId(at);
+ 
+-      // Re-read and check every candidate before marking any. A transfer that
+-      // changed state while the batch was being assembled fails here, with
+-      // nothing yet applied.
+-      for (const candidate of candidates) {
+-        const current = this.transfers.get(candidate.id);
+-        if (current.state !== "pending") {
+-          throw new ConflictError(
+-            `transfer ${candidate.id} became ${current.state} before the batch ran`,
+-          );
+-        }
+-      }
+-
+       const settled = candidates.map((candidate) =>
+         this.transfers.markSettled(candidate.id, batchId, at),
+       );
