@@ -5,18 +5,20 @@
       "name": "kuotunyu"
     }
   ],
-  "description": "A contamination-resistant vertical slice for evaluating whether coding agents discover deliberately seeded defects under reproducible sandbox conditions. Version 0.1 contains two fixtures and eight mutations. It is methodology evidence, not a representative model benchmark or leaderboard. This file prepares metadata only; no DOI has been reserved and no Zenodo record has been published.",
+  "description": "以正體中文為主要文件語言、具有 ground truth 的 AI coding agent defect-discovery benchmark。BugSeed v0.1 包含兩個 first-party fixtures、八個 seeded mutations、兩個 clean controls、immutable OCI environments、trace replay，以及一個已註冊的 GPT-5.6-Luna 10-task reference suite。該 suite 的十個 tasks 全部因 token budget 終止且未提交 findings；本 release 支持 reproducibility 與 failure-analysis claims，不支持 model ranking 或 human-verified performance claim。",
   "keywords": [
-    "coding agents",
+    "AI coding agent",
     "LLM evaluation",
     "software engineering benchmark",
     "seeded defects",
-    "reproducibility"
+    "OCI reproducibility",
+    "trace replay",
+    "Traditional Chinese"
   ],
-  "language": "eng",
+  "language": "zho",
   "license": "mit",
-  "notes": "Prepared metadata only. Historical live traces predate the Gate A replay contract, and the exact prepared OCI images are not distributed; both remain publication blockers.",
-  "title": "coding-agent-eval: BugSeed v0.1 methodology preview",
+  "notes": "Prepared metadata only. 尚未建立或發布 Zenodo record，沒有預先宣稱 DOI。Source/tag、GitHub Release、Zenodo draft 與 Zenodo publish 都需要各自的 owner 明確批准。",
+  "title": "coding-agent-eval：BugSeed v0.1 可重現 defect-discovery benchmark",
   "upload_type": "software",
   "version": "0.1.0"
 }

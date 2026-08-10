@@ -27,27 +27,14 @@ def test_all_implementable_repository_release_contracts_are_clean(repo_root: Pat
     assert sum(finding.code == "trace.legacy" for finding in findings) == 8
 
 
-def test_default_audit_stays_green_while_publication_fails_closed(repo_root: Path) -> None:
+def test_default_and_publication_audits_are_green_for_release_candidate(
+    repo_root: Path,
+) -> None:
     default = audit_release(repo_root)
     publication = audit_release(repo_root, publication=True)
 
     assert [finding for finding in default if finding.blocking] == []
-    codes = {finding.code for finding in publication if finding.blocking}
-    assert "oci.identity" not in codes
-    assert {
-        "suite.registration",
-        "suite.coverage",
-        "suite.trace_contract",
-        "suite.outcomes",
-        "review.coverage",
-        "review.independence",
-        "review.resolution",
-        "results.replay",
-        "claims.scope",
-    } <= codes
-    assert "git.owner_only" not in codes
-    assert "artifact.private_data" not in codes
-    assert "oci.anonymous_pull" not in codes
+    assert [finding for finding in publication if finding.blocking] == []
 
 
 def test_offline_publication_audit_never_uses_the_online_probe(repo_root: Path) -> None:

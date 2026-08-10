@@ -11,6 +11,9 @@ cd "$(dirname "$0")/.."
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+echo "== offline publication audit =="
+uv run cae release audit --publication
+
 echo "== build =="
 rm -rf dist
 uv build

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "implementation/**"]
+    branches: [main, "implementation/**", "codex/**"]
   pull_request:
 
 permissions:
@@ -54,8 +54,8 @@ jobs:
       - name: G11 — tracked-file leak scan
         run: uv run cae hygiene leak-scan --tracked
 
-      - name: Repository artifact audit
-        run: uv run cae release audit
+      - name: Offline publication audit
+        run: uv run cae release audit --publication
 
       - name: Build package
         run: uv build
@@ -78,8 +78,8 @@ jobs:
 
       - name: G2 — witness contracts
         run: |
-          docker build --build-arg BASE_DIGEST=sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2 --tag cae/fx-taskq-py:1.0.3 --file fixtures/fx-taskq-py/env/Dockerfile fixtures/fx-taskq-py
-          docker build --build-arg BASE_DIGEST=sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 --tag cae/fx-ledger-ts:1.0.2 --file fixtures/fx-ledger-ts/env/Dockerfile fixtures/fx-ledger-ts
+          docker pull --platform linux/amd64 ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
+          docker pull --platform linux/amd64 ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312
           uv run cae fixture verify fixtures/fx-taskq-py
           uv run cae fixture verify fixtures/fx-ledger-ts
           uv run pytest -q -m docker tests/fixtures

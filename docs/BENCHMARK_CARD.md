@@ -1,247 +1,182 @@
-# Benchmark card — coding-agent-eval
+# Benchmark Card — coding-agent-eval / BugSeed v0.1
 
-> A ground-truth benchmark for measuring whether coding agents can discover known defects,
-> how many unsupported findings they produce, and what resources they consume under
-> reproducible sandbox conditions.
+> 以已知 ground truth 的 seeded defects，評估 AI coding agent 的 defect-discovery
+> behavior、unsupported findings、cost、latency 與 failure modes。
 
-- **Benchmark version**: `0.1.0`
-- **Dataset**: BugSeed — see [DATA_CARD.md](DATA_CARD.md)
-- **Status**: methodology vertical slice. **No independently verified, publishable model
-  result exists.**
+- **Benchmark version**：`0.1.0`
+- **Dataset**：BugSeed；見 [DATA_CARD.md](DATA_CARD.md)
+- **Reference suite**：10 tasks（2 clean controls＋8 mutations）
+- **Suite ID**：`suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`
+- **Configuration**：OpenAI `gpt-5.6-luna`、Responses API、`reasoning_effort=high`
+- **Status**：可重現的單一 reference execution；不是 leaderboard 或 model comparison
 
-This card carries every metric definition, its denominator, and the limitations that qualify
-it. The derivations, the matcher and assignment rules, and the reasoning behind the naming
-decisions live in [METRICS.md](METRICS.md).
+Metric formulas、matcher 與 assignment rules 的規範版本在 [METRICS.md](METRICS.md)。
 
----
+## Intended use
 
-## What is measured
+本 benchmark 測量 agent 是否能在沒有 defect location 或 canonical answer 的情況下，從 bounded
+service repository 找出 seeded defect。它在 discovery 階段停止，不評估 patch generation／repair。
 
-Whether an agent **finds** a defect it was not told about, in a tree whose defects are known
-because they were seeded deliberately. Not whether it can repair one — that is a different
-benchmark.
+適合：
 
-Scoring runs in two stages, and only the first is automatic.
+- 驗證 evaluation harness、sandbox、trace、replay 與 human-review workflow；
+- 對一個明確的 agent configuration 描述 detection／noise／resource behavior；
+- 保留 timeout、budget exhaustion 與 provider／harness error，分析失敗模式。
 
-**Stage A — deterministic matcher.** No human, no model. A finding is a *candidate* for a
-bug when it names the same file, its line range overlaps the bug's localisation window
-widened by that bug's tolerance, and the categories match.
+不適合：
 
-**Stage B — blinded human adjudication.** Only candidate pairs reach it. The adjudicator
-sees the fixture language, the source around the localisation window, the bug's canonical
-claim and root cause, and the finding's claim, root cause and evidence. They do **not** see
-the provider, model, adapter, budget, cost, tokens, latency, run id, trace, other rulings
-from the same run, or the bug and finding identifiers.
+- 排名或比較 models／agents；
+- 推論 production repositories 的真實 false-positive rate；
+- 由五個薄樣本 categories 推論 category capability；
+- 把 sandbox tests 稱為 security certification；
+- 把 deterministic baseline 或 legacy traces 當成 empirical model result。
 
-A ruling of `same_root_cause` requires **three** yeses:
+## Evaluation pipeline
 
-1. Does the claim describe the same defect?
-2. Is the root cause the same mechanism?
-3. **Is the evidence supported by the code shown?**
+### Stage A — deterministic matcher
 
-The third is a hard condition. Fabricated or irrelevant evidence forbids `same_root_cause`
-even when claim and root cause are both correct: an agent that guesses the conclusion and
-invents the evidence is worthless in a real review, and cannot be trusted. Evidence is part
-of `finding_hash`, so changing it produces a new adjudication key rather than inheriting the
-old ruling.
+Finding 只有在 file 一致、line range 與 bug localization window（含 tolerance）重疊，且 category
+一致時，才成為 candidate pair。這只證明定位相容，不證明 root cause 正確。
 
-`insufficient` counts conservatively as **not verified**.
+### Stage B — dual blinded human adjudication
 
----
+只有 candidate pairs 需要 adjudication。Review worksheet 隱藏 provider、model、adapter、budget、cost、
+tokens、latency、run id、trace、其他 reviewer decision 與公開 identifiers。`same_root_cause` 同時要求：
 
-## Metric definitions
+1. Claim 描述同一 defect；
+2. Root cause 是同一 mechanism；
+3. Evidence 受所示 code 支持。
 
-For one run over one fixture and one snapshot:
+Publication result 需要 primary 與 independent reviewer 對每個 pair 完整覆蓋；disagreement 交由與前兩位
+不同的 independent resolver。AI 不得撰寫 formal adjudication。Synthetic rulings 永遠
+`publishable: false`。
 
-| Symbol | Meaning |
+本次 reference suite 的 10 個 `findings.json` 都是空集合，因此 candidate pairs＝0；human-review
+coverage 對此 execution 為空集合上的完備條件，不代表有人審閱了十個 tasks，也不支持
+human-verified performance claim。
+
+## Metrics
+
+令 `B` 為該 snapshot 的 seeded bug set、`F` 為 exact-duplicate collapse 後的 findings、`V` 為經
+human review 確認且完成 one-to-one assignment 的 bugs、`M` 為成功驗證 bug 的 findings。
+
+| Metric | 定義 | Denominator／邊界 |
+|---|---|---|
+| `localization_recall` | 至少一個 Stage A candidate 的 bugs ÷ `|B|` | 只適用 mutated snapshot；不是 correctness recall。 |
+| `verified_bug_recall` | `|V| / |B|` | 需要 publication-eligible human review。 |
+| `verified_finding_precision` | `|M| / |F|` | Out-of-scope findings 仍進 denominator。 |
+| `unsupported_findings` | `|F \ M|` | Count；clean 與 mutated 都可報。 |
+| `benchmark_unsupported_findings_per_kloc` | unsupported findings ÷ in-scope KLOC | Headline noise source 是 clean control；不是 real-world FPR。 |
+| `cost_per_verified_bug` | `estimated_cost_usd / |V|` | Cost 是 estimate；跨 provider 不可直接等同。 |
+| `tokens_per_verified_bug` | `(input_tokens + output_tokens) / |V|` | Cached／reasoning tokens 另外報。 |
+| `out_of_scope_findings` | 落在 out-of-scope paths 的 findings | 另外報告，但不從 precision denominator 移除。 |
+
+### Zero-denominator behavior
+
+| 條件 | 輸出 |
 |---|---|
-| `B` | the bug set for that `fixture_version` — **the recall denominator** |
-| `F` | findings after exact-duplicate collapse, **including** out-of-scope ones — **the precision denominator** |
-| `V` | bugs with at least one `same_root_cause` finding, after one-to-one assignment |
-| `M` | findings assigned to have verified some bug |
+| `|V| = 0` | Cost／tokens per verified bug 為 `null`，reason `no_verified_bugs`。 |
+| `|F| = 0` | Verified precision 為 `null`，reason `no_findings`。 |
+| `|B| = 0` | Clean control 的 recall 為 `null`，reason `no_bugs_in_snapshot`。 |
 
-| Metric | Definition | Denominator | Snapshot |
-|---|---|---|---|
-| `localization_recall` | bugs with ≥1 candidate finding, over all bugs | `\|B\|` | mutated |
-| `verified_bug_recall` | `\|V\| / \|B\|` | `\|B\|` | mutated |
-| `verified_finding_precision` | `\|M\| / \|F\|` | `\|F\|` | mutated |
-| `unsupported_findings` | `\|F \ M\|` | count, not a ratio | mutated and clean |
-| `benchmark_unsupported_findings_per_kloc` | `unsupported_findings / (in_scope_loc / 1000)` | in-scope KLOC | **clean control is the headline source** |
-| `cost_per_verified_bug` | `estimated_cost_usd / \|V\|` | `\|V\|` | mutated |
-| `tokens_per_verified_bug` | `(input_tokens + output_tokens) / \|V\|` | `\|V\|` | mutated |
-| `out_of_scope_findings` | findings landing in `out_of_scope_paths` | count | both |
-| `exact_duplicates_removed` | findings collapsed before matching | count | both |
+不得把 `null` 改寫為 0、Infinity 或省略。只有 exact duplicates 會 collapse；fuzzy deduplication 不在
+primary scoring path，避免啟發式合併只會單向提高 precision。
 
-### Zero-denominator behaviour
+## Registered reference result
 
-Never `0`, never `Infinity`, never an omitted field. Each case emits `null` with a reason:
+Registration 與完整 evidence 位於 `runs/reference/`。
 
-| Condition | Result |
-|---|---|
-| `\|V\| = 0` | `cost_per_verified_bug` and `tokens_per_verified_bug` are `null`, `"reason": "no_verified_bugs"` |
-| `\|F\| = 0` | `verified_finding_precision` is `null`, `"reason": "no_findings"` |
-| `\|B\| = 0` (clean control) | `verified_bug_recall` and `localization_recall` are `null`, `"reason": "no_bugs_in_snapshot"` |
+| 面向 | 觀察值 | Evidence |
+|---|---:|---|
+| Outcome retention | 10/10 | `summary.json.task_count` 與 10 個 `status.json` |
+| Completed | 0/10 | `summary.json.counts` 沒有 `completed` |
+| Budget exhausted | 10/10 | `summary.json.counts.budget_exhausted` |
+| Termination | 10/10 `budget_exhausted_tokens` | 各 `run.json.termination_reason` |
+| Findings／candidates | 0／0 | 各 `findings.json`、`run.json.findings_submitted` |
+| Provider／harness errors | 0／0 | Status taxonomy 與 termination payload |
+| Estimated cost | USD 0.097166 total | 各 `run.json.usage.estimated_cost_usd` |
+| Per-task estimated cost | USD 0.008738–0.012885 | 同上 |
+| Wall-clock latency | 500.316 s total；50.032 s mean | 各 `run.json.wall_clock_ms` |
+| Per-task latency | 40.566–65.886 s | 同上 |
+| Tool calls | 212 total | 各 `run.json.tool_calls` |
 
-On a clean control `B` is empty, so `M` is empty and every finding is unsupported. That is
-the metric's meaning, not a degenerate case.
+Cost 使用 `openai-gpt-5.6-luna@2026-08-06` pricing table：input USD 0.20、cached input
+USD 0.02、output USD 1.20 per 1M tokens。10 個 usage payload 全部標示 `complete`；金額仍稱
+`estimated_cost_usd`，不能冒充 provider invoice。
 
-### Two naming rules that carry meaning
+### 結果如何解讀
 
-**`localization_recall` is never called bug recall.** Stage A proves only that a finding
-pointed at the right place with the right category. Calling it correctness recall would
-claim semantic agreement that no deterministic matcher can establish.
+- Evidence pipeline 完整保留 10 個 terminal outcomes；這是 reproducibility 結果。
+- Agent 沒有在任何 task 結束前提交 finding。若只描述 submitted candidate coverage，mutated tasks
+  為 0/8；正式 `verified_*` results 未產生。
+- 10/10 budget exhaustion 顯示這個 configuration 在固定 200,000-token per-task budget 下未完成；
+  不能把它解讀成 corpus 的 defect 難度分布或 `gpt-5.6-luna` 的一般能力。
+- 兩個 clean controls 也 budget-exhausted，所以 0 unsupported findings 不是完整 clean-review 的成功證據。
+- 沒有 verified bug，`cost_per_verified_bug` 必須是 `null`，不是 USD 0。
 
-**The clean-control metric is `benchmark_unsupported_findings_per_kloc`**, never a
-"real-world false-positive rate". The name is honest about its scope: it counts findings
-unsupported *by this benchmark's ground truth*, on a tree whose defects are known. The same
-number on a third-party repository, whose true defect set nobody has enumerated, would not
-mean that.
+## Failure taxonomy 與 timeout
 
-### Counting decisions worth knowing
+Reference runner 保留以下 terminal statuses：`completed`、`provider_error`、`timeout`、
+`budget_exhausted`、`harness_error`、`fixture_defect`。本次只觀察到 `budget_exhausted`，原因全部是
+`budget_exhausted_tokens`；其他類別有 deterministic tests，但沒有本次 empirical frequency。
 
-- **Out-of-scope findings count toward the precision denominator.** Off-topic noise is still
-  a cost to a reviewer. They are also reported separately so the decision stays visible and
-  arguable.
-- **Only exact duplicates are collapsed** — identical `finding_hash`, evidence included.
-  Fuzzy near-duplicate clustering is deliberately excluded from primary scoring: merging two
-  *different* defects in the same region would remove a wrong finding from the precision
-  denominator and silently raise precision. A heuristic that can only improve the headline
-  has no place on the scoring path.
-- **One finding verifies at most one bug.** Ties are broken deterministically by largest
-  localisation overlap, then lowest `bug_id`. A bug verified by several findings counts once
-  in the recall numerator.
+每 task 預先固定四個 budgets：200,000 tokens、60 tool calls、900 wall-clock seconds、USD 0.25
+estimated cost。Suite aggregate maximum 是 2,000,000 tokens、600 tool calls、9,000 seconds、
+USD 2.50。Retry policy 是 `no_automatic_retry`，較差 outcome 不會被重跑取代。
 
----
+## Reproducibility contract
 
-## Reproducibility
+Current trace schema 是 0.2.0。每份 reference trace 都要求：
 
-Results are only comparable when six version fields agree; `results.json` carries all of
-them, and any difference must be flagged in a report.
+- contiguous `seq`；
+- 唯一 `run_header`、`cost`、`termination`；
+- registration-bound task、model、budget、environment fingerprint 與 immutable OCI identity；
+- 每次 LLM call 都有非負 `latency_ms`，usage 加總與 aggregate cost 一致；
+- tool backend 為 `measure_container:<manifest_digest>`。
 
-Environment comparability is a `sha256` fingerprint over the base image digest, prepared
-image digest, OS id and version, runtime version, package manager version, lock manifest
-hash, and architecture. Two runs whose fingerprints differ **are not comparable**, however
-close their numbers look.
+Offline publication audit 只讀 committed evidence，不呼叫 network：
 
-Reproducibility is stated as three separate things rather than one promise: the **prepared
-image digest** (the only bit-level anchor), the **lock manifest** (exact language-level
-versions), and the **rebuild recipe** (best effort, *not* byte-identical). If a prepared
-image is lost, a rebuild may differ and its results must carry a different fingerprint.
+```bash
+uv run cae release audit --publication
+```
 
-For traces produced by the current Gate A pipeline, replay validates a contiguous sequence,
-exactly one header/cost/termination event, summed per-call usage, and aggregate cost before
-it scores. The eight historical `runs/live-*` traces predate that event contract and are
-retained as explicitly warned legacy evidence, not silently treated as replayable.
+Online 模式另以空 Docker credential context 驗證 anonymous digest-qualified pull、manifest digest 與
+local config digest：
 
----
+```bash
+uv run cae release audit --publication --online
+```
 
-## Fail-closed behaviour
+Trace 0.1.0 的 historical evidence 仍可讀，但固定不可發布。Replay 遇到 sequence、singleton event、
+usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
 
-The evaluator refuses rather than approximating. Any of these produces a non-zero exit and
-no `verified_*` output:
+## Sandbox boundary
 
-1. any candidate pair with no ledger entry — reported as `unadjudicated_pairs = N`
-2. `fixture_version` disagreeing with the trace
-3. `tree_checksum` disagreeing with the manifest
-4. a ledger entry whose hash does not verify
-5. an unsupported `trace_schema_version`
+Agent 的 measure tool surface 只有 read file、list directory、search tree、submit findings。
+Measure container 使用 read-only filesystem、`--network none`、`--cap-drop ALL` 且無 host bind mount。
+Host-process backend 仍供 deterministic baselines 使用，但 isolation 較弱，且不能成為 current reference
+publication evidence。
 
-Partial adjudication never produces a headline number.
-
-The two ledgers are separate by construction. The formal ledger holds only real human
-rulings and currently contains two append-only rulings for two findings against
-`fx-taskq-py/B-001`. They do not cover a complete run and were made by the fixture author,
-so they support no publishable model metric. A single formal ledger is always stamped
-`decision_source: legacy_formal`, `publication_reason: single_adjudicator_legacy`, and
-`publishable: false`. The synthetic ledger exists to validate evaluator arithmetic; its
-results carry `decision_source: synthetic`, `publication_reason: synthetic_adjudication`, and
-`publishable: false`. The evaluator rejects any `SYNTHETIC-` prefixed entry appearing in the
-formal ledger.
-
----
+Observed isolation tests 驗證 filesystem、network、process、resource limit、timeout、input validation 與
+workspace non-mutation；它們不構成 formal security proof。詳見 [SANDBOX_VERIFICATION.md](SANDBOX_VERIFICATION.md)
+與 [THREAT_MODEL.md](THREAT_MODEL.md)。
 
 ## Limitations
 
-The full list. Each qualifies every number this benchmark can currently produce.
+1. **Corpus scale**：2 fixtures、8 mutations；每 category 1–2 samples，不能比較 models。
+2. **Single registered configuration**：只有 OpenAI `gpt-5.6-luna`／Responses／high；沒有 replication
+   seeds、cross-provider 或 cross-model evidence。
+3. **No completed reference task**：所有 tasks token-budget-exhausted，沒有 publishable `verified_*` result。
+4. **No candidates to adjudicate**：dual-review protocol 已實作並 fail closed，但本次沒有實際 rulings；
+   不能把 protocol availability 說成 reviewer agreement evidence。
+5. **Fixture authorship**：first-party bounded services 提供乾淨 ground truth，也限制 external validity。
+6. **Contamination／target leakage**：新 mutations 降低已知污染風險，但公開後會衰減；maintainer 知道答案。
+7. **Cost model**：`estimated_cost_usd` 依版本化 pricing table，可能與後續價格或 invoice 不同。
+8. **Sandbox**：是 observed behavior，不是 security certification；Docker／kernel／registry 都在 trust boundary。
+9. **Historical evidence**：`runs/live-*` 是舊 harness 的診斷紀錄，不能與 current suite 合併統計。
 
-1. **`verified_*` includes frozen human work.** It is not fully automatic. Once frozen it
-   replays deterministically, but producing it the first time requires a person.
-2. **Adjudicator independence is limited.** The fixture author and the adjudicator are the
-   same person. Blinding removes brand bias, not knowledge of the intended answer.
-   Mitigated by disclosure, a recorded rationale per ruling, and an append-only public
-   ledger. A second independent adjudicator and a disagreement-resolution protocol are a
-   **precondition** for publishing any model comparison.
-3. **No independently verified, publishable model result exists in v0.1.** Eight live
-   attempts were recorded (six billable), but their candidate pairs do not have complete,
-   independent adjudication and their traces predate the current strict-replay contract.
-   Committed `results.json` files come only from a deterministic scripted baseline against a
-   synthetic ledger. They validate evaluator arithmetic and data flow; they are **not**
-   model capability measurements.
-4. **Non-empty residual defect lists are not supported.** A clean fixture must actually be
-   clean; a suspected defect goes through the fix procedure, not an exemption register.
-5. **No fuzzy deduplication, and the harness used to give the model no memory of its own
-   past submissions.** Two distinct findings at the same location each count in the
-   precision denominator — that is a deliberate choice, not an oversight, since a tool
-   cannot reliably tell a resubmission from a second, genuinely different defect on the
-   same lines. But a 51-step live run against a reasoning model (`runs/live-07`)
-   resubmitted one seeded bug **seven times** under seven different ids, tagged three
-   different categories along the way, because `write_findings` returned only a bare
-   count and this harness never replays the model's own past turns — nothing ever told
-   it "you already said this." Fixed in `agent/tools.py`: `write_findings` now notes an
-   overlapping location in its return message, still recording both findings rather than
-   refusing either.
+## Evidence traceability
 
-   The fix is live-verified, not just mock-tested. `runs/live-08` re-ran the identical
-   configuration afterward: of ten locations submitted more than once, none went past
-   **two** submissions — where the unfixed run had gone as high as seven, and the specific
-   bug that had been resubmitted seven times was resubmitted exactly twice. The
-   distinct-location share of all submissions rose from 46.6% (27 of 58) to 64.3% (18 of
-   28). This is one run compared with one run, not a controlled trial — the two runs also
-   differ in what the model happened to explore — but the ceiling effect (nothing escalated
-   past a second attempt, on the flagship case or any of the other nine) is a specific,
-   causally suggestive result, not merely a smaller total.
-6. **Two fixtures and eight bugs is low statistical resolution — not sufficient to rank
-   models.** Its purpose is to show the methodology works end to end.
-7. **First-party fixture realism has a ceiling.** These are services written to be measured,
-   not production systems.
-8. **Contamination resistance decays** after publication.
-9. **Dollar costs are not fully comparable across providers.** Cache pricing, reasoning-token
-   pricing and tiered pricing all differ. Any comparison reporting dollars must also report
-   all four budget dimensions and state `completeness` — an estimate missing a priced
-   component is `partial`, and comparing a partial figure with a complete one is not a
-   comparison.
-10. **The clean-control metric depends on `defects.md` completeness**, which is credible only
-    at this size (≤ 3,000 LOC per fixture) and not beyond it.
-11. **Sandbox isolation is observed on one platform only.** Gate H2 records the measure
-    profile behaving as specified under one Docker version, kernel and architecture — see
-    [SANDBOX_VERIFICATION.md](SANDBOX_VERIFICATION.md). It is not a security audit, says
-    nothing about other runtimes, and does not cover the deliberately weaker witness
-    profile.
-
-Two further gaps in the current build, beyond the specification's list:
-
-12. **Isolation is per-run, and a result is only as isolated as it says it is.** The agent's
-    tools can run inside the measure container (spec §9.1), reaching no host path at all,
-    and doing so produces scores identical to the host backend — asserted metric-for-metric
-    under Docker. But the host backend still exists and is still the default, so every
-    result carries a `tool_backend` field naming which one produced it. `host_process` means
-    the tools ran unsandboxed, isolated by their own path checks rather than by the kernel.
-    A result reported without that field, or with that value, is not evidence of containment.
-13. **One component of environment identity cannot be checked offline.** Fixture identity
-    and environment identity are both re-derived now: G3 rebuilds each tree from its commit
-    and asserts the checksum and the `in_scope_loc` denominator, and `cae fixture
-    environment` runs the prepared image and recomputes the §9.4 fingerprint from what is
-    actually inside it. `base_image_digest` is the exception — a registry manifest digest
-    that does not resolve offline, so it is consumed as an input to the fingerprint rather
-    than verified, and is reported as an unverified observation rather than a passing check.
-    What is checked without a network is that the rebuild recipe consumes the pin instead of
-    naming a floating tag.
-
----
-
-## Secondary analyses that must not be mixed in
-
-LLM-as-judge scoring is **not implemented** in v0.1, and its boundary is fixed here so it
-cannot later be folded in by convenience. If it is added, it answers only "how far would the
-conclusion move under a model adjudicator", writes to a separate file, never enters
-`results.json`, and never appears in the same column as a headline metric.
+重要 public claims、精確欄位與重算方式列於
+[RELEASE_READINESS.md](RELEASE_READINESS.md#claim-to-evidence-matrix2026-08-11)。Release artifacts 的
+bytes 與 SHA-256 列於根目錄 `release-manifest.json`。

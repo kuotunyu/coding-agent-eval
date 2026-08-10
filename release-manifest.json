@@ -2,14 +2,14 @@
   "artifact_scope": "benchmark_contracts_and_evidence",
   "artifacts": [
     {
-      "bytes": 987,
+      "bytes": 1209,
       "path": ".zenodo.json",
-      "sha256": "c3aa5f96209fd54c4b1b621148ea4703a709465a4d013d91b987bd5b2afb4fb8"
+      "sha256": "9ea5eccb00e3dab88c7139ad7e7f2222969facb9928205225baa9618f1ec2d6a"
     },
     {
-      "bytes": 731,
+      "bytes": 1091,
       "path": "CITATION.cff",
-      "sha256": "c6ac9fb010bc433fda3100d0702873c8d86424310e5696d7c1f59629c744d479"
+      "sha256": "6774ba57492ef37bae6c94065518691e9020b775dece3c4bb0de9a404b6e64db"
     },
     {
       "bytes": 1065,
@@ -17,19 +17,19 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 12990,
+      "bytes": 11252,
       "path": "README.md",
-      "sha256": "feee76f67387da0104301d7900cd7340c01c51aa12aaf233bdfa9447fad66e48"
+      "sha256": "237dba7facc14a6132c5c63cdd859cf0aaf1ca5eebc26b9c690e4e52bd9d1c82"
     },
     {
-      "bytes": 14179,
+      "bytes": 9995,
       "path": "docs/BENCHMARK_CARD.md",
-      "sha256": "6519db4907bddd3e6a1eebe9b4a33a210df4448da1d913b24ddcc2ba14295bc9"
+      "sha256": "162b4f06bf07d7fcebaac1a7bb18525e31a97f401d8bd505ed7328a2edbd86af"
     },
     {
-      "bytes": 10315,
+      "bytes": 9165,
       "path": "docs/DATA_CARD.md",
-      "sha256": "f60270bd026522fa0186bf8020e4ad34ad737d09facebe4d7164fb295ee4f988"
+      "sha256": "940978c46e639c24c06ee124ab46b31969ddeb5b674de95f9c93068877a89be2"
     },
     {
       "bytes": 6390,
@@ -37,9 +37,9 @@
       "sha256": "f80a8c6105fd9548426ea2ff6df61e5b736f5878e8731112e8688bd98c9ff67c"
     },
     {
-      "bytes": 10451,
+      "bytes": 7191,
       "path": "docs/MANUAL_RUN.md",
-      "sha256": "4e24b89f7b4d219d26f9835301de901d090dacb164c16a480ed2da7259df5511"
+      "sha256": "fa8ffc064e1f3363a9b8bd4cd95b3a6af4732ce37c814eee4cc969ff371003dc"
     },
     {
       "bytes": 10936,
@@ -47,14 +47,14 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 4205,
+      "bytes": 6609,
       "path": "docs/REFERENCE_SUITE.md",
-      "sha256": "7fb60d2cea0f6b5de4f30442617b28b82e330f068358b30113da2c2239dc2a61"
+      "sha256": "a5018d2ed615398073a7b338e4230bbceb5582c50a9681c8fed5b4206c7c701e"
     },
     {
-      "bytes": 7291,
+      "bytes": 10822,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "c80fa9c4583a8674fbd2e2270efee606c2aadcd775fa876137617196612bca7d"
+      "sha256": "d136d7ef58cafd07e5d1ec243f04710c57c413b689a747bdbc1ccc1e71ba213f"
     },
     {
       "bytes": 5276,
@@ -710,6 +710,216 @@
       "bytes": 66625,
       "path": "runs/live-08/trace.jsonl",
       "sha256": "9b8eb989f97c88ffee5ec46dea2e64532107a58dfb780e3d07d2679a53e9d5b1"
+    },
+    {
+      "bytes": 1860,
+      "path": "runs/reference/registration.json",
+      "sha256": "bca49e173276ac82a2fe8d548793086ce9416505f3254bc46e69a0a5d9090c1d"
+    },
+    {
+      "bytes": 469,
+      "path": "runs/reference/summary.json",
+      "sha256": "8df5ed7325feee71824444e900c9a984a9f212b612953a54db180f2d64ededc3"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1976,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/run.json",
+      "sha256": "e9892969d68f55feb786f4f8fc2eb41f2a1ff549d586178fc13f4d119234d092"
+    },
+    {
+      "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/status.json",
+      "sha256": "d332e14d082b5aa826f6251427c5ffc6c26ab24971276229a5320157a44be76d"
+    },
+    {
+      "bytes": 34181,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/trace.jsonl",
+      "sha256": "d5da7dd50a59d81a4143741e18c0918887c2b21f7f73c5eb00bd4ded7d65b42b"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1978,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/run.json",
+      "sha256": "97d5654a545ea0d03992311a1a75bd0396c899b39b64f496d35e600729aa08fd"
+    },
+    {
+      "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/status.json",
+      "sha256": "5fb2e1a749b85630900a0a0ce3326296b2d798c1441eafe0100889457b1e2219"
+    },
+    {
+      "bytes": 31168,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/trace.jsonl",
+      "sha256": "2ab16b6d6eb453880261ed8d5cd17594a268bcd254ca15f178095050fb85b7e5"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1976,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/run.json",
+      "sha256": "29f8e3619d891190903a5760bd9477dded1c78930ae85d018de3a534d4ecdf89"
+    },
+    {
+      "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/status.json",
+      "sha256": "38353c16bd1bdfbb81a8bb62fe02931dc2b09200323e770ce626635f00b54701"
+    },
+    {
+      "bytes": 32712,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/trace.jsonl",
+      "sha256": "57b15231a207aae3d0bf6d67720337e55a023038d8815dde0b4f3be11b89adc8"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1977,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/run.json",
+      "sha256": "35c80c6b5e09880f7a3f979c60a8083e35dc0c38efca22a34a7dd45651ea5bd1"
+    },
+    {
+      "bytes": 204,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/status.json",
+      "sha256": "82d607f18330992f1b64b61d350e4150b89591883c14e244828463641dcb30d0"
+    },
+    {
+      "bytes": 34210,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/trace.jsonl",
+      "sha256": "b8a4b88e8efeca3e596f31d147abc028ec5c6051abd549fa4975a37491258eb2"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1946,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/run.json",
+      "sha256": "e28830b65b87b59b70b4caa45e72e70f2907cdd9d8b957205bf972606a4a537f"
+    },
+    {
+      "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/status.json",
+      "sha256": "9a3302612cff215500d7d381f0d1acb8970e774a7853cde8d4b7b135246409e6"
+    },
+    {
+      "bytes": 34195,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/trace.jsonl",
+      "sha256": "56ceaa3965938e3f63a13df19be4e9a59dd3162e3fe88a7ce2e866860f8d7d1e"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/run.json",
+      "sha256": "c3d6afa44c2a8ccd715bcce46045cab7fed69e2017ecfe966a6b3747a6b428d4"
+    },
+    {
+      "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/status.json",
+      "sha256": "0e4dd6b489bc99c41c3b8c1f831a66d85fbf61645e88be00006ca8a5582f2855"
+    },
+    {
+      "bytes": 35794,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/trace.jsonl",
+      "sha256": "af60a15d5f328c1995e543ba6b5223dfbbd35b9f66764d9a4b4ac8e138e9d3dc"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/run.json",
+      "sha256": "cbac6b38c6038c5a7bc36c618b63ab42b767c8f95bcee8a1c0bb80d8d0e4c9fb"
+    },
+    {
+      "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/status.json",
+      "sha256": "1a3035894302da35e7ec4653fd28ea6ec140141732c54d79a9d53eda12f7ab25"
+    },
+    {
+      "bytes": 35776,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/trace.jsonl",
+      "sha256": "9da68e7358670ca53ca8d3fa7a2b2a9f4ef7d091108f8396f6d7bc23fe95c7a6"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1973,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/run.json",
+      "sha256": "3e178502c89b538dbe6c4a847ea5d039e3ef8e072e0b451425c34d5b6ab0306e"
+    },
+    {
+      "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/status.json",
+      "sha256": "c3b488aafc0b0dada450fffec060c7b4550a5f5b21ef4b5aa3fd98250a3d256e"
+    },
+    {
+      "bytes": 35777,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/trace.jsonl",
+      "sha256": "378efac6b5f618c2052088845eb3ea19ddbf6d982bc5f824f6ab08c60eae6a89"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/run.json",
+      "sha256": "f072c0fffbfbb303a927a06a7023fb9c5aeb04b6337d199a2f6c8ba6757012a4"
+    },
+    {
+      "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/status.json",
+      "sha256": "3176bf6ffddf8f0824c851a87fe3382266406a85d57bb7b376e2b7179b767a8c"
+    },
+    {
+      "bytes": 35810,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/trace.jsonl",
+      "sha256": "e8d72cd0aaaf6c944d862cbb251742e5ac8a39378decaafb60a7e3e9bb8b54e0"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1944,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/run.json",
+      "sha256": "d1f410379da725787d6e9b64b417eb2874a85b9c482d2f2e07bb2a4fd102d837"
+    },
+    {
+      "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/status.json",
+      "sha256": "82ef127239cfa97f1b19b4a6eb618950bdd793dad3c781eaa2b72687c17cd31c"
+    },
+    {
+      "bytes": 35792,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/trace.jsonl",
+      "sha256": "7f43c2c2b65a0291dc46899faf7b41ef1d399a55acf1a91d848f90812eed2348"
     },
     {
       "bytes": 8762,

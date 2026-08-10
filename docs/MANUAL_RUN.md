@@ -1,205 +1,165 @@
-# Running against a real provider
+# Manual Run — 付費 provider execution 與 evidence flow
 
-> **Eight live attempts were recorded on 2026-08-06: two zero-usage provider
-> errors and six billable runs whose estimated costs total $0.399115.**
->
-> `gpt-5.6-luna` against `fx-taskq-py`. Three via `OpenAICompatibleAdapter` with
-> reasoning disabled (`runs/live-03` through `-05`) — the model refuses function
-> tools on `/v1/chat/completions` at any other effort, so those measure a
-> different subject from the model at its default. Three more via
-> `OpenAIResponsesAdapter` with reasoning left on (`runs/live-06` through `-08`),
-> which is live-observed, not just mock-tested — `reasoning_tokens` was 86.95%,
-> 85.58%, and 91.55% of output tokens.
->
-> What came out: `localization_recall` 1.0 in every mutated-snapshot run,
-> computed by the deterministic matcher, with the same file reported zero times
-> on the matching clean control. Two finding/bug pairs now have human rulings,
-> but there is no completely adjudicated or independently verified result.
->
-> What also came out, twice: `runs/live-05`'s clean control found a **real
-> defect in the fixture** two author audit passes had missed
-> (`fixtures/fx-taskq-py/defects.md`). `runs/live-07`, the first `/v1/responses`
-> run to complete naturally, found a **real defect in the harness itself** — no
-> memory of its own past turns, it resubmitted one finding seven times under
-> seven ids. Fixed in `agent/tools.py`; `runs/live-08` re-ran the identical
-> configuration afterward and capped every repeat at two (see
-> `docs/BENCHMARK_CARD.md` limitation 5 for the full account).
+本文件說明如何執行 current-contract reference suite。驗證 repository／release 不需要 API key；只有
+`cae suite run` 會呼叫 paid provider。任何 paid run 都應先產生 dry-run plan，確認 model、budgets、
+OCI identity 與 aggregate maximum，再取得明確費用核准。
 
-> **Replay boundary:** all eight historical live traces predate the Gate A
-> `run_header` and aggregate `cost` event contract. They remain useful historical
-> observations, but the release audit warns that they cannot be replayed under
-> the current strict contract. New runs write private raw events first and only
-> publish after fail-closed sanitization.
+目前 committed reference suite 已於 2026-08-10 執行：
 
-## Two adapters, both now live-verified
+- Suite ID：`suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`
+- Provider／model：OpenAI `gpt-5.6-luna`
+- API／reasoning：Responses API／`high`
+- Tasks：2 clean controls＋8 mutations，固定順序，共 10 tasks
+- Retry：`no_automatic_retry`
+- Outcome：10 `budget_exhausted`；0 findings；0 provider／harness errors
+- Estimated cost：USD 0.097166
+- Wall-clock：500.316 s
 
-`CAE_PROVIDER_API` picks between them; `chat_completions` is the default.
+不要直接重跑這個 registration：既有 outcome directories 不允許覆蓋，且重跑會造成額外費用，也會
+破壞「每 task 一次 attempt」的解讀。新的研究問題或 configuration 必須建立新的 plan 與 suite ID。
 
-| | `chat_completions` | `responses` |
-|---|---|---|
-| Endpoint | `/v1/chat/completions` | `/v1/responses` |
-| Adapter | `OpenAICompatibleAdapter` | `OpenAIResponsesAdapter` |
-| Live-verified | **Yes** — three runs, 2026-08-06 | **Yes** — three runs, 2026-08-06 |
-| Reasoning at this run's setting | `none` (forced) | `high` (`reasoning_tokens` 85.58–91.55% of output in completed runs; 86.95% in the token-capped run) |
-| Reasoning + function tools together | Refused by `/v1/chat/completions` at any effort but `none` (why `reasoning_effort` exists as a knob) | Not restricted |
+## 1. 先完成不付費的 repository gates
 
-The second adapter exists for one reason: it is the only path that can measure
-`gpt-5.6-luna` with reasoning left on. It was built from the documented request
-and response shape — `input` items instead of `messages`, a flat tool schema, a
-typed `output` array instead of `choices`, usage nested under
-`input_tokens_details`/`output_tokens_details` — mock-tested exhaustively in
-`tests/agent/test_responses_provider.py`, and then confirmed against real data:
-`live-06`'s `estimated_cost_usd` ($0.092418) reproduces by hand from its usage
-payload to six decimal places; `live-07` records $0.136248 and `live-08`
-$0.127630. None of the three Responses runs terminated with `provider_error`.
+```powershell
+uv sync --locked
+uv run cae validate fixtures
+uv run cae fixture verify fixtures/fx-taskq-py
+uv run cae fixture verify fixtures/fx-ledger-ts
+uv run cae release audit --publication
+uv run cae release audit --publication --online
+```
 
-One choice in that adapter has no equivalent in the other and is still
-unverified in the specific sense that matters: a response can be HTTP 200 and
-still carry a `status` other than `"completed"`, and every such status is
-treated as a `provider_error` rather than acted on, because which non-completed
-statuses actually occur has not been observed — none of the three live calls
-hit one. Read the module's own docstring before assuming that branch is safe
-just because the rest of the adapter is.
+最後一個 command 會匿名讀 GHCR，但不使用 Docker credentials；其餘 publication audit 是 offline。
+若 clean control、witness、checksum 或 OCI identity 不一致，先停止，不得開始 provider calls。
 
-The three `responses` calls also did something the `chat_completions` calls
-never got the chance to: run long enough (49–51 steps) to expose a harness-level
-memory defect, described in `docs/BENCHMARK_CARD.md` limitation 5. Its fix was
-itself validated the same way — mock-tested, then confirmed against a live
-re-run under identical settings.
+## 2. Local secret setup
 
-Both adapters land in the same run header field either way —
-`agent_adapter`/`agent_adapter_version` name whichever one actually built the
-request, never a hardcoded label — so a run is never left to be misread as the
-other adapter's result.
+將 provider key 放在 repository 之外或 ignored `.env`；不要貼到 issue、terminal transcript、README、
+trace、worksheet 或 shell history。Repository 使用 `CAE_PROVIDER_API_KEY` process variable，public
+plan 只記錄 key 是否存在，不記錄 value。
 
-## Why no gate needs a key
+`.env`、`.run-store/` 與 Docker credential files 必須維持 untracked。可先確認：
 
-A gate that requires a secret does not run for anyone who lacks one, which is
-the same as not having the gate. So none of them do. The offline gates drive the
-scripted baselines in `coding_agent_eval.agent.baseline`, which produce every
-termination reason and both extremes of every metric without a network.
+```powershell
+git check-ignore .env .run-store
+git status --short
+```
 
-That is also why the adapter takes its `httpx.Client` by injection: every path
-through it is exercised with a mock transport, and that has to be a first-class
-path rather than a testing hack.
+## 3. Dry-run：產生不含 secret 的 exact plan
 
-## What is not verified
+```powershell
+uv run cae suite dry-run --env-file .env --tasks tasks --fixtures fixtures `
+  --out PLAN.json
+```
 
-Everything below the mock. Specifically:
+在核准前逐項核對：
 
-- **Real usage payloads have now been parsed, from one provider.** Six billable
-  runs came back `completeness: complete` with no unknown fields, and the
-  cached-input branch handled high cache rates — recomputing `live-06` cost by
-  hand from its recorded usage reproduces the figure to six decimal places. That is one
-  provider across two API shapes. Another provider may report a field this code files
-  under "unknown".
-- **Pricing exists for one model only.** `gpt-5.6-luna` has a real table with a
-  source URL and an effective date. Every other model falls back to
-  `PLACEHOLDER_PRICING`, which is all zeros and says so in its
-  `estimator_limitations`: a zero there means *not priced*, not *free*. A dollar
-  budget on an unpriced model is refused rather than accepted, because a cap that
-  can never be reached is not a cap.
-- **No rate limiting, retry, or backoff exists.** A 429 is treated like any
-  other HTTP error: the run ends with `provider_error` and is excluded from
-  aggregates. That is correct as an outcome and useless as a strategy.
-- **Tool output is sent as `user` messages**, not `tool` messages, because this
-  adapter does not replay assistant turns and so has no call ids to reference.
-  A provider that scores differently on that shape would score differently here.
+- provider、model、API、reasoning effort；
+- 10 個 ordered task IDs；
+- per-task 與 suite-total token／tool-call／wall-clock／estimated-cost budgets；
+- `no_automatic_retry`；
+- 兩個 immutable `repository@sha256:...` refs、config digests 與 environment fingerprints；
+- plan 中沒有 key、base URL secret、local path、mutable image tag 或 raw payload。
 
-## Doing a run
+`dry-run` 不開 network connection，不產生 API 費用。
 
-1. Copy `.env.example` to `.env` and fill it in. `.env` is git-ignored and the
-   tracked-file leak gate scans for key-shaped strings, so a key committed by
-   accident fails the build rather than reaching a remote.
+## 4. Register：第一個 API call 前凍結 identity
 
-2. Build the prepared image for the fixture you are measuring. The manifest
-   pins the digest the fingerprint was computed from, and a run against a
-   different image is not comparable to one against this one:
+```powershell
+uv run cae suite register --plan PLAN.json --tasks tasks --fixtures fixtures `
+  --out runs/reference/NEW_SUITE_ID/registration.json
+```
 
-   ```bash
-   docker build --build-arg BASE_DIGEST=<from fixture.yaml> \
-     -f fixtures/<fixture>/env/Dockerfile \
-     -t <prepared_image_tag> fixtures/<fixture>
-   ```
+Registration 的 `suite_id` 由 canonical content 計算；`created_date` 不參與 identity。Register 會重新
+驗證 task registry hash 與 fixture identity，拒絕覆蓋既有 registration。Model、order、budgets 或 OCI
+identity 有任何 drift，都必須產生新 registration。
 
-3. Confirm the fixture still validates and its witnesses still hold:
+## 5. Run：唯一會付費的步驟
 
-   ```bash
-   uv run cae validate fixtures/<fixture>
-   uv run cae fixture verify fixtures/<fixture>
-   ```
+```powershell
+uv run cae suite run `
+  --registration runs/reference/NEW_SUITE_ID/registration.json `
+  --tasks tasks --fixtures fixtures --env-file .env `
+  --out runs/reference/NEW_SUITE_ID
+```
 
-4. Check the configuration without spending anything. `--dry-run` applies every
-   refusal rule and prints the configuration with the key reduced to its
-   presence, then exits without opening a connection:
+Runner 依 registration 順序執行，一個 task 最多一次 attempt，不做 retry／backoff。每個 task 都必須
+留下 `status.json`，status 只可能是：
 
-   ```bash
-   uv run cae run fixtures/<fixture> --out runs/<name> --dry-run
-   ```
+- `completed`
+- `provider_error`
+- `timeout`
+- `budget_exhausted`
+- `harness_error`
+- `fixture_defect`
 
-5. Run it. This is the command that makes billed requests:
+Failure 也是 evidence，不得刪除、重新命名或以後續較好 outcome 取代。Clean control 若揭露 fixture／
+harness defect，整個 registration 不得成為 publication evidence；修復、bump fixture、重建／re-pin OCI
+後再建立新 registration。
 
-   ```bash
-   uv run cae run fixtures/<fixture> --snapshot mutated --out runs/<name>
-   ```
+## 6. Cost 與 budget 解讀
 
-   Add `--isolate <image-digest>` to put the agent's tools inside the measure
-   container. Without it they run in the harness process, and the run header
-   records `host_process` so the difference is never left to be inferred.
+`CAE_MAX_TOKENS` 是 observed usage boundary；`CAE_MAX_ESTIMATED_COST_USD` 依版本化 pricing table
+估算。Provider account spending limit 才是不依賴本程式的最後 backstop。
 
-### What `cae run` refuses, and why
+Current `gpt-5.6-luna` table（`openai-gpt-5.6-luna@2026-08-06`）是每 1M tokens：
 
-- **A dollar budget on a model with no pricing table.** The estimate would
-  always be `0.00`, so the cap could never be reached and the operator would
-  believe they were protected. Add rates with a source and date, or bound the
-  run by tokens.
-- **No budget at all**, since nothing would stop the run.
-- **A malformed budget.** Silently dropping an unparseable limit leaves the run
-  unbounded while its operator believes otherwise.
-- **A missing key or model**, before anything is opened.
+| Component | Rate |
+|---|---:|
+| Input | USD 0.20 |
+| Cached input | USD 0.02 |
+| Output（含 reasoning tokens，不能重複計價） | USD 1.20 |
 
-It also warns about any `CAE_`-prefixed variable nothing reads, because a
-misspelled `CAE_MAX_TOKEN` is a run with no token budget.
+所有報表使用 `estimated_cost_usd`，不使用 `cost_usd`。Pricing source、effective date、table version、
+usage completeness 與 unknown fields 都隨 trace 保存。跨 providers 的 cache、reasoning 與 tier rules
+不同，dollar values 不是天然可比。
 
-### Which budget actually binds
+本次 registered budgets 為每 task 200,000 tokens／60 tool calls／900 s／USD 0.25，suite 上限
+2,000,000 tokens／600 tool calls／9,000 s／USD 2.50。Observed estimated cost USD 0.097166 低於
+核准上限；10 個 tasks 都是 token budget 先觸發。
 
-`CAE_MAX_TOKENS` is measured. `CAE_MAX_ESTIMATED_COST_USD` is estimated from a
-table that may be stale. At `gpt-5.6-luna` rates — $0.20 in, $1.20 out per
-million — a 200,000-token run costs at most $0.24, so a $7 cap sits about two
-orders of magnitude away from binding.
+## 7. Private raw events 與 public trace
 
-**Set the token budget as the real control**, and set a spending limit in the
-provider's own account as the only backstop that does not depend on this code
-being correct.
+每個 run 先把完整 provider／tool events 寫入本機 `.run-store/`。Public trace 只能經 fail-closed、
+atomic sanitizer 產生；unknown field 使整個 export 失敗。禁止手動複製 raw payload 到 `runs/`。
 
-### What it does not do
+可公開的 current evidence：
 
-`cae run` **does not score**. It writes a run header, the public trace
-projection, and the findings. Turning findings into `verified_*` numbers needs a
-person; a command that ran an agent and printed a recall figure in one breath
-would make that step look optional.
+- registration、summary、status；
+- sanitized trace schema 0.2.0；
+- public run summary 與 findings；
+- 有 candidates 時的 public review-set manifests／formal ledgers／replayed results。
 
-## After a run
+必須保持 private：API key、`.env`、`.run-store/`、raw provider／tool payload、Docker credentials、
+worksheet keymaps 與 reviewer private identity。
 
-A run is not a result. Before any number from it is published:
+## 8. Human review 與 replay
 
-- The public trace has to pass the sanitizer, which is fail-closed and writes
-  nothing if it rejects.
-- Findings have to be adjudicated by a person. No `verified_*` metric may be
-  published from an unadjudicated run, and per spec §8.3.2 a model comparison
-  needs a second independent adjudicator and a disagreement protocol.
-- **No AI may author an adjudication.** Synthetic rulings carry a `SYNTHETIC-`
-  prefix and force `publishable: false`, so a result scored against them cannot
-  be mistaken for one scored against a human's.
+`cae run`／`cae suite run` 不產生 `verified_*` scores。只有 completed task 實際產生 candidate pairs 時，
+才建立 review set，依序完成 blinded primary、independent 與必要的 resolver workflow。AI 不得填寫
+formal decisions 或 rationales。
 
-## Reporting cost
+本次 suite 的 findings 全空，因此 review-set 數量為 0 是正確 outcome；不得為滿足表面 coverage
+而製造空白／synthetic rulings。
 
-Always `estimated_cost_usd`, never `cost_usd` (spec §11.3). It is an estimate
-from a pricing table, and it carries the table's version, effective date, and
-source so the figure can be recomputed later.
+完成必要 human review 後，使用 committed public evidence replay：
 
-Costs across providers are **not** apples-to-apples: cache pricing, reasoning
-token pricing, and tiered pricing all differ. Any comparison that reports
-dollars must also report the four budget dimensions, and must state
-`completeness` — an estimate missing a priced component is `partial`, and
-comparing a partial figure with a complete one is not a comparison.
+```powershell
+uv run cae suite replay `
+  --registration runs/reference/NEW_SUITE_ID/registration.json `
+  --review-sets ledger/review-sets --out runs/reference/NEW_SUITE_ID
+uv run cae release audit --publication
+```
+
+Replay 拒絕 trace、fixture、candidate set、review set 或 content hash drift。Legacy single-review 與
+synthetic ledger 永遠不能產生 `publishable: true`。
+
+## Historical live attempts（非 reference result）
+
+`runs/live-*` 保存 2026-08-06 的八次 harness-development attempts：兩次 zero-usage provider errors；
+六次 billable runs 的 historical estimated cost 合計 USD 0.399115。三次使用
+`chat_completions`／reasoning none，三次使用 Responses／reasoning high。
+
+這些 traces 早於 current `run_header`＋aggregate `cost`＋trace 0.2 contract，也曾用來發現 fixture 與
+harness defects。它們是診斷 provenance，不可與 2026-08-10 registered suite 合併計算、不可補寫成
+current evidence，也不支持 model success-rate claim。

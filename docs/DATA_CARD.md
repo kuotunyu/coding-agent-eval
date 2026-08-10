@@ -1,112 +1,41 @@
-# Data card — BugSeed
+# Data Card — BugSeed v0.1
 
-The dataset this benchmark measures against: what is in it, who made it, when, under what
-licence, and what it cannot support.
+BugSeed 是 `coding-agent-eval` 的 first-party defect corpus。v0.1 包含兩個 bounded service fixtures、
+八個 single-defect mutations 與兩個 clean controls，目的是提供可重播、可逐項追溯的 AI coding
+agent defect-discovery evaluation vertical slice。
 
-- **Dataset name**: BugSeed
-- **Benchmark version**: `0.1.0`
-- **Authoring cutoff**: `2026-08-05` — every fixture and every bug carries this
-  `authored_at`. Nothing in this dataset existed before that date.
-- **Licence**: MIT, for the dataset and for both fixtures individually.
+- **Dataset／benchmark version**：`0.1.0`
+- **Authored-at cutoff**：`2026-08-05`
+- **Language of documentation**：正體中文（`zh-TW`）；technical terms 保留原文
+- **License**：MIT；每個 fixture tree 都含獨立 `LICENSE`
+- **Creator**：`kuotunyu`
+- **Reference suite**：`suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`
 
----
+## Dataset composition
 
-## Provenance
+`tasks/v0.1.json` 是唯一 versioned task registry，共 10 tasks：
 
-Both fixtures are **first-party**: written for this benchmark by its author, not adapted
-from an existing project. No upstream code, no scraped repositories, no third-party
-snapshots. Each fixture carries its own `LICENSE`.
+- `fx-taskq-py`：1 clean control＋4 mutations；
+- `fx-ledger-ts`：1 clean control＋4 mutations。
 
-Every bug is **injected**: authored as a patch against a clean tree. There is no historical
-cohort in v0.1 — no bug here was taken from a real project's issue tracker or fix commit.
-
-The reference agent runtime evolved from an internal prototype. The fixtures, schemas,
-evaluator, and trace pipeline were written for this benchmark.
-
-## Authorship and adjudication — read this before using any `verified_*` number
-
-> **The fixture author and the adjudicator are the same person.**
-
-This is the dataset's most significant limitation and it is stated here rather than in a
-footnote. Blinding removes the provider, model, budget, cost, and run identifiers from what
-an adjudicator sees, which eliminates brand bias. It cannot remove the fact that someone who
-wrote a bug knows its intended answer, and therefore cannot be fully neutral about whether a
-given finding really describes that root cause.
-
-v0.1 accepts the limitation and requires three things in exchange:
-
-1. The relationship between `adjudicator_id` and the fixture author is disclosed — this
-   section is that disclosure.
-2. Every ruling records a `rationale`, so a third party can review any specific decision.
-3. The ledger is public and append-only, so any ruling can be disputed after the fact.
-
-**A second, independent adjudicator and a documented disagreement-resolution protocol are a
-precondition for publishing any model comparison.** Not an improvement, a precondition. No
-comparative claim may be made from this dataset until that exists.
-
-**No AI may author an adjudication.** Synthetic rulings carry a `SYNTHETIC-` prefix and force
-`publishable: false`, and the evaluator rejects a formal ledger containing any such entry.
-The formal ledger `ledger/adjudications.jsonl` currently contains two human rulings for two
-findings against `fx-taskq-py/B-001`. They are incomplete and not independent, and therefore
-support no publishable `verified_*` result.
-
----
-
-## The fixtures
-
-| | `fx-taskq-py` | `fx-ledger-ts` |
+| 欄位 | `fx-taskq-py` | `fx-ledger-ts` |
 |---|---|---|
-| Version | 1.0.3 | 1.0.2 |
-| Language | Python 3.12 | TypeScript / Node 22 |
-| Shape | Background task queue: HTTP API, worker loop, SQLite persistence | Double-entry ledger: HTTP API, per-account locks, append-only journal, batch settlement |
-| In-scope LOC | 1,367 | 1,183 |
+| Fixture version | 1.0.4 | 1.0.3 |
+| Language／runtime | Python 3.12 | TypeScript／Node 22 |
+| Service shape | Background task queue、HTTP API、worker、SQLite | Double-entry ledger、HTTP API、locks、journal、batch settlement |
 | In-scope paths | `src/**` | `src/**` |
-| Out-of-scope paths | `tests/**` | `tests/**`, `node_modules/**`, `dist/**` |
+| Out-of-scope paths | `tests/**` | `tests/**`、`node_modules/**`、`dist/**` |
+| In-scope LOC | 1,367 | 1,183 |
 | Own test suite | 205 tests | 174 tests |
-| Third-party runtime dependencies | none | none |
-| Licence | MIT | MIT |
-| `authored_at` | 2026-08-05 | 2026-08-05 |
+| Seeded bugs | 4 | 4 |
+| Runtime dependencies | 無 third-party runtime dependency | 無 third-party runtime dependency |
+| License | MIT | MIT |
 
-**Line counting.** `in_scope_loc` is produced by `cae-loc 0.1.0`, a counter that lives in
-this repository rather than an external tool. The rule is deliberately plain: a line counts
-when it has content that is not a whole-line comment. Precision beyond that would invite
-arguments the metric does not need — what matters is that the number is reproducible and
-that the same counter is available wherever the gate runs, since it is the denominator of
-`benchmark_unsupported_findings_per_kloc`.
+`in_scope_loc` 由 repository 內的 `cae-loc 0.1.0` 對 committed Git tree 計算；非空白且不是
+whole-line comment 的行才計數。Gate 會從 `git archive HEAD` 重建 tree 並重算，避免 working-copy
+build output 或 dependencies 汙染 denominator。
 
-Counts are taken over the **committed** tree, exported from Git, not over a working
-directory. A built `fx-ledger-ts` working copy carries `node_modules/` and `dist/`, neither
-committed, and counting them would describe a tree no run will ever see.
-
-### Clean controls
-
-Each fixture ships a clean control: the same tree with no seeded defect. It is the source of
-the headline noise metric, so its cleanliness is audited rather than assumed — see
-`fixtures/<id>/defects.md`.
-
-Those audits are not a formality. Across the two trees they found **four real defects**,
-each fixed and the fixture version bumped before any bug was seeded:
-
-- `fx-taskq-py` 1.0.1: the service returned 500 on every route that touched storage when run
-  as its README documents, and a 204 announced a body it never sent.
-- `fx-taskq-py` 1.0.2: a queue name ending in a newline was accepted, creating a queue no
-  worker would ever read.
-- `fx-ledger-ts` 1.0.1: the server exited the moment it began listening, so it never served
-  anything, and the documented run command named a path the build does not produce.
-- `fx-taskq-py` 1.0.3: `delay_seconds` was coerced with a bare `float()`, so malformed input
-  escaped the API's error handling and a NaN reached a NOT NULL column. **Found by an agent
-  on a clean-control run, not by the author** — the two audit passes over that file had both
-  missed it.
-
-Both trees' `known_residual_defects.yaml` is empty, which v0.1 requires. A non-empty list
-makes a fixture release-ineligible: excluding a finding because it sits near a
-known-but-unfixed defect would hand a free pass to any wrong finding that landed nearby.
-
----
-
-## The bugs
-
-Eight, four per fixture, all `provenance: injected`, all `authored_at: 2026-08-05`.
+## Seeded bugs
 
 | Bug | Category | Severity | Subcategory |
 |---|---|---|---|
@@ -119,85 +48,111 @@ Eight, four per fixture, all `provenance: injected`, all `authored_at: 2026-08-0
 | `fx-ledger-ts/B-003` | data_boundary | high | internal_detail_exposure |
 | `fx-ledger-ts/B-004` | security | medium | timing_side_channel |
 
-**Category distribution**: correctness 2, security 2, data_boundary 2, concurrency 1,
-release_claim 1 — **5 of 5 categories** covered, though thinly.
+Category distribution 是 correctness 2、security 2、data_boundary 2、concurrency 1、
+release_claim 1；severity distribution 是 critical 1、high 3、medium 3、low 1。
+每類最多兩個樣本，不支持 category-level comparison。
 
-**Severity distribution**: critical 1, high 3, medium 3, low 1.
+## Creation 與 mutation screening
 
-Eight bugs across five categories means **at most two samples per category**. No per-category
-conclusion can be drawn from this dataset, and neither can an overall ranking.
+Fixtures、schemas、bugs、patches、witnesses 與 evaluator 都為本 benchmark 新作。Bugs 沒有從公開
+issue tracker、CVE、歷史 fix commit 或既有 benchmark 搬運。
 
-### How bugs were selected
+候選 mutation 逐一套用至 clean tree，並執行 fixture 自己的完整 test suite。只有測試仍全數通過的
+survivors 可進 corpus：
 
-By mutation screening, not by judgement about what looked fragile. Candidate defects were
-written, applied one at a time, and each fixture's own suite re-run against every one. Only
-survivors were used, and of those the selection favoured spread across modules and
-categories.
+- `fx-taskq-py`：23 candidates，13 被 tests 捕捉，10 survivors，選 4；
+- `fx-ledger-ts`：18 candidates，12 被 tests 捕捉，6 survivors，選 4。
 
-- `fx-taskq-py`: 23 candidates written, 13 caught by the suite, 10 survived.
-- `fx-ledger-ts`: 18 candidates written, 12 caught by the suite, 6 survived.
+每個入選 bug 另有 machine-executable witness contract。Gate G2 驗證 clean pass、patch apply、
+mutated behavior、patch revert、clean-after-revert pass。Mutation 若已被原始 tests 抓到，只能測量 agent
+是否執行 tests，不能測量 code-reading discovery，因此不納入。
 
-**Every seeded bug survives its fixture's own test suite.** This is a requirement. A defect
-the fixture's tests catch would measure whether an agent runs the test suite rather than
-whether it can read code, and would inflate recall for a behaviour the benchmark is not
-trying to measure.
+## Clean controls
 
-Each bug carries a machine-executable **witness contract**: a command whose result differs
-between the clean and mutated trees. Gate G2 runs five steps per bug — clean passes, patch
-applies, mutated behaves as declared, patch reverts, clean passes again. The last step is
-the one usually omitted, and without it a patch that also changed something else would still
-look correct.
+每個 fixture 都保留同版本的無 seeded-defect snapshot。`fixtures/<id>/defects.md` 記錄兩輪人工
+clean-tree audit 與後續發現；`known_residual_defects.yaml` 必須為空，否則 fixture 不具 release
+eligibility。
 
----
+Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixture defects，修正後皆 bump version、
+重建 OCI 並重新 pin；目前版本為 1.0.4／1.0.3。若未來 clean control 證實 fixture 或 harness defect，
+必須停止 suite、修復並建立新 registration，不得以 adjudication 把它標成 unsupported。
+
+## OCI distribution
+
+兩個 execution environments 以公開 GHCR versioned tags 分發，但可比較 identity 只使用 digest：
+
+| Fixture | Repository／tag | Manifest digest | Config digest |
+|---|---|---|---|
+| `fx-taskq-py` | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.4` | `sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad` | `sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1` |
+| `fx-ledger-ts` | `ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts:1.0.3` | `sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312` | `sha256:c7d310f6a41a47132484bddc47969547c9e34cb7628456415696c59af223d583` |
+
+Image index／manifest 與 local image config 是不同 OCI objects，必須分開驗證。Current environment
+fingerprint 包含 base image digest、prepared manifest digest、prepared config digest、OS id／version、
+runtime、package manager、lock manifest hash 與 architecture；不包含 mutable tag、hostname 或 timestamp。
 
 ## Contamination
 
-The bugs are **novel, privately authored mutations at benchmark creation time**. That makes
-the dataset **contamination-resistant** and gives it **lower contamination risk than public
-historical fixes**, which may already sit in training data alongside their fix commits,
-issue threads and changelogs.
+新作 mutations 相較公開歷史 fixes 降低已知 contamination 風險，但不能證明任何 model 的 training
+corpus 未包含它們。因此本 dataset 稱為 **contamination-resistant**，不稱 contamination-free。
 
-- **Benchmark version**: `0.1.0`
-- **Cutoff date**: `2026-08-05`
-- **Contamination resistance decays.** Once published, these bugs may enter future training
-  data. The property weakens with time and with exposure, and a result quoted long after
-  this date should be read accordingly.
+- Cutoff 為 `2026-08-05`。
+- 公開後，code、bugs 與 patches 可能進入未來 training corpus，保護力會隨時間下降。
+- 使用者引用結果時應同時報 benchmark version、suite registration date、provider／model configuration
+  與 exposure context。
 
----
+## Target leakage controls
 
-## What is kept, and for how long
+Public release 為可重現性必須包含 canonical bugs、patches 與 witnesses；因此 repository 層級無法對
+已下載完整 dataset 的 agent 保密答案。Evaluation contract 的控制點在 runtime boundary：
 
-| Artefact | Where | Retention |
+- Agent measure container 只接收選定 source snapshot；
+- `bugs/`、`patches/`、witnesses、task metadata、ledger、host repository 與 `.run-store/` 不會 mount
+  進 measure container；
+- Tool surface 只有 read/list/search/submit，不提供 host shell 或 network；
+- Public trace 不含 raw provider payload、private tool output 或 secret；
+- Operator 若把完整 repository 或 ground truth 放入 prompt，該 run 即不符合本 benchmark contract。
+
+這些措施降低 accidental target leakage，不能防止已記住公開 benchmark 的 model。未來要做較強的
+model comparison，需建立 private／rotating holdout corpus，而不是只擴寫 public v0.1。
+
+## Reference evidence 與 annotation
+
+2026-08-10 reference suite 使用 OpenAI `gpt-5.6-luna`、Responses API、high reasoning，按固定順序
+執行 10 tasks 且 `no_automatic_retry`。所有 outcomes 都保留為 `budget_exhausted`，共提交 0 findings。
+
+因此本次沒有 candidate pairs，也沒有 human rulings。這不是缺少應做的 annotation：review domain 是
+空集合；它也不能被描述為 independent adjudication evidence。未來任何產生 candidate 的 completed
+run 都必須進入 dual blinded review，否則 publication audit fail closed。
+
+Legacy `ledger/adjudications.jsonl` 是 append-only single-review historical evidence；synthetic ledger
+只供 evaluator tests。兩者均固定不可成為 current publication result。
+
+## Public／private boundary 與 retention
+
+| Artifact | Location | Release／retention |
 |---|---|---|
-| Fixture trees, bugs, patches, witnesses | Version control | Permanent; part of the dataset |
-| Adjudication ledger | Version control, append-only | Permanent; rulings are never edited or deleted |
-| Public trace | Published with a run | Permanent |
-| Raw evidence store | `.run-store/`, local only | **30 days by default**, pruned by `cae store prune` |
+| Fixtures、bugs、patches、witnesses | Git／release artifacts | Permanent |
+| Task registry、registration、status、sanitized trace、findings | Git／release artifacts | Permanent |
+| Formal review sets（若有 candidates） | `ledger/review-sets/` | Public、append-only evidence |
+| Release manifest | `release-manifest.json` | Public；records bytes＋SHA-256 |
+| Raw provider／tool events | `.run-store/` | Local only；預設 30 days，可由 `cae store prune` 清除 |
+| API key、`.env`、Docker credentials、worksheet keymaps | Local only | 永不進 Git／release |
 
-For runs produced by the current runner, the raw store holds full tool output and full model
-exchanges. It is never published: the public trace is a projection through a field allowlist,
-where every field is classified public or known-private and an **unclassified field raises**
-rather than defaulting either way. The sanitizer that produces public artifacts is
-fail-closed and atomic. The eight committed historical live traces predate this raw-event
-contract and are retained as legacy evidence with release-audit warnings.
+Sanitizer 使用 closed allowlist：每個欄位必須被分類為 public 或 known-private；unknown field 使輸出
+整體失敗且不留下 partial public artifact。
 
----
+## Known limitations
 
-## Intended use, and uses this dataset does not support
+- Corpus 小、first-party、dependency-light，external validity 有限。
+- Fixture author 知道 ground truth；blinding 不能消除 authorship bias。
+- Public bugs 使 contamination 與 memorization risk 隨時間增加。
+- 本次只有一個 provider／model／configuration，沒有 random-seed replication。
+- Reference suite 沒有 completed task 或 finding；不能提供 human-verified effectiveness estimate。
+- Cost 是依版本化 pricing table 計算的 estimate，不是 invoice。
+- OCI reproducibility 依賴 GHCR、Docker／OCI implementation 與 pinned upstream base images。
 
-**Intended**: validating that the measurement methodology works end to end, and measuring
-one agent's defect-discovery behaviour under stated conditions.
+## Maintenance 與版本規則
 
-**Not supported:**
-
-- **Ranking or comparing models.** Two fixtures and eight bugs cannot separate one agent
-  from another. This holds for anyone who runs it, not just for us.
-- **Per-category conclusions.** At most two bugs per category.
-- **Claims about real-world false-positive rates.** The clean-control metric is named
-  `benchmark_unsupported_findings_per_kloc` for that reason, and must not be described as a
-  real-world false-positive rate on a repository whose ground truth is unknown.
-- **Generalising to production systems.** These are services written to be measured — real
-  in shape, bounded in size, and with no third-party runtime dependencies. Their realism has
-  a ceiling.
-- **Anything requiring a publishable `verified_*` result today.** The formal ledger has two
-  rulings, but not complete run coverage or an independent second adjudicator.
+修復 clean fixture、改變 source bytes、bug／witness、runtime dependencies、OCI identity 或 task registry
+都必須 bump 對應 version／checksum，重新驗證並建立新的 suite registration。既有 registration、trace、
+result 與 ledger 不得原地改寫或回填。

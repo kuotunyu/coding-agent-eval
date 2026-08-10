@@ -1,21 +1,26 @@
 cff-version: 1.2.0
 message: >-
-  If you use this methodology preview, please cite the software metadata below and state
-  that v0.1 is not suitable for model ranking.
-title: "coding-agent-eval: BugSeed v0.1 methodology preview"
+  若使用本 benchmark software 或 BugSeed v0.1 corpus，請引用下列 metadata，並註明
+  v0.1 僅包含一個 10-task reference suite，不適合用於 model ranking。
+title: "coding-agent-eval：BugSeed v0.1 可重現 defect-discovery benchmark"
 version: 0.1.0
+date-released: 2026-08-11
 type: software
 license: MIT
 abstract: >-
-  A contamination-resistant vertical slice for evaluating whether coding agents discover
-  deliberately seeded defects under reproducible sandbox conditions. Version 0.1 contains
-  two fixtures and eight mutations and is methodology evidence, not a representative model
-  benchmark or leaderboard.
+  一套以正體中文為主要文件語言、具有 ground truth 的 AI coding agent
+  defect-discovery benchmark。BugSeed v0.1 包含兩個 first-party fixtures、八個
+  seeded mutations、兩個 clean controls、immutable OCI environments、trace replay
+  與一個已註冊的 GPT-5.6-Luna reference suite。該 suite 的十個 tasks 全部因 token
+  budget 終止且未提交 findings，因此 release 支持 reproducibility 與 failure-analysis
+  claims，不支持 model ranking 或 human-verified performance claim。
 authors:
   - name: kuotunyu
 keywords:
-  - coding agents
+  - AI coding agent
   - LLM evaluation
   - software engineering benchmark
   - seeded defects
-  - reproducibility
+  - OCI reproducibility
+  - trace replay
+  - 正體中文
