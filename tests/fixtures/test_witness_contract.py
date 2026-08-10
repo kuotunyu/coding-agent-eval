@@ -65,6 +65,14 @@ CONTRACT: dict[str, Any] = {
 }
 
 
+def prepared_image_ref(manifest: dict[str, Any]) -> str:
+    environment = manifest["environment"]
+    return (
+        f"{environment['prepared_image_repository']}@"
+        f"{environment['prepared_image_manifest_digest']}"
+    )
+
+
 def contract(**overrides: Any) -> WitnessContract:
     document = deepcopy(CONTRACT)
     document.update(overrides)
@@ -327,7 +335,7 @@ def test_the_full_cycle_passes_on_the_canary() -> None:
         bug_id=bug["bug_id"],
         patch_path=FIXTURE / bug["patch"],
         contract=WitnessContract.from_document(bug["witness"]),
-        image_tag=manifest["environment"]["prepared_image_tag"],
+        image_tag=prepared_image_ref(manifest),
     )
 
     assert result.ok, result.render()
@@ -356,7 +364,7 @@ def test_the_mutated_phase_actually_depends_on_the_patch() -> None:
         bug_id=bug["bug_id"],
         patch_path=FIXTURE / bug["patch"],
         contract=WitnessContract.from_document(document),
-        image_tag=manifest["environment"]["prepared_image_tag"],
+        image_tag=prepared_image_ref(manifest),
     )
 
     assert not result.ok
@@ -378,7 +386,7 @@ def test_a_hanging_contract_is_a_contract_failure_not_a_crash() -> None:
         bug_id=bug["bug_id"],
         patch_path=FIXTURE / bug["patch"],
         contract=WitnessContract.from_document(document),
-        image_tag=manifest["environment"]["prepared_image_tag"],
+        image_tag=prepared_image_ref(manifest),
     )
 
     assert not result.ok

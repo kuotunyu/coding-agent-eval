@@ -43,8 +43,18 @@ pytestmark = [
 ]
 
 FIXTURES = {
-    "fx-taskq-py": "cae/fx-taskq-py:1.0.3",
-    "fx-ledger-ts": "cae/fx-ledger-ts:1.0.2",
+    "fx-taskq-py": (
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
+        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+    ),
+    "fx-ledger-ts": (
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@"
+        "sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312"
+    ),
+}
+FIXTURE_TAGS = {
+    "fx-taskq-py": "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.4",
+    "fx-ledger-ts": "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts:1.0.3",
 }
 
 
@@ -302,7 +312,7 @@ def test_an_image_given_by_tag_is_refused(fixture_id: str) -> None:
     """A tag can be repointed, so a result taken against one is not reproducible."""
     with (
         pytest.raises(ProfileError, match="not pinned by digest"),
-        tool_container(FIXTURES[fixture_id], tree_of(fixture_id)),
+        tool_container(FIXTURE_TAGS[fixture_id], tree_of(fixture_id)),
     ):
         pass
 

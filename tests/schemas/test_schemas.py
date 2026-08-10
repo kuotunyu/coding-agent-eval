@@ -89,8 +89,10 @@ VALID_FIXTURE: dict[str, Any] = {
     "known_residual_defects": "known_residual_defects.yaml",
     "environment": {
         "base_image_digest": "sha256:" + "b" * 64,
-        "prepared_image_tag": "cae-fx-demo-py:1.0.0",
-        "prepared_image_digest": "sha256:" + "d" * 64,
+        "prepared_image_repository": "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py",
+        "prepared_image_tag": "1.0.4",
+        "prepared_image_manifest_digest": "sha256:" + "d" * 64,
+        "prepared_image_config_digest": "sha256:" + "e" * 64,
         "lock_manifest": "env/env.lock.json",
         "rebuild_recipe": "env/Dockerfile",
         "fingerprint": "sha256:" + "c" * 64,
@@ -99,16 +101,6 @@ VALID_FIXTURE: dict[str, Any] = {
 }
 
 VALID_CURRENT_FIXTURE = deepcopy(VALID_FIXTURE)
-VALID_CURRENT_FIXTURE["environment"] = {
-    "base_image_digest": "sha256:" + "b" * 64,
-    "prepared_image_repository": "ghcr.io/kuotunyu/coding-agent-eval-fx-demo-py",
-    "prepared_image_tag": "1.0.4",
-    "prepared_image_manifest_digest": "sha256:" + "d" * 64,
-    "prepared_image_config_digest": "sha256:" + "e" * 64,
-    "lock_manifest": "env/env.lock.json",
-    "rebuild_recipe": "env/Dockerfile",
-    "fingerprint": "sha256:" + "c" * 64,
-}
 
 
 def test_valid_fixture_passes() -> None:
@@ -122,6 +114,20 @@ def test_valid_current_oci_fixture_passes() -> None:
 def test_fixture_rejects_mixed_legacy_and_current_image_identity() -> None:
     doc = deepcopy(VALID_CURRENT_FIXTURE)
     doc["environment"]["prepared_image_digest"] = "sha256:" + "f" * 64
+
+    assert not validator("fixture").is_valid(doc)
+
+
+def test_fixture_rejects_the_legacy_local_image_identity() -> None:
+    doc = deepcopy(VALID_FIXTURE)
+    doc["environment"] = {
+        "base_image_digest": "sha256:" + "b" * 64,
+        "prepared_image_tag": "cae/fx-demo-py:1.0.0",
+        "prepared_image_digest": "sha256:" + "d" * 64,
+        "lock_manifest": "env/env.lock.json",
+        "rebuild_recipe": "env/Dockerfile",
+        "fingerprint": "sha256:" + "c" * 64,
+    }
 
     assert not validator("fixture").is_valid(doc)
 

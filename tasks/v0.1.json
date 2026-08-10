@@ -5,7 +5,7 @@
     {
       "task_id": "fx-taskq-py/clean",
       "fixture_id": "fx-taskq-py",
-      "fixture_version": "1.0.3",
+      "fixture_version": "1.0.4",
       "snapshot": "clean",
       "bug_id": null,
       "patch": null,
@@ -16,7 +16,7 @@
     {
       "task_id": "fx-taskq-py/B-001",
       "fixture_id": "fx-taskq-py",
-      "fixture_version": "1.0.3",
+      "fixture_version": "1.0.4",
       "snapshot": "mutated",
       "bug_id": "fx-taskq-py/B-001",
       "patch": "patches/B-001.patch",
@@ -27,7 +27,7 @@
     {
       "task_id": "fx-taskq-py/B-002",
       "fixture_id": "fx-taskq-py",
-      "fixture_version": "1.0.3",
+      "fixture_version": "1.0.4",
       "snapshot": "mutated",
       "bug_id": "fx-taskq-py/B-002",
       "patch": "patches/B-002.patch",
@@ -38,7 +38,7 @@
     {
       "task_id": "fx-taskq-py/B-003",
       "fixture_id": "fx-taskq-py",
-      "fixture_version": "1.0.3",
+      "fixture_version": "1.0.4",
       "snapshot": "mutated",
       "bug_id": "fx-taskq-py/B-003",
       "patch": "patches/B-003.patch",
@@ -49,7 +49,7 @@
     {
       "task_id": "fx-taskq-py/B-004",
       "fixture_id": "fx-taskq-py",
-      "fixture_version": "1.0.3",
+      "fixture_version": "1.0.4",
       "snapshot": "mutated",
       "bug_id": "fx-taskq-py/B-004",
       "patch": "patches/B-004.patch",
@@ -60,7 +60,7 @@
     {
       "task_id": "fx-ledger-ts/clean",
       "fixture_id": "fx-ledger-ts",
-      "fixture_version": "1.0.2",
+      "fixture_version": "1.0.3",
       "snapshot": "clean",
       "bug_id": null,
       "patch": null,
@@ -71,7 +71,7 @@
     {
       "task_id": "fx-ledger-ts/B-001",
       "fixture_id": "fx-ledger-ts",
-      "fixture_version": "1.0.2",
+      "fixture_version": "1.0.3",
       "snapshot": "mutated",
       "bug_id": "fx-ledger-ts/B-001",
       "patch": "patches/B-001.patch",
@@ -82,7 +82,7 @@
     {
       "task_id": "fx-ledger-ts/B-002",
       "fixture_id": "fx-ledger-ts",
-      "fixture_version": "1.0.2",
+      "fixture_version": "1.0.3",
       "snapshot": "mutated",
       "bug_id": "fx-ledger-ts/B-002",
       "patch": "patches/B-002.patch",
@@ -93,7 +93,7 @@
     {
       "task_id": "fx-ledger-ts/B-003",
       "fixture_id": "fx-ledger-ts",
-      "fixture_version": "1.0.2",
+      "fixture_version": "1.0.3",
       "snapshot": "mutated",
       "bug_id": "fx-ledger-ts/B-003",
       "patch": "patches/B-003.patch",
@@ -104,7 +104,7 @@
     {
       "task_id": "fx-ledger-ts/B-004",
       "fixture_id": "fx-ledger-ts",
-      "fixture_version": "1.0.2",
+      "fixture_version": "1.0.3",
       "snapshot": "mutated",
       "bug_id": "fx-ledger-ts/B-004",
       "patch": "patches/B-004.patch",

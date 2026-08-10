@@ -69,22 +69,22 @@
     {
       "bytes": 2833,
       "path": "fixtures/fx-ledger-ts/bugs/B-001.yaml",
-      "sha256": "8db80a0e7e9df91a22e222329f437bb0b21a8918b7c35090199a51b2e446d7fc"
+      "sha256": "772fd2a98686e568e34e74d6ff04de8aead8ead42c425293584e61326c1cec64"
     },
     {
       "bytes": 2506,
       "path": "fixtures/fx-ledger-ts/bugs/B-002.yaml",
-      "sha256": "c78c5e084597e5ad6712cb7d0b8a9b68670ecc877a2a1a038daa5ee9e238cc37"
+      "sha256": "e64b20bc6d10c4c61d6971fa063ce3ab5cfd223d1968f0b492ca0dc0a44e08df"
     },
     {
       "bytes": 2589,
       "path": "fixtures/fx-ledger-ts/bugs/B-003.yaml",
-      "sha256": "523928c65befad05c6beb8253bc26bc4d2ae3ab7cb60fa269c92e1ea503c1506"
+      "sha256": "550d6ca3f24c21573600c9db13ebf3703e16f6dd27cc4897c7765272fab5a8e6"
     },
     {
       "bytes": 2535,
       "path": "fixtures/fx-ledger-ts/bugs/B-004.yaml",
-      "sha256": "146e31015497b58da84c9b69db037c5dd59c2af40ac59015d047dddfb1bd11d5"
+      "sha256": "e58f110ff0b7c87c62883f73e380a137a43f6d58b262bd5201ba8d2e027969d6"
     },
     {
       "bytes": 20329,
@@ -102,14 +102,14 @@
       "sha256": "a6698f6ed29fd09df388ca1688a14d69a3a7f24e816cd2d44b31974fc96328ab"
     },
     {
-      "bytes": 1934,
+      "bytes": 2104,
       "path": "fixtures/fx-ledger-ts/fixture.yaml",
-      "sha256": "56885ebde183ca7a8dcc93dab53737ec36ce6701f232ad76bbf9e43fd7e26787"
+      "sha256": "e938ef69e9bc0182207ff03644c93897dbe6f31d1c861c0c0b2ede6ff069e7e4"
     },
     {
       "bytes": 937,
       "path": "fixtures/fx-ledger-ts/known_residual_defects.yaml",
-      "sha256": "170f8f30e25302089842fa73cdd2fd9f7ab99496623018f0f7143ddb91e1d095"
+      "sha256": "4a2e1033289941615d307bf96eaa2a95817c69d6f9608515eafc40a362fd2ea5"
     },
     {
       "bytes": 1210,
@@ -294,22 +294,22 @@
     {
       "bytes": 3214,
       "path": "fixtures/fx-taskq-py/bugs/B-001.yaml",
-      "sha256": "7c73d7d2673f4bb9aaeccea51140d1cda097121f20c73e4ced94bafc69f1203f"
+      "sha256": "72e0e0b974cd4d120a4290bd3e04175c4ca013454026f57dae922d3be9c8c393"
     },
     {
       "bytes": 2558,
       "path": "fixtures/fx-taskq-py/bugs/B-002.yaml",
-      "sha256": "067d61d301e65aea7de12bb8a91a9b2873a4b2e36a71e64f0f6dc010d99c9784"
+      "sha256": "be5d5ee6ec2b9cc790a53354d8e4160a279a705fff17929c9f3fe553f03762c5"
     },
     {
       "bytes": 2278,
       "path": "fixtures/fx-taskq-py/bugs/B-003.yaml",
-      "sha256": "cbaa273c032978e569acaac639c53dacbb8f9dc341f33d72a04fe37dcb3e7894"
+      "sha256": "df56fa74ccc574ce7b3c03c46f5fd8fabba42b6d924bcdadfa25abf038b1879a"
     },
     {
       "bytes": 2118,
       "path": "fixtures/fx-taskq-py/bugs/B-004.yaml",
-      "sha256": "7b0ad497bd78748dc61e8a15181220eb46a5555212c11a34efb3be0c22679e36"
+      "sha256": "619fa662fa995d36f9deac389c968f869ddfca32b3a01b011c96e81c6c6e3cff"
     },
     {
       "bytes": 18590,
@@ -327,14 +327,14 @@
       "sha256": "1b02b5a0ac0eafea1e63fe47d6f6f0b499252a00e3101fc9883a5456c2775961"
     },
     {
-      "bytes": 2571,
+      "bytes": 2549,
       "path": "fixtures/fx-taskq-py/fixture.yaml",
-      "sha256": "18af2d3bbc11d503bdf1fee1faf168ada6fababae2bd74a51fcef1246b43f91e"
+      "sha256": "dcb8b893d88eb73e8d1f8fe5395368dbba4941737089133f96450dc161080c04"
     },
     {
       "bytes": 779,
       "path": "fixtures/fx-taskq-py/known_residual_defects.yaml",
-      "sha256": "e823721a5d14324d89df5f6cfbb29de6fd6a5c196edf3d7c49bcb8adfdee8972"
+      "sha256": "615e9e9503e5fa7c5fa2f2b6173a2170b3da3b2bc8fcce3cda3c0e272a1470bf"
     },
     {
       "bytes": 748,
@@ -574,22 +574,22 @@
     {
       "bytes": 1492,
       "path": "runs/baseline-fx-ledger-ts-clean/results.json",
-      "sha256": "8b0ceef6a962d621d7aa2fd9e4620d8f3e247fb54abab04116115ba71e02423f"
+      "sha256": "bb60bb6dbb5fe00485bc0836a1161052fc01a8ca98c102dee5980ffd0e27b95a"
     },
     {
       "bytes": 1274,
       "path": "runs/baseline-fx-ledger-ts-mutated/results.json",
-      "sha256": "055e58dc85f22ea87beea2eda81d6dd13c0b45fd63831f544dc204b7772d7c9f"
+      "sha256": "339b733e9df3561e9874e25d0fd74a54931d70bd0a28761d1961af8addd3eb6d"
     },
     {
       "bytes": 1493,
       "path": "runs/baseline-fx-taskq-py-clean/results.json",
-      "sha256": "66530fb202e966175ec77a2bb7a03bbac1611d9389df7ed73271a81b470b048e"
+      "sha256": "9009db84de019a132bb3d82b14839daf2eccc711a56ae911dc5dd8c3a5bb6cc9"
     },
     {
       "bytes": 1273,
       "path": "runs/baseline-fx-taskq-py-mutated/results.json",
-      "sha256": "51c423bae1e2b60959cc9beb9b00c96b7a02763ba2532b33bc7443162f01a521"
+      "sha256": "9ab73e2f4bd1915675abdbf1070260e62b782727cd612c709f45adc664c0e220"
     },
     {
       "bytes": 21,
@@ -722,9 +722,9 @@
       "sha256": "ea2eed7bb89b5377a36a1a0393167c6a9a96b169d76fc6e27457a1e8de4b3166"
     },
     {
-      "bytes": 7128,
+      "bytes": 6022,
       "path": "schemas/fixture.schema.json",
-      "sha256": "a407c07262b7ea5a880f4c3cede4b358df374325c35ad68d7df193a5d99e0147"
+      "sha256": "fbd7ee6d30d9c5581bff97cb2cf040e3ec5946c4c50f1fbe4dcf5915ee9d6a33"
     },
     {
       "bytes": 1006,
@@ -764,7 +764,7 @@
     {
       "bytes": 3863,
       "path": "tasks/v0.1.json",
-      "sha256": "5ef9c6152de493a9100deb7de0b0f6d8dfc52045f582c98922d0b38807460d66"
+      "sha256": "cd595c76e1ec3454b207ec54de2d82c4ebee9a82f40ca403f170cbf3701cc57a"
     },
     {
       "bytes": 103103,

@@ -327,6 +327,10 @@ def _run_fixture(args: argparse.Namespace) -> int:
     """Run gate G2: every bug's witness cycle for one fixture."""
     import yaml
 
+    from coding_agent_eval.fixtures.image_identity import (
+        ImageIdentityError,
+        PreparedImageIdentity,
+    )
     from coding_agent_eval.fixtures.witness import (
         WitnessContract,
         WitnessError,
@@ -350,7 +354,11 @@ def _run_fixture(args: argparse.Namespace) -> int:
         return 2
 
     failed = 0
-    image_tag = manifest["environment"]["prepared_image_tag"]
+    try:
+        image_ref = PreparedImageIdentity.from_environment(manifest["environment"]).immutable_ref
+    except (KeyError, TypeError, ImageIdentityError) as exc:
+        print(f"prepared image identity: FAIL\n  - {exc}", file=sys.stderr)
+        return 2
     clean_path = fixture_dir / manifest["clean_control"]["witness_suite"]
     try:
         clean_contract = WitnessContract.from_document(
@@ -359,7 +367,7 @@ def _run_fixture(args: argparse.Namespace) -> int:
         clean_result = run_clean_control(
             fixture_dir=fixture_dir,
             contract=clean_contract,
-            image_digest=resolve_image_digest(image_tag),
+            image_digest=resolve_image_digest(image_ref),
         )
     except (OSError, KeyError, WitnessError) as exc:
         print(f"clean control: FAIL\n  - {exc}", file=sys.stderr)
@@ -383,7 +391,7 @@ def _run_fixture(args: argparse.Namespace) -> int:
                 bug_id=bug_id,
                 patch_path=fixture_dir / bug["patch"],
                 contract=WitnessContract.from_document(bug["witness"]),
-                image_tag=image_tag,
+                image_tag=image_ref,
             )
         except WitnessError as exc:
             print(f"{bug_id}: FAIL\n  - {exc}", file=sys.stderr)

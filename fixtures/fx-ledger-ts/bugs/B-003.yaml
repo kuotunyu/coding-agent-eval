@@ -5,7 +5,7 @@
 schema_version: "0.1"
 bug_id: fx-ledger-ts/B-003
 fixture_id: fx-ledger-ts
-fixture_version: 1.0.2
+fixture_version: 1.0.3
 
 category: data_boundary
 subcategory: internal_detail_exposure

@@ -19,9 +19,11 @@ observed failing rather than only passing.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import shutil
 import subprocess
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -38,7 +40,6 @@ from coding_agent_eval.fixtures.environment import (
     runtime_version,
 )
 from coding_agent_eval.sandbox.fingerprint import (
-    COMPONENTS,
     CURRENT_COMPONENTS,
     environment_fingerprint,
 )
@@ -111,7 +112,7 @@ def current_copy(destination: Path) -> Path:
     path = fixture_dir / "fixture.yaml"
     manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
     environment = manifest["environment"]
-    environment.pop("prepared_image_digest")
+    environment.pop("prepared_image_digest", None)
     environment["prepared_image_repository"] = "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py"
     environment["prepared_image_tag"] = "1.0.4"
     environment["prepared_image_manifest_digest"] = CURRENT_MANIFEST_DIGEST
@@ -159,11 +160,6 @@ def failed_names(report: object) -> set[str]:
     return {check.name for check in report.failures}  # type: ignore[attr-defined]
 
 
-def local_baseline_failures(fixture_id: str = "fx-taskq-py") -> set[str]:
-    """The official image may be unavailable; a local rebuild has a new bit identity."""
-    return failed_names(run_environment_check(REPO_ROOT / "fixtures" / fixture_id))
-
-
 # ------------------------------------------------- frozen component spellings
 
 
@@ -196,14 +192,16 @@ def test_the_recorded_fingerprint_is_reconstructible_without_docker(fixture_id: 
     rebuilt = environment_fingerprint(
         {
             "base_image_digest": environment["base_image_digest"],
-            "prepared_image_digest": environment["prepared_image_digest"],
+            "prepared_image_manifest_digest": environment["prepared_image_manifest_digest"],
+            "prepared_image_config_digest": environment["prepared_image_config_digest"],
             "os_release_id": "debian",
             "os_release_version_id": "12",
             "primary_runtime_version": runtime_version(case["runtime_raw"]),
             "package_manager_version": manager_version(case["manager_raw"], manager),
             "lock_manifest_sha256": hashlib.sha256(lock).hexdigest(),
             "arch": "linux/amd64",
-        }
+        },
+        contract="current",
     )
     assert rebuilt == environment["fingerprint"]
 
@@ -217,12 +215,14 @@ def test_the_lock_hash_is_bare_hex_not_a_prefixed_digest() -> None:
 
     prefixed = environment_fingerprint(
         {
-            **dict.fromkeys(COMPONENTS, "x"),
+            **dict.fromkeys(CURRENT_COMPONENTS, "x"),
             "lock_manifest_sha256": f"sha256:{bare}",
-        }
+        },
+        contract="current",
     )
     unprefixed = environment_fingerprint(
-        {**dict.fromkeys(COMPONENTS, "x")} | {"lock_manifest_sha256": bare}
+        {**dict.fromkeys(CURRENT_COMPONENTS, "x")} | {"lock_manifest_sha256": bare},
+        contract="current",
     )
     assert prefixed != unprefixed
 
@@ -238,7 +238,7 @@ def test_an_empty_version_string_is_refused_rather_than_hashed() -> None:
 # ----------------------------------------------- current OCI identity (offline)
 
 
-def test_local_config_digest_reads_the_docker_image_id(
+def test_local_config_digest_reads_the_config_object_from_the_saved_oci_layout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[list[str]] = []
@@ -247,12 +247,47 @@ def test_local_config_digest_reads_the_docker_image_id(
         args: list[str], *, environment: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[bytes]:
         calls.append(args)
-        return subprocess.CompletedProcess(args, 0, (CURRENT_CONFIG_DIGEST + "\n").encode(), b"")
+        archive = Path(args[3])
+        index_digest = "sha256:" + "c" * 64
+        platform_digest = "sha256:" + "d" * 64
+        documents = {
+            "index.json": {
+                "schemaVersion": 2,
+                "manifests": [{"digest": index_digest}],
+            },
+            f"blobs/sha256/{index_digest.removeprefix('sha256:')}": {
+                "schemaVersion": 2,
+                "manifests": [
+                    {
+                        "digest": platform_digest,
+                        "platform": {"os": "linux", "architecture": "amd64"},
+                    },
+                    {
+                        "digest": "sha256:" + "e" * 64,
+                        "platform": {"os": "unknown", "architecture": "unknown"},
+                    },
+                ],
+            },
+            f"blobs/sha256/{platform_digest.removeprefix('sha256:')}": {
+                "schemaVersion": 2,
+                "config": {"digest": CURRENT_CONFIG_DIGEST},
+                "layers": [],
+            },
+        }
+        with tarfile.open(archive, "w") as saved:
+            for name, document in documents.items():
+                payload = json.dumps(document).encode()
+                info = tarfile.TarInfo(name)
+                info.size = len(payload)
+                saved.addfile(info, io.BytesIO(payload))
+        return subprocess.CompletedProcess(args, 0, b"", b"")
 
     monkeypatch.setattr(environment_module, "_docker", fake_docker)
 
     assert environment_module.local_config_digest("repository@digest") == CURRENT_CONFIG_DIGEST
-    assert calls == [["image", "inspect", "--format", "{{.Id}}", "repository@digest"]]
+    assert len(calls) == 1
+    assert calls[0][:3] == ["image", "save", "--output"]
+    assert calls[0][4] == "repository@digest"
 
 
 def test_registry_manifest_digest_reads_the_registry_object(
@@ -454,11 +489,9 @@ def test_a_missing_recipe_fails(tmp_path: Path) -> None:
 def test_the_shipped_fixtures_reproduce_their_recorded_fingerprint(fixture_id: str) -> None:
     """The gate. Every other test here proves it can fail."""
     report = run_environment_check(REPO_ROOT / "fixtures" / fixture_id)
-    if failed_names(report) == {"prepared_image_digest"}:
-        pytest.skip("local tag is a best-effort rebuild, not the recorded prepared image")
     assert report.ok, report.render()
     assert {check.name for check in report.checks} == {
-        "prepared_image_digest",
+        "prepared_image_config_digest",
         "recipe_pins_the_base",
         "fingerprint",
     }
@@ -468,10 +501,10 @@ def test_the_shipped_fixtures_reproduce_their_recorded_fingerprint(fixture_id: s
 @pytest.mark.docker
 @pytest.mark.parametrize("fixture_id", FIXTURE_IDS)
 def test_a_local_rebuild_still_matches_every_runtime_component(fixture_id: str) -> None:
-    """A new image digest is a publication blocker, not permission to skip runtime checks."""
+    """The immutable pull reproduces every runtime component."""
     report = run_environment_check(REPO_ROOT / "fixtures" / fixture_id)
 
-    assert failed_names(report) <= {"prepared_image_digest"}, report.render()
+    assert report.ok, report.render()
     fingerprint = next(check for check in report.checks if check.name == "fingerprint")
     assert fingerprint.ok, report.render()
 
@@ -489,7 +522,7 @@ def test_the_base_digest_is_reported_as_unverified_not_as_a_pass(tmp_path: Path)
     assert "base_image_digest" not in {check.name for check in report.checks}
 
     observed = {observation.name for observation in report.observations}
-    assert observed == {"base_image_digest"}
+    assert observed == {"base_image_digest", "prepared_image_manifest_digest"}
     assert "unverified" in report.render()
 
 
@@ -500,18 +533,18 @@ def test_a_fingerprint_that_drifted_from_the_image_fails(tmp_path: Path) -> None
     edit_environment(fixture_dir, "fingerprint", "sha256:" + "0" * 64)
 
     report = run_environment_check(fixture_dir)
-    assert failed_names(report) == local_baseline_failures() | {"fingerprint"}
+    assert failed_names(report) == {"fingerprint"}
 
 
 @requires_docker
 @pytest.mark.docker
-def test_a_mistyped_prepared_digest_fails(tmp_path: Path) -> None:
+def test_a_mistyped_prepared_config_digest_fails(tmp_path: Path) -> None:
     """The case that would otherwise pass every gate in the repository."""
     fixture_dir = partial_copy("fx-taskq-py", tmp_path / "fx-taskq-py")
-    edit_environment(fixture_dir, "prepared_image_digest", "sha256:" + "1" * 64)
+    edit_environment(fixture_dir, "prepared_image_config_digest", "sha256:" + "1" * 64)
 
     report = run_environment_check(fixture_dir)
-    assert failed_names(report) == {"prepared_image_digest", "fingerprint"}, (
+    assert failed_names(report) == {"prepared_image_config_digest", "fingerprint"}, (
         "the fingerprint covers the digest, so it must move too"
     )
 
@@ -525,7 +558,7 @@ def test_editing_the_lock_manifest_changes_the_fingerprint(tmp_path: Path) -> No
     lock.write_bytes(lock.read_bytes() + b"\n")
 
     report = run_environment_check(fixture_dir)
-    assert failed_names(report) == local_baseline_failures() | {"fingerprint"}
+    assert failed_names(report) == {"fingerprint"}
 
 
 @requires_docker
@@ -545,15 +578,15 @@ def test_a_recipe_that_stopped_pinning_is_caught_even_when_the_fingerprint_still
     )
 
     report = run_environment_check(fixture_dir)
-    assert failed_names(report) == local_baseline_failures() | {"recipe_pins_the_base"}
+    assert failed_names(report) == {"recipe_pins_the_base"}
 
 
 @requires_docker
 @pytest.mark.docker
-def test_an_absent_prepared_image_cannot_be_checked(tmp_path: Path) -> None:
+def test_an_absent_immutable_image_cannot_be_checked(tmp_path: Path) -> None:
     """Not a failing check: the gate has no subject, and says so."""
     fixture_dir = partial_copy("fx-taskq-py", tmp_path / "fx-taskq-py")
-    edit_environment(fixture_dir, "prepared_image_tag", "cae/definitely-absent:0.0.0")
+    edit_environment(fixture_dir, "prepared_image_manifest_digest", "sha256:" + "1" * 64)
 
     with pytest.raises(EnvironmentCheckError, match="not present locally"):
         run_environment_check(fixture_dir)

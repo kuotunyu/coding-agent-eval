@@ -14,7 +14,7 @@
 schema_version: "0.1"
 fixture_id: fx-taskq-py
 name: taskq — background task queue service
-fixture_version: 1.0.3
+fixture_version: 1.0.4
 provenance: first_party
 language: python
 license: MIT
@@ -48,16 +48,15 @@ known_residual_defects: known_residual_defects.yaml
 
 environment:
   base_image_digest: sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
-  prepared_image_tag: cae/fx-taskq-py:1.0.3
-  # The tag names the image; this pins it. A tag can be repointed, so without
-  # the digest nothing can check that the image being run is the one the
-  # fingerprint below was computed from.
-  prepared_image_digest: sha256:ac7c65bbfa4b5589151de61d821b6e634f3ed9a20e4423619f5c0c183cb1bfb0
+  prepared_image_repository: ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py
+  prepared_image_tag: 1.0.4
+  prepared_image_manifest_digest: sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
+  prepared_image_config_digest: sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1
   lock_manifest: env/env.lock.json
   rebuild_recipe: env/Dockerfile
-  # Over: base image digest, prepared image digest, debian 12, Python 3.12.13,
+  # Over: base/registry-manifest/config digests, debian 12, Python 3.12.13,
   # pip 25.0.1, the lock manifest's sha256, and linux/amd64.
-  fingerprint: sha256:abbc68ba602738ac8fc4a34328cb492830592ea1a8600d465b6ab456879eeda3
+  fingerprint: sha256:c58f1695a826a91308e1d839476b5d240c1e14e73f700a772d1b9bfd3594c3c9
 
 bugs:
   - fx-taskq-py/B-001

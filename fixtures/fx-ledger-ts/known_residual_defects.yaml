@@ -15,5 +15,5 @@
 # tree was repaired, not because nothing was found.
 schema_version: "0.1"
 fixture_id: fx-ledger-ts
-fixture_version: 1.0.2
+fixture_version: 1.0.3
 defects: []

@@ -41,8 +41,14 @@ FIXTURE_IDS = ["fx-taskq-py", "fx-ledger-ts"]
 
 #: Prepared images, for the variant of this gate that runs under real isolation.
 IMAGE_TAGS = {
-    "fx-taskq-py": "cae/fx-taskq-py:1.0.3",
-    "fx-ledger-ts": "cae/fx-ledger-ts:1.0.2",
+    "fx-taskq-py": (
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
+        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+    ),
+    "fx-ledger-ts": (
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@"
+        "sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312"
+    ),
 }
 
 #: The six names spec §8.6 fixes. Asserted as a set so a rename fails here.

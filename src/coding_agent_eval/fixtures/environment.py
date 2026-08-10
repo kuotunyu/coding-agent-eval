@@ -41,6 +41,7 @@ import json
 import os
 import re
 import subprocess
+import tarfile
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -200,10 +201,90 @@ def _docker(
         raise EnvironmentCheckError(f"docker {args[0]} failed: {exc}") from exc
 
 
+def _archive_json(archive: tarfile.TarFile, name: str) -> dict[str, Any]:
+    try:
+        member = archive.getmember(name)
+        handle = archive.extractfile(member)
+        if handle is None:
+            raise EnvironmentCheckError(f"OCI image archive member {name} has no content")
+        loaded = json.loads(handle.read())
+    except (KeyError, OSError, tarfile.TarError, json.JSONDecodeError) as exc:
+        raise EnvironmentCheckError(f"cannot read OCI image archive member {name}: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise EnvironmentCheckError(f"OCI image archive member {name} is not an object")
+    return loaded
+
+
+def _config_digest_from_oci_archive(path: Path) -> str:
+    """Find the one linux/amd64 config object in a Docker OCI-layout export."""
+    try:
+        with tarfile.open(path) as archive:
+            return _config_digest_from_open_oci_archive(archive)
+    except (OSError, tarfile.TarError) as exc:
+        raise EnvironmentCheckError(f"cannot open Docker OCI image archive: {exc}") from exc
+
+
+def _config_digest_from_open_oci_archive(archive: tarfile.TarFile) -> str:
+    root = _archive_json(archive, "index.json")
+    pending: list[Mapping[str, Any]] = []
+    manifests = root.get("manifests")
+    if isinstance(manifests, list):
+        pending.extend(item for item in manifests if isinstance(item, Mapping))
+    configs: set[str] = set()
+    visited: set[str] = set()
+    while pending:
+        descriptor = pending.pop()
+        platform = descriptor.get("platform")
+        if isinstance(platform, Mapping) and (
+            platform.get("os") != "linux" or platform.get("architecture") != "amd64"
+        ):
+            continue
+        digest = descriptor.get("digest")
+        if not isinstance(digest, str) or SHA256_DIGEST.fullmatch(digest) is None:
+            raise EnvironmentCheckError("OCI image archive contains an invalid descriptor")
+        if digest in visited:
+            continue
+        visited.add(digest)
+        document = _archive_json(archive, f"blobs/sha256/{digest.removeprefix('sha256:')}")
+        config = document.get("config")
+        if isinstance(config, Mapping):
+            config_digest = config.get("digest")
+            if not isinstance(config_digest, str) or SHA256_DIGEST.fullmatch(config_digest) is None:
+                raise EnvironmentCheckError("OCI image manifest contains an invalid config digest")
+            configs.add(config_digest)
+            continue
+        children = document.get("manifests")
+        if isinstance(children, list):
+            pending.extend(item for item in children if isinstance(item, Mapping))
+
+    if len(configs) != 1:
+        raise EnvironmentCheckError(
+            f"expected one linux/amd64 config digest in OCI image archive, found {len(configs)}"
+        )
+    return configs.pop()
+
+
 def local_config_digest(image_ref: str) -> str | None:
-    """The local image configuration digest, or None when it is absent."""
-    proc = _docker(["image", "inspect", "--format", "{{.Id}}", image_ref])
-    return proc.stdout.decode("utf-8").strip() if proc.returncode == 0 else None
+    """The local OCI config digest, independent of Docker's changing `.Id` semantics.
+
+    Docker's classic image store exposes the config digest as ``.Id``. The
+    containerd image store in Docker Desktop 29 exposes the OCI index digest
+    there instead. Exporting the already-local image and following its OCI
+    descriptors keeps this check offline and names the actual config object.
+    """
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix="cae-image-", suffix=".tar", delete=False
+        ) as handle:
+            temporary = Path(handle.name)
+        proc = _docker(["image", "save", "--output", str(temporary), image_ref])
+        if proc.returncode != 0:
+            return None
+        return _config_digest_from_oci_archive(temporary)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def local_image_id(tag: str) -> str | None:
@@ -534,10 +615,10 @@ def _run_current_environment_check(
         recipe_pins_the_base(fixture_dir / str(environment["rebuild_recipe"])),
     ]
 
-    subject = (
-        identity.immutable_ref if observed_config == identity.config_digest else observed_config
-    )
-    probed = probe_image(subject, str(manifest["language"]))
+    # Probe the object selected by the immutable registry manifest. A config
+    # digest is a content identity, not necessarily a runnable Docker image ID
+    # under containerd-backed image stores.
+    probed = probe_image(identity.immutable_ref, str(manifest["language"]))
     lock_hex = lock_manifest_sha256(fixture_dir / str(environment["lock_manifest"]))
     components = {
         "base_image_digest": str(environment["base_image_digest"]),

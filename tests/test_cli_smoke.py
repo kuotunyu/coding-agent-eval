@@ -317,6 +317,7 @@ def test_fixture_verify_runs_the_clean_suite_and_every_bug(
     from coding_agent_eval.fixtures import witness
 
     calls: list[str] = []
+    image_refs: list[str] = []
 
     def fake_contract(*args: object, phase: str, **kwargs: object) -> witness.PhaseResult:
         calls.append(phase)
@@ -324,8 +325,11 @@ def test_fixture_verify_runs_the_clean_suite_and_every_bug(
             phase=phase, exit_code=0, stdout="205 passed", stderr="", timed_out=False
         )
 
-    def fake_cycle(*args: object, bug_id: str, **kwargs: object) -> witness.CycleResult:
+    def fake_cycle(
+        *args: object, bug_id: str, image_tag: str, **kwargs: object
+    ) -> witness.CycleResult:
         calls.append(bug_id)
+        image_refs.append(image_tag)
         return witness.CycleResult(
             bug_id=bug_id,
             phases=[
@@ -335,13 +339,22 @@ def test_fixture_verify_runs_the_clean_suite_and_every_bug(
             ],
         )
 
-    monkeypatch.setattr(witness, "resolve_image_digest", lambda image: "sha256:" + "a" * 64)
+    def fake_resolve(image: str) -> str:
+        image_refs.append(image)
+        return "sha256:" + "a" * 64
+
+    monkeypatch.setattr(witness, "resolve_image_digest", fake_resolve)
     monkeypatch.setattr(witness, "run_contract", fake_contract)
     monkeypatch.setattr(witness, "run_g2_cycle", fake_cycle)
 
     fixture = REPO_ROOT / "fixtures" / "fx-taskq-py"
     assert main(["fixture", "verify", str(fixture)]) == 0
     assert calls == ["clean control", *[f"fx-taskq-py/B-{index:03d}" for index in range(1, 5)]]
+    immutable_ref = (
+        "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
+        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+    )
+    assert image_refs == [immutable_ref] * 5
     assert "clean control" in capsys.readouterr().out
 
 

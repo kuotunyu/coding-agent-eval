@@ -6,7 +6,7 @@
 schema_version: "0.1"
 bug_id: fx-ledger-ts/B-001
 fixture_id: fx-ledger-ts
-fixture_version: 1.0.2
+fixture_version: 1.0.3
 
 category: concurrency
 subcategory: lost_atomicity

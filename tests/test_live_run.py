@@ -325,13 +325,13 @@ def submit_then_stop() -> Any:
 
 
 def current_fixture(tmp_path: Path, *, include_config_digest: bool = True) -> Path:
-    """Copy the legacy fixture and give the copy a current OCI identity."""
+    """Copy the fixture and replace its OCI identity with deterministic test values."""
     destination = tmp_path / "current-fixture"
     shutil.copytree(FIXTURE, destination)
     manifest_path = destination / "fixture.yaml"
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     environment = manifest["environment"]
-    environment.pop("prepared_image_digest")
+    environment.pop("prepared_image_digest", None)
     environment.update(
         {
             "prepared_image_repository": IMAGE_REPOSITORY,
@@ -341,6 +341,8 @@ def current_fixture(tmp_path: Path, *, include_config_digest: bool = True) -> Pa
     )
     if include_config_digest:
         environment["prepared_image_config_digest"] = CONFIG_DIGEST
+    else:
+        environment.pop("prepared_image_config_digest", None)
     manifest_path.write_text(
         yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8", newline="\n"
     )
@@ -478,6 +480,21 @@ def test_legacy_fixture_cannot_claim_current_isolation(
 ) -> None:
     import coding_agent_eval.live as live_module
 
+    fixture = tmp_path / "legacy-fixture"
+    shutil.copytree(FIXTURE, fixture)
+    manifest_path = fixture / "fixture.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    environment = manifest["environment"]
+    for field in (
+        "prepared_image_repository",
+        "prepared_image_manifest_digest",
+        "prepared_image_config_digest",
+    ):
+        environment.pop(field)
+    environment["prepared_image_tag"] = "cae/fx-taskq-py:1.0.3"
+    environment["prepared_image_digest"] = "sha256:" + "c" * 64
+    manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+
     def provider_must_not_be_built(*args: Any, **kwargs: Any) -> Any:
         raise AssertionError("provider initialized before image identity validation")
 
@@ -485,7 +502,7 @@ def test_legacy_fixture_cannot_claim_current_isolation(
 
     with pytest.raises(ValueError, match="current OCI identity"):
         execute(
-            FIXTURE,
+            fixture,
             configuration=configuration(),
             snapshot="clean",
             isolate_image="sha256:" + "c" * 64,

@@ -61,7 +61,7 @@ def current_fixtures(tmp_path: Path) -> Path:
         path = root / fixture_id / "fixture.yaml"
         manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
         environment = manifest["environment"]
-        environment.pop("prepared_image_digest")
+        environment.pop("prepared_image_digest", None)
         environment.update(
             {
                 "prepared_image_repository": f"ghcr.io/kuotunyu/coding-agent-eval-{fixture_id}",

@@ -27,7 +27,11 @@ from coding_agent_eval.sandbox.run import (
     run_in_sandbox,
 )
 
-IMAGE_TAG = "cae/fx-taskq-py:1.0.3"
+IMAGE_REF = (
+    "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
+    "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+)
+IMAGE_TAG = "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.4"
 
 pytestmark = [
     pytest.mark.docker,
@@ -38,7 +42,7 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def image() -> str:
     try:
-        return resolve_digest(IMAGE_TAG)
+        return resolve_digest(IMAGE_REF)
     except RuntimeError as exc:  # pragma: no cover - environment dependent
         pytest.skip(str(exc))
 
@@ -244,7 +248,7 @@ def test_the_image_must_be_referenced_by_digest() -> None:
 def test_the_run_actually_used_a_digest(image: str) -> None:
     result = run(image, "true")
     assert image in result.argv
-    assert IMAGE_TAG not in result.argv
+    assert IMAGE_REF not in result.argv
 
 
 def test_no_container_is_left_behind(image: str) -> None:

@@ -7,7 +7,7 @@
 schema_version: "0.1"
 fixture_id: fx-ledger-ts
 name: ledger — double-entry ledger service
-fixture_version: 1.0.2
+fixture_version: 1.0.3
 provenance: first_party
 language: typescript
 license: MIT
@@ -41,13 +41,15 @@ known_residual_defects: known_residual_defects.yaml
 
 environment:
   base_image_digest: sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
-  prepared_image_tag: cae/fx-ledger-ts:1.0.2
-  prepared_image_digest: sha256:ae4d00186cc3d56c44c4956dbb8ec065e1afae2e03b8a64100b9baf347f12c5c
+  prepared_image_repository: ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts
+  prepared_image_tag: 1.0.3
+  prepared_image_manifest_digest: sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312
+  prepared_image_config_digest: sha256:c7d310f6a41a47132484bddc47969547c9e34cb7628456415696c59af223d583
   lock_manifest: env/env.lock.json
   rebuild_recipe: env/Dockerfile
-  # Over: base image digest, prepared image digest, debian 12, Node 22.23.2,
+  # Over: base/registry-manifest/config digests, debian 12, Node 22.23.2,
   # npm 10.9.8, the lock manifest's sha256, and linux/amd64.
-  fingerprint: sha256:805b2a6faf0c5e49f170e58f8bb288d0f59a48d08ef53fd3fa7d27915a17e826
+  fingerprint: sha256:b2b8074ec374e30a5bd0634fd7d0524160a0a0d210ddbdc0c6654a3111b6e380
 
 bugs:
   - fx-ledger-ts/B-001

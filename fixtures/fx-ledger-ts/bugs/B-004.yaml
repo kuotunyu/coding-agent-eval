@@ -5,7 +5,7 @@
 schema_version: "0.1"
 bug_id: fx-ledger-ts/B-004
 fixture_id: fx-ledger-ts
-fixture_version: 1.0.2
+fixture_version: 1.0.3
 
 category: security
 subcategory: timing_side_channel

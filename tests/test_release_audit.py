@@ -33,8 +33,8 @@ def test_default_audit_stays_green_while_publication_fails_closed(repo_root: Pat
 
     assert [finding for finding in default if finding.blocking] == []
     codes = {finding.code for finding in publication if finding.blocking}
+    assert "oci.identity" not in codes
     assert {
-        "oci.identity",
         "suite.registration",
         "suite.coverage",
         "suite.trace_contract",

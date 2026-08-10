@@ -13,5 +13,5 @@
 # The audit behind the empty list is in defects.md.
 schema_version: "0.1"
 fixture_id: fx-taskq-py
-fixture_version: 1.0.3
+fixture_version: 1.0.4
 defects: []
