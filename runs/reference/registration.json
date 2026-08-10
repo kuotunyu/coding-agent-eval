@@ -1,0 +1,53 @@
+{
+  "api": "responses",
+  "budgets": {
+    "per_task": {
+      "max_estimated_cost_usd": 0.25,
+      "max_tokens": 200000,
+      "max_tool_calls": 60,
+      "max_wallclock_seconds": 900.0
+    },
+    "suite_total": {
+      "max_estimated_cost_usd": 2.5,
+      "max_tokens": 2000000,
+      "max_tool_calls": 600,
+      "max_wallclock_seconds": 9000.0
+    }
+  },
+  "created_date": "2026-08-10",
+  "environment_fingerprints": {
+    "fx-ledger-ts": "sha256:b2b8074ec374e30a5bd0634fd7d0524160a0a0d210ddbdc0c6654a3111b6e380",
+    "fx-taskq-py": "sha256:c58f1695a826a91308e1d839476b5d240c1e14e73f700a772d1b9bfd3594c3c9"
+  },
+  "image_identities": {
+    "fx-ledger-ts": {
+      "config_digest": "sha256:c7d310f6a41a47132484bddc47969547c9e34cb7628456415696c59af223d583",
+      "manifest_digest": "sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312",
+      "repository": "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts"
+    },
+    "fx-taskq-py": {
+      "config_digest": "sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1",
+      "manifest_digest": "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad",
+      "repository": "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py"
+    }
+  },
+  "model": "gpt-5.6-luna",
+  "ordered_task_ids": [
+    "fx-taskq-py/clean",
+    "fx-taskq-py/B-001",
+    "fx-taskq-py/B-002",
+    "fx-taskq-py/B-003",
+    "fx-taskq-py/B-004",
+    "fx-ledger-ts/clean",
+    "fx-ledger-ts/B-001",
+    "fx-ledger-ts/B-002",
+    "fx-ledger-ts/B-003",
+    "fx-ledger-ts/B-004"
+  ],
+  "provider": "openai",
+  "reasoning_effort": "high",
+  "retry_policy": "no_automatic_retry",
+  "schema_version": "1.0.0",
+  "suite_id": "suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b",
+  "task_registry_sha256": "sha256:cd595c76e1ec3454b207ec54de2d82c4ebee9a82f40ca403f170cbf3701cc57a"
+}

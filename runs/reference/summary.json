@@ -1,0 +1,20 @@
+{
+  "counts": {
+    "budget_exhausted": 10
+  },
+  "ordered_task_ids": [
+    "fx-taskq-py/clean",
+    "fx-taskq-py/B-001",
+    "fx-taskq-py/B-002",
+    "fx-taskq-py/B-003",
+    "fx-taskq-py/B-004",
+    "fx-ledger-ts/clean",
+    "fx-ledger-ts/B-001",
+    "fx-ledger-ts/B-002",
+    "fx-ledger-ts/B-003",
+    "fx-ledger-ts/B-004"
+  ],
+  "schema_version": "1.0.0",
+  "suite_id": "suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b",
+  "task_count": 10
+}
