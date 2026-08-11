@@ -1,0 +1,48 @@
+{
+  "adjudication": "Not scored. `verified_*` metrics require a human ruling on blinded finding/bug pairs; run `cae evaluate` once the ledger has one.",
+  "agent_adapter": "openai-responses",
+  "agent_adapter_version": "0.3.0",
+  "bugs_in_snapshot": [],
+  "findings_submitted": 1,
+  "fixture_id": "fx-taskq-py",
+  "fixture_version": "1.0.4",
+  "image_config_digest": "sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1",
+  "image_manifest_digest": "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad",
+  "image_ref": "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad",
+  "provider": {
+    "api": "responses",
+    "api_key_present": true,
+    "base_url": "https://api.openai.com/v1",
+    "budget": {
+      "max_estimated_cost_usd": 0.035,
+      "max_tokens": 80000,
+      "max_tool_calls": 12,
+      "max_wallclock_seconds": 300.0
+    },
+    "max_output_tokens_per_request": 1024,
+    "model": "gpt-5.6-luna",
+    "pricing_effective_date": "2026-08-11",
+    "pricing_table_version": "openai-gpt-5.6-luna@2026-08-11",
+    "reasoning_effort": "low"
+  },
+  "run_id": "manual-clean-eab1fe9a9c11",
+  "schema_version": "0.1",
+  "snapshot": "clean",
+  "started_at": "2026-08-11T09:52:11.951+00:00",
+  "steps": 12,
+  "termination_reason": "completed",
+  "tool_backend": "measure_container:sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad",
+  "tool_calls": 11,
+  "trace_schema_version": "0.2.0",
+  "tree_checksum": "sha256:58a2399c1b9857456a23085be4fd937789bc0c701ca30304cf1eb9ccaa345154",
+  "usage": {
+    "cached_input_tokens": 70786,
+    "completeness": "complete",
+    "estimated_cost_usd": 0.031539,
+    "input_tokens": 88934,
+    "output_tokens": 1052,
+    "pricing_table_version": "openai-gpt-5.6-luna@2026-08-11",
+    "reasoning_tokens": 446
+  },
+  "wall_clock_ms": 37505
+}

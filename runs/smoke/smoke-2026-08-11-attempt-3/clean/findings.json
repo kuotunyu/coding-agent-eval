@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "category": "correctness",
+      "claim": "A stale worker can acknowledge or fail a later lease of the same task.",
+      "evidence": "`acknowledge` fetches the task and transitions it directly to DONE, while `fail` only checks `task.state is LEASED`; `lease` can select an expired LEASED row and increment attempts. Thus both workers use the same ID and there is no ownership distinction.",
+      "file": "src/taskq/queue.py",
+      "id": "TASKQ-001",
+      "line_end": 194,
+      "line_start": 156,
+      "root_cause": "Completion APIs identify a task only by task_id and accept any current LEASED row; they do not carry or validate the lease generation/token, nor check that the lease is still unexpired. After worker A's lease expires and worker B leases the task, A's delayed ack/fail can mutate B's lease.",
+      "severity": "high",
+      "suggested_verification": "Lease a task, advance the clock beyond lease_seconds, lease it again, then call acknowledge or fail using the first lease's task ID; observe that the second lease is completed or retried."
+    }
+  ]
+}

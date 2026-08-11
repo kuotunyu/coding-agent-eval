@@ -102,7 +102,37 @@ has offline mocked evidence only. Neither attempt above can be relabeled as adap
 
 ## Revised attempt requires new approval
 
-No further paid request is authorized by the first two approvals. A third attempt with
-adapter 0.3.0/prompt 0.2.0 must preserve both outcomes above, use a new output
-directory, and receive explicit owner approval. No new reference registration, tag,
-GitHub Release, or Zenodo action is authorized.
+The owner approved attempt 3 with cumulative provider-side exposure capped at USD
+1.00. The harness kept the narrower USD 0.035 per-task stop; increasing the approval
+ceiling did not require spending up to it.
+
+## Retained outcome -- attempt 3
+
+The clean task ran once with adapter 0.3.0/prompt 0.2.0, the 80,000-token observed
+budget, 12 tool calls, and 1,024 output tokens per request. It terminated normally and
+submitted one candidate clean-control finding. B-001 was not started because a clean
+control must produce no findings for this smoke gate to pass.
+
+| Field | Observed value |
+|---|---:|
+| Terminal outcome | `completed` |
+| Findings | 1 (unverified clean-control report) |
+| LLM calls / tool calls | 12 / 11 |
+| Input / cached input / output | 88,934 / 70,786 / 1,052 tokens |
+| Reasoning tokens | 446 |
+| Estimated cost | USD 0.031539 |
+
+All 11 function calls have an exact linked `function_call_output`. Public artifacts
+contain no API key, raw request/response body, or encrypted reasoning. A deterministic
+local reproduction showed that after an expired task is re-leased under the same task
+ID, acknowledging with the old worker's task ID transitions the current lease to
+`done`. This is machine evidence only, not a human validity ruling.
+
+The smoke gate therefore remains **failed** pending independent human confirmation of
+whether the reported behavior is a real in-scope clean-fixture defect. Cumulative
+observed cost across all three attempts is USD 0.072565, below the approved USD 1.00
+maximum exposure. No mutated task, 10-task suite, verified metric, or selective rerun
+was produced.
+
+No further paid request is authorized by the attempt-3 approval. No new reference
+registration, tag, GitHub Release, or Zenodo action is authorized.

@@ -42,9 +42,9 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 5436,
+      "bytes": 6901,
       "path": "docs/PAID_SMOKE_PLAN.md",
-      "sha256": "70f1d12bf09de5a633a41feacb6d59c1473b5bcd447bd9e082efc193b0b34962"
+      "sha256": "ec2fc3929f73942b302447628617759811b20545df57cf657e1bc003e74c102f"
     },
     {
       "bytes": 7363,
@@ -935,6 +935,21 @@
       "bytes": 20578,
       "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/trace.jsonl",
       "sha256": "4801d3bd392489a91cf6781b64144c2ca3c344ddc4271511235f8a59970c0a4c"
+    },
+    {
+      "bytes": 1104,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/findings.json",
+      "sha256": "90082155be448625223478c685d4c496843467a064a501febbeecd17034fc03d"
+    },
+    {
+      "bytes": 1907,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/run.json",
+      "sha256": "b65f44c15d3f624714402e9f217077340501e6e9820ae8ae13de3e34863c420e"
+    },
+    {
+      "bytes": 21161,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/trace.jsonl",
+      "sha256": "edc81bcf0869615173ca8bfb1bb45efdd72df8de74561f4317b95ebeadb10be1"
     },
     {
       "bytes": 21,
