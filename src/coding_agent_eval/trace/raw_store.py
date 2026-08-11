@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import time
 from datetime import UTC, datetime
@@ -40,6 +41,61 @@ DEFAULT_RETENTION_DAYS = 30
 
 class RawStoreError(RuntimeError):
     """The store was asked to do something that would corrupt the record."""
+
+
+class InvalidRunIdError(RawStoreError):
+    """An operator supplied a run identifier that is not one safe path segment."""
+
+
+_RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def _validate_run_id(run_id: str) -> None:
+    if run_id in {"", ".", ".."} or _RUN_ID.fullmatch(run_id) is None:
+        raise InvalidRunIdError("run id is not a valid path segment")
+
+
+def read_existing_events(root: Path, run_id: str) -> list[dict[str, Any]]:
+    """Read one existing private run without creating or mutating storage."""
+    _validate_run_id(run_id)
+    resolved_root = Path(root).resolve(strict=False)
+    events_path = (resolved_root / run_id / EVENTS_FILENAME).resolve(strict=False)
+    if not events_path.is_relative_to(resolved_root):
+        raise InvalidRunIdError("run id does not identify a valid run beneath the store")
+    if not events_path.is_file():
+        raise RawStoreError("existing raw run has no events file")
+    try:
+        lines = events_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        raise RawStoreError("existing raw run events could not be read") from None
+
+    records: list[dict[str, Any]] = []
+    previous_seq: int | None = None
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            raise RawStoreError(f"malformed raw events JSON at line {line_number}") from None
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"seq", "ts", "event", "payload"}
+            or type(record.get("seq")) is not int
+            or not isinstance(record.get("ts"), str)
+            or not isinstance(record.get("event"), str)
+            or not isinstance(record.get("payload"), dict)
+        ):
+            raise RawStoreError(f"malformed raw event envelope at line {line_number}")
+        seq = record["seq"]
+        if previous_seq is not None and seq <= previous_seq:
+            raise RawStoreError(f"invalid raw event sequence at line {line_number}")
+        previous_seq = seq
+        records.append(record)
+
+    if not records:
+        raise RawStoreError("existing raw run contains no events")
+    return records
 
 
 class RawStore:

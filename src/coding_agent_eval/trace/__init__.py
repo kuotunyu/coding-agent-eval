@@ -8,12 +8,18 @@ from coding_agent_eval.trace.public_trace import (
     project_events,
     project_record,
 )
-from coding_agent_eval.trace.raw_store import RawStore, RawStoreError
+from coding_agent_eval.trace.raw_store import (
+    InvalidRunIdError,
+    RawStore,
+    RawStoreError,
+    read_existing_events,
+)
 from coding_agent_eval.trace.sanitizer import SanitizerError, sanitize_events, sanitize_run
 
 __all__ = [
     "ExcerptPolicy",
     "FieldClass",
+    "InvalidRunIdError",
     "RawStore",
     "RawStoreError",
     "SanitizerError",
@@ -21,6 +27,7 @@ __all__ = [
     "classify",
     "project_events",
     "project_record",
+    "read_existing_events",
     "sanitize_events",
     "sanitize_run",
 ]

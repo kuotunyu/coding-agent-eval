@@ -12,11 +12,15 @@ publish is always an explicit pass through the sanitizer rather than a default.
 
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from coding_agent_eval.agent.loop import Recorder
+from coding_agent_eval.trace import InvalidRunIdError, read_existing_events
 from coding_agent_eval.trace.raw_store import RawStore, RawStoreError
 
 RUN_ID = "run-2026-08-05-001"
@@ -25,6 +29,146 @@ RUN_ID = "run-2026-08-05-001"
 @pytest.fixture
 def store(tmp_path: Path) -> RawStore:
     return RawStore(tmp_path / ".run-store", run_id=RUN_ID)
+
+
+# ------------------------------------------------------- read-only reopening
+
+
+@pytest.mark.parametrize("run_id", ["", ".", "..", "../escape", "a/b", r"a\b"])
+def test_existing_run_reader_rejects_non_segment_ids(tmp_path: Path, run_id: str) -> None:
+    root = tmp_path / ".run-store"
+
+    with pytest.raises(InvalidRunIdError, match="valid path segment"):
+        read_existing_events(root, run_id)
+
+    assert not root.exists()
+
+
+def test_existing_run_reader_rejects_an_absolute_run_id(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+
+    with pytest.raises(InvalidRunIdError, match="valid path segment"):
+        read_existing_events(root, str(tmp_path / "absolute"))
+
+    assert not root.exists()
+
+
+def test_existing_run_reader_does_not_create_a_missing_run(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+
+    with pytest.raises(RawStoreError, match="existing raw run"):
+        read_existing_events(root, RUN_ID)
+
+    assert not root.exists()
+
+
+def test_existing_run_reader_rejects_a_link_outside_the_store(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    outside = tmp_path / "outside" / RUN_ID
+    write_raw_lines(outside.parent, RUN_ID, [json.dumps(raw_record())])
+    root.mkdir()
+    link = root / RUN_ID
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        if sys.platform != "win32":
+            pytest.skip(f"directory links are unavailable: {type(exc).__name__}")
+        junction = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(outside)],
+            capture_output=True,
+            text=True,
+        )
+        if junction.returncode != 0:
+            pytest.skip("directory links and junctions are unavailable")
+
+    with pytest.raises(InvalidRunIdError, match="beneath"):
+        read_existing_events(root, RUN_ID)
+
+
+def write_raw_lines(root: Path, run_id: str, lines: list[str]) -> Path:
+    run_dir = root / run_id
+    run_dir.mkdir(parents=True)
+    events = run_dir / "events.jsonl"
+    events.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return events
+
+
+def raw_record(seq: object = 0, **changes: object) -> dict[str, object]:
+    record: dict[str, object] = {
+        "seq": seq,
+        "ts": "2026-08-11T00:00:00Z",
+        "event": "run_header",
+        "payload": {},
+    }
+    record.update(changes)
+    return record
+
+
+def test_existing_run_reader_returns_valid_envelopes(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    records = [
+        raw_record(0),
+        raw_record(1, event="cost", payload={"estimated_cost_usd": 0.0}),
+    ]
+    write_raw_lines(root, RUN_ID, [json.dumps(record) for record in records])
+
+    assert read_existing_events(root, RUN_ID) == records
+
+
+@pytest.mark.parametrize("lines", [[], [""], ["   "]])
+def test_existing_run_reader_rejects_an_empty_run(tmp_path: Path, lines: list[str]) -> None:
+    root = tmp_path / ".run-store"
+    write_raw_lines(root, RUN_ID, lines)
+
+    with pytest.raises(RawStoreError, match="no events"):
+        read_existing_events(root, RUN_ID)
+
+
+def test_existing_run_reader_hides_malformed_json_content(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    secret = "RAW-SECRET-DO-NOT-ECHO"
+    write_raw_lines(root, RUN_ID, [f'{{"payload":"{secret}"'])
+
+    with pytest.raises(RawStoreError, match="line 1") as exc:
+        read_existing_events(root, RUN_ID)
+
+    assert secret not in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        [],
+        {"seq": 0, "ts": "2026-08-11T00:00:00Z", "event": "run_header"},
+        raw_record("0"),
+        raw_record(True),
+        raw_record(0, ts=1),
+        raw_record(0, event=[]),
+        raw_record(0, payload="private"),
+        raw_record(0, unknown="RAW-SECRET-DO-NOT-ECHO"),
+    ],
+)
+def test_existing_run_reader_rejects_malformed_envelopes(
+    tmp_path: Path, record: object
+) -> None:
+    root = tmp_path / ".run-store"
+    write_raw_lines(root, RUN_ID, [json.dumps(record)])
+
+    with pytest.raises(RawStoreError, match="envelope at line 1") as exc:
+        read_existing_events(root, RUN_ID)
+
+    assert "RAW-SECRET-DO-NOT-ECHO" not in str(exc.value)
+
+
+@pytest.mark.parametrize("sequences", [[0, 0], [1, 0]])
+def test_existing_run_reader_requires_increasing_sequences(
+    tmp_path: Path, sequences: list[int]
+) -> None:
+    root = tmp_path / ".run-store"
+    write_raw_lines(root, RUN_ID, [json.dumps(raw_record(seq)) for seq in sequences])
+
+    with pytest.raises(RawStoreError, match="sequence at line 2"):
+        read_existing_events(root, RUN_ID)
 
 
 # ------------------------------------------------------------- append-only
