@@ -131,6 +131,8 @@ Current trace schema 是 0.2.0。每份 reference trace 都要求：
 - contiguous `seq`；
 - 唯一 `run_header`、`cost`、`termination`；
 - registration-bound task、model、budget、environment fingerprint 與 immutable OCI identity；
+- 新 registration 另綁定 adapter name/version、rendered system-prompt version/hash、manual
+  conversation state 與 Responses `store: false`；
 - 每次 LLM call 都有非負 `latency_ms`，usage 加總與 aggregate cost 一致；
 - tool backend 為 `measure_container:<manifest_digest>`。
 
@@ -149,6 +151,12 @@ uv run cae release audit --publication --online
 
 Trace 0.1.0 的 historical evidence 仍可讀，但固定不可發布。Replay 遇到 sequence、singleton event、
 usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
+
+2026-08-10 reference suite 的 trace 雖是 schema 0.2.0，agent adapter 是
+`openai-responses@0.1.0`；conversation continuation 當時不符合目前官方 function-calling contract。
+它保留 terminal outcomes 與 cost/failure provenance，但不是 adapter 0.3／prompt 0.2 的有效性證據。
+兩個 adapter 0.2 clean smoke attempts 也因 token/tool budget exhaustion 而未通過。新的 paid
+execution 必須先通過 smoke gate，再以 registration schema 1.1 建立不同 suite ID。
 
 ## Sandbox boundary
 

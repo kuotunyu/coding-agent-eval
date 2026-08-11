@@ -72,7 +72,10 @@ uv run cae suite register --plan PLAN.json --tasks tasks --fixtures fixtures `
 
 Registration 的 `suite_id` 由 canonical content 計算；`created_date` 不參與 identity。Register 會重新
 驗證 task registry hash 與 fixture identity，拒絕覆蓋既有 registration。Model、order、budgets 或 OCI
-identity 有任何 drift，都必須產生新 registration。
+identity 有任何 drift，都必須產生新 registration。Schema 1.1 也把 adapter name/version、rendered
+system-prompt version/hash、manual conversation state 與 Responses `store: false` 納入 suite identity；
+schema 1.0 registration 只能讀取
+歷史 evidence，不能再執行。
 
 ## 5. Run：唯一會付費的步驟
 
@@ -100,23 +103,28 @@ harness defect，整個 registration 不得成為 publication evidence；修復�
 ## 6. Cost 與 budget 解讀
 
 `CAE_MAX_TOKENS` 是 observed usage boundary；`CAE_MAX_ESTIMATED_COST_USD` 依版本化 pricing table
-估算。Provider account spending limit 才是不依賴本程式的最後 backstop。
+估算。兩者都只能在 provider 回覆後檢查，因此可能超出一個 in-flight request。設定
+`CAE_MAX_OUTPUT_TOKENS_PER_REQUEST` 會分別送出 Responses API 的 `max_output_tokens` 或 Chat
+Completions 的 `max_completion_tokens`，限制單次 output overshoot；provider account spending limit
+仍是不依賴本程式的最後 backstop。新 suite registration 會綁定這個 request limit，避免執行時漂移。
 
-Current `gpt-5.6-luna` table（`openai-gpt-5.6-luna@2026-08-06`）是每 1M tokens：
+Current `gpt-5.6-luna` table（`openai-gpt-5.6-luna@2026-08-11`）是每 1M tokens：
 
 | Component | Rate |
 |---|---:|
-| Input | USD 0.20 |
-| Cached input | USD 0.02 |
-| Output（含 reasoning tokens，不能重複計價） | USD 1.20 |
+| Input | USD 1.00 |
+| Cached input | USD 0.10 |
+| Output（含 reasoning tokens，不能重複計價） | USD 6.00 |
 
 所有報表使用 `estimated_cost_usd`，不使用 `cost_usd`。Pricing source、effective date、table version、
 usage completeness 與 unknown fields 都隨 trace 保存。跨 providers 的 cache、reasoning 與 tier rules
 不同，dollar values 不是天然可比。
 
-本次 registered budgets 為每 task 200,000 tokens／60 tool calls／900 s／USD 0.25，suite 上限
-2,000,000 tokens／600 tool calls／9,000 s／USD 2.50。Observed estimated cost USD 0.097166 低於
-核准上限；10 個 tasks 都是 token budget 先觸發。
+歷史 reference suite 的 registered budgets 為每 task 200,000 tokens／60 tool calls／900 s／
+USD 0.25，suite 上限 2,000,000 tokens／600 tool calls／9,000 s／USD 2.50。該 suite 的
+`estimated_cost_usd = 0.097166` 是用 artifact 內封存的
+`openai-gpt-5.6-luna@2026-08-06` pricing table 計算；不得以目前費率回算或覆寫。10 個 tasks
+都是 token budget 先觸發。新 run 才使用上表的 2026-08-11 費率。
 
 ## 7. Private raw events 與 public trace
 
@@ -132,6 +140,14 @@ atomic sanitizer 產生；unknown field 使整個 export 失敗。禁止手動�
 
 必須保持 private：API key、`.env`、`.run-store/`、raw provider／tool payload、Docker credentials、
 worksheet keymaps 與 reviewer private identity。
+
+Responses adapter 不使用 `previous_response_id`。每次 request 固定 `store: false`，由 client 完整重送
+先前 `response.output`（包含 reasoning／function-call items），再以原始 `call_id` 附上
+`function_call_output`。Chat Completions 同樣重送 assistant `tool_calls` message 與相連的 tool message。
+完整 request／response 與 provider free-text error 只留在 `.run-store/`；public run directory 只保留
+sanitized trace、request hash、結構化 failure classification、usage 與 findings。詳見
+[OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling) 與
+[conversation state](https://developers.openai.com/api/docs/guides/conversation-state)。
 
 ## 8. Human review 與 replay
 

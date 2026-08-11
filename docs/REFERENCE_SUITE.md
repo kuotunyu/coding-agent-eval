@@ -14,6 +14,7 @@ mutated tasks。用途是產生可重播、可逐項追溯的 reference evidence
 | Model | `gpt-5.6-luna` |
 | API | `responses` |
 | Reasoning effort | `high` |
+| Agent adapter | `openai-responses@0.1.0` |
 | Tasks | 10（2 clean controls＋8 mutations） |
 | Retry policy | `no_automatic_retry` |
 | Per-task budget | 200,000 tokens／60 tool calls／900 s／USD 0.25 estimated |
@@ -69,6 +70,14 @@ Source of truth：[`../runs/reference/summary.json`](../runs/reference/summary.j
 成功；mutated tasks 沒有 candidate finding，不能宣稱 human-verified recall。Clean controls 的 0
 findings 也因未完成而不能當作成功完成 code review 的證據。
 
+此外，這個 frozen suite 使用的 adapter 0.1 沒有保留 assistant `response.output`／function-call
+`call_id`，也沒有產生 `function_call_output`。因此上述 outcomes 只能作為舊協定的 retained failure
+evidence，不能驗證目前 adapter 0.3／prompt 0.2 的 Responses conversation validity，也不能被重標成
+新協定結果。
+Registration schema 1.0 沒有綁定 adapter identity；runner 現在只允許它繼續被讀取與稽核，禁止再用它
+執行。任何 current adapter suite 必須使用 schema 1.1 建立新 suite ID，並綁定 rendered prompt
+version/hash。
+
 ## Human-review boundary
 
 Dual blinded review 是每個 candidate pair 的必要 publication gate，不是每個 status file 的形式要求。
@@ -93,8 +102,9 @@ uv run cae suite dry-run --env-file .env --tasks tasks --fixtures fixtures `
 ```
 
 `dry-run` 驗證 provider、model、API、reasoning、四種 budgets、完整 task registry、fixture version、
-fingerprints 與 OCI digests，不開 provider connection。Operator 必須檢查 exact plan 並取得 aggregate
-cost 明確批准。
+fingerprints、OCI digests、adapter name/version、rendered prompt version/hash、`manual_history` 與
+Responses `store: false`，不開
+provider connection。Operator 必須檢查 exact plan 並取得 aggregate cost 明確批准。
 
 核准後，先 register 再 run：
 

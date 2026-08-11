@@ -22,9 +22,9 @@
       "sha256": "237dba7facc14a6132c5c63cdd859cf0aaf1ca5eebc26b9c690e4e52bd9d1c82"
     },
     {
-      "bytes": 9995,
+      "bytes": 10646,
       "path": "docs/BENCHMARK_CARD.md",
-      "sha256": "162b4f06bf07d7fcebaac1a7bb18525e31a97f401d8bd505ed7328a2edbd86af"
+      "sha256": "b1c737f5dad8b18185f7c7b27e2c386f0b3dbc4a722aa1f5fd6381208d0d019c"
     },
     {
       "bytes": 9165,
@@ -32,9 +32,9 @@
       "sha256": "940978c46e639c24c06ee124ab46b31969ddeb5b674de95f9c93068877a89be2"
     },
     {
-      "bytes": 7191,
+      "bytes": 8677,
       "path": "docs/MANUAL_RUN.md",
-      "sha256": "fa8ffc064e1f3363a9b8bd4cd95b3a6af4732ce37c814eee4cc969ff371003dc"
+      "sha256": "e3254a0755d9d0de1c81538af15436b06f24cfb5650a4972788530550e00baaa"
     },
     {
       "bytes": 10936,
@@ -42,14 +42,19 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 6609,
-      "path": "docs/REFERENCE_SUITE.md",
-      "sha256": "a5018d2ed615398073a7b338e4230bbceb5582c50a9681c8fed5b4206c7c701e"
+      "bytes": 5436,
+      "path": "docs/PAID_SMOKE_PLAN.md",
+      "sha256": "70f1d12bf09de5a633a41feacb6d59c1473b5bcd447bd9e082efc193b0b34962"
     },
     {
-      "bytes": 10822,
+      "bytes": 7363,
+      "path": "docs/REFERENCE_SUITE.md",
+      "sha256": "3dd44abdb688e4af4e711f80403c2f753f2b56c43b41ae689a1b3d24691654fa"
+    },
+    {
+      "bytes": 11624,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "d136d7ef58cafd07e5d1ec243f04710c57c413b689a747bdbc1ccc1e71ba213f"
+      "sha256": "2ce8ca5c0e5aa2b1831926990a7e00b55ce6dd9101ef20566bbe504a0be0ef6b"
     },
     {
       "bytes": 5276,
@@ -57,9 +62,9 @@
       "sha256": "0c76600fb63ab93312794b7cf5d6f8888e893a5a1c982081a5d844a70bbef28e"
     },
     {
-      "bytes": 16714,
+      "bytes": 18187,
       "path": "docs/THREAT_MODEL.md",
-      "sha256": "49d3b2701c65068215c7f53d91794f265746ac739f7c4a208fd24c2674840f4a"
+      "sha256": "c42b177b9222741cc88c74f8d86d1ad5950923cdf7e169fc2be88d75e4ea7401"
     },
     {
       "bytes": 2833,
@@ -917,6 +922,36 @@
       "sha256": "7f43c2c2b65a0291dc46899faf7b41ef1d399a55acf1a91d848f90812eed2348"
     },
     {
+      "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1919,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/run.json",
+      "sha256": "b59b1d58e627c54a036c31046568ff447096f3b523051db1b2d39d86e34ed757"
+    },
+    {
+      "bytes": 20578,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/trace.jsonl",
+      "sha256": "4801d3bd392489a91cf6781b64144c2ca3c344ddc4271511235f8a59970c0a4c"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11/clean/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1897,
+      "path": "runs/smoke/smoke-2026-08-11/clean/run.json",
+      "sha256": "f84839b5ddc3c08d873a8ad35a7f6b5292a3dba903e4bb696d2727b17e9d23d0"
+    },
+    {
+      "bytes": 12971,
+      "path": "runs/smoke/smoke-2026-08-11/clean/trace.jsonl",
+      "sha256": "654ef82835ef50b3213160a4eb0f0289f41eb37eebd60fd97743c033a1082876"
+    },
+    {
       "bytes": 8762,
       "path": "schemas/bug.schema.json",
       "sha256": "9af082a8ef1c8f8f84f3b671dd15d8a8bf3131272732f7a9a47f1503f8284eec"
@@ -952,9 +987,9 @@
       "sha256": "a5a7fce2c32a93edcfe4d90d4b5a4fadb362943b45e32760668f271f85f3a027"
     },
     {
-      "bytes": 3054,
+      "bytes": 4171,
       "path": "schemas/suite-registration.schema.json",
-      "sha256": "69651c4a4a723fe58845648ead80c0159d6dcb21a8efebcb2335dea70c8bcd9b"
+      "sha256": "2a71f4622e515a758d64c16adc9b9f2785168f979ca58c81885696f989efebbe"
     },
     {
       "bytes": 2499,
