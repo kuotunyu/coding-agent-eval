@@ -158,7 +158,7 @@ def no_output() -> ScriptedAdapter:
     """Explores and stops without ever submitting. Distinct from finding nothing."""
     return ScriptedAdapter(
         name="baseline-no-output",
-        steps=(*_explore(), Step(stop=TerminationReason.COMPLETED)),
+        steps=(*_explore(), Step(stop=TerminationReason.NO_OUTPUT)),
     )
 
 

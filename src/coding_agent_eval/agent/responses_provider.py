@@ -64,7 +64,7 @@ from coding_agent_eval.agent.provider import (
     tool_output_for_model,
 )
 
-ADAPTER_VERSION = "0.3.0"
+ADAPTER_VERSION = "0.4.0"
 
 #: The only status this adapter proceeds on. Anything else — a string that is
 #: present and different, including one never observed — is a provider error.
@@ -228,7 +228,14 @@ class OpenAIResponsesAdapter:
             else []
         )
         if not calls:
-            return Step(stop=TerminationReason.COMPLETED, usage=reported, trace=trace)
+            has_message = isinstance(output, list) and any(
+                isinstance(item, dict) and item.get("type") == "message" for item in output
+            )
+            return Step(
+                stop=(TerminationReason.COMPLETED if has_message else TerminationReason.NO_OUTPUT),
+                usage=reported,
+                trace=trace,
+            )
         if len(calls) > 1:
             return Step(
                 stop=TerminationReason.PROVIDER_ERROR,

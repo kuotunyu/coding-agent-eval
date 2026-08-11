@@ -42,7 +42,7 @@ from coding_agent_eval.agent.protocol import (
 )
 from coding_agent_eval.agent.tools import model_schemas
 
-ADAPTER_VERSION = "0.3.0"
+ADAPTER_VERSION = "0.4.0"
 
 #: Usage fields that bear on price. Each is reported or explicitly unknown.
 PRICED_USAGE_FIELDS: tuple[str, ...] = (
@@ -542,7 +542,9 @@ class OpenAICompatibleAdapter:
             started_ns=started_ns,
             finish_reason=finish_reason,
         )
-        message = choices[0].get("message", {}) if choices else {}
+        message = choices[0].get("message") if choices else None
+        if not isinstance(message, dict):
+            return Step(stop=TerminationReason.NO_OUTPUT, usage=reported, trace=trace)
         calls = message.get("tool_calls") or []
         if not calls:
             return Step(stop=TerminationReason.COMPLETED, usage=reported, trace=trace)

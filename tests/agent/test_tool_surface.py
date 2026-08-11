@@ -378,7 +378,7 @@ def test_naming_an_unknown_tool_does_not_count_as_a_harness_fault(
 ) -> None:
     adapter = ScriptedSteps(
         [Step(invocation=ToolInvocation("no_such_tool", {}))] * 4
-        + [Step(stop=TerminationReason.COMPLETED)]
+        + [Step(stop=TerminationReason.NO_OUTPUT)]
     )
     result = run_agent(adapter, context=context)
     assert result.termination_reason is TerminationReason.NO_OUTPUT
@@ -397,9 +397,14 @@ def test_a_failing_adapter_is_an_adapter_error(context: ToolContext) -> None:
     assert result.termination_reason.is_invalid
 
 
-def test_stopping_without_findings_is_no_output_not_completed(context: ToolContext) -> None:
-    """Zero recall and a clean finish are different results."""
+def test_an_explicit_completed_stop_can_have_zero_findings(context: ToolContext) -> None:
     result = run_agent(ScriptedSteps([Step(stop=TerminationReason.COMPLETED)]), context=context)
+    assert result.termination_reason is TerminationReason.COMPLETED
+    assert result.findings == []
+
+
+def test_an_explicit_no_output_stop_stays_no_output(context: ToolContext) -> None:
+    result = run_agent(ScriptedSteps([Step(stop=TerminationReason.NO_OUTPUT)]), context=context)
     assert result.termination_reason is TerminationReason.NO_OUTPUT
 
 

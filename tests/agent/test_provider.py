@@ -318,6 +318,36 @@ def test_a_response_with_no_tool_call_stops_the_run() -> None:
     assert step.stop is TerminationReason.COMPLETED
 
 
+def test_a_final_assistant_message_completes_a_clean_run(tree: Path) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    result = run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert result.termination_reason is TerminationReason.COMPLETED
+    assert result.findings == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"choices": [], "usage": {}},
+        {"choices": [{"finish_reason": "stop"}], "usage": {}},
+        {"choices": [{"message": None, "finish_reason": "stop"}], "usage": {}},
+    ],
+    ids=["missing-choice", "missing-message", "non-object-message"],
+)
+def test_a_chat_response_without_an_assistant_message_is_no_output(
+    body: dict[str, Any],
+) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+
+    assert step.stop is TerminationReason.NO_OUTPUT
+
+
 def test_malformed_tool_arguments_do_not_end_the_run() -> None:
     """The model's mistake, so the tool layer reports it and the run continues."""
 

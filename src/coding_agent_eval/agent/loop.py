@@ -261,7 +261,7 @@ def run_agent(
         elif budget.max_estimated_cost_usd is not None and cost >= budget.max_estimated_cost_usd:
             reason = TerminationReason.BUDGET_EXHAUSTED_COST
 
-    reason = _final_reason(reason, context.findings)
+    reason = _final_reason(reason)
     if context.findings:
         recorder.emit("findings_submitted", {"findings": list(context.findings)})
     recorder.emit("cost", _aggregate_cost(cost_reports))
@@ -312,20 +312,13 @@ def _run_one_tool(context: ToolContext, invocation: Any) -> tuple[str, bool, boo
         return f"{type(exc).__name__}: {exc}", True, True
 
 
-def _final_reason(
-    reason: TerminationReason | None, findings: list[dict[str, Any]]
-) -> TerminationReason:
+def _final_reason(reason: TerminationReason | None) -> TerminationReason:
     """Resolve what a run's ending actually was.
 
-    An adapter that stopped cleanly without ever submitting anything did not
-    complete: `no_output` and `completed` are scored differently, and letting an
-    empty run report `completed` would put a zero-recall result into the same
-    bucket as a real one.
+    Adapters classify the provider's final output shape explicitly. A clean
+    conclusion with zero findings is still completed; absent or malformed final
+    output is no_output.
     """
     if reason is None:
         return TerminationReason.NO_OUTPUT
-    if reason is TerminationReason.COMPLETED and not findings:
-        return TerminationReason.NO_OUTPUT
-    if reason.is_scored or reason.is_invalid:
-        return reason
     return reason

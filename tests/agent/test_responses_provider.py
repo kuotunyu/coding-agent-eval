@@ -272,6 +272,38 @@ def test_a_response_with_no_function_call_stops_the_run() -> None:
     assert step.stop is TerminationReason.COMPLETED
 
 
+def test_a_final_message_completes_a_clean_run(tree: Any) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=response(
+                tool_name=None,
+                extra_output=[{"type": "message", "role": "assistant", "content": []}],
+            ),
+        )
+
+    result = run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert result.termination_reason is TerminationReason.COMPLETED
+    assert result.findings == []
+
+
+@pytest.mark.parametrize(
+    "extra_output",
+    [[], [{"type": "reasoning", "id": "r_1", "summary": []}]],
+    ids=["empty", "reasoning-only"],
+)
+def test_a_response_without_a_final_message_is_no_output(
+    extra_output: list[dict[str, Any]],
+) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=response(tool_name=None, extra_output=extra_output))
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+
+    assert step.stop is TerminationReason.NO_OUTPUT
+
+
 def test_a_reasoning_item_ahead_of_the_function_call_is_skipped() -> None:
     """A reasoning item is context, not the action selected for the harness."""
 
