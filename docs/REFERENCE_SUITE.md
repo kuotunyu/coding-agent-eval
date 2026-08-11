@@ -75,7 +75,7 @@ findings 也因未完成而不能當作成功完成 code review 的證據。
 
 此外，這個 frozen suite 使用的 adapter 0.1 沒有保留 assistant `response.output`／function-call
 `call_id`，也沒有產生 `function_call_output`。因此上述 outcomes 只能作為舊協定的 retained failure
-evidence，不能驗證目前 adapter 0.3／prompt 0.2 的 Responses conversation validity，也不能被重標成
+evidence，不能驗證目前 adapter 0.4／prompt 0.2 的 Responses conversation validity，也不能被重標成
 新協定結果。
 Registration schema 1.0 沒有綁定 adapter identity；runner 現在只允許它繼續被讀取與稽核，禁止再用它
 執行。任何 current adapter suite 必須使用 schema 1.1 建立新 suite ID，並綁定 rendered prompt

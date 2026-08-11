@@ -76,8 +76,9 @@ eligibility。
 Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixture defects，修正後皆 bump version、
 重建 OCI 並重新 pin。Attempt 4 又在 TaskQ 1.0.5 clean tree 產生兩個經離線重現的工程缺陷，
 因此 1.0.5 已失去 release eligibility；Ledger 1.0.3 不受此 observation 影響。TaskQ 1.0.6
-已修復、bump version 並重建／re-pin OCI，但尚未產生新的 paid clean evidence；不得以
-adjudication 把歷史缺陷標成 unsupported。
+已修復、bump version 並重建／re-pin OCI。Attempt 5 使用 1.0.6，但在 final provider turn 前
+`budget_exhausted_tokens`，因此不是通過的 paid clean evidence；不得以 adjudication 把歷史缺陷標成
+unsupported，也不得把 budget exhaustion 改寫成 clean validation。
 
 ## OCI distribution
 

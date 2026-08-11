@@ -5,30 +5,33 @@ conversation adapters. It is deliberately smaller than the 10-task reference sui
 Passing it permits registration of a **new** suite ID; it never upgrades or overwrites
 the historical suite.
 
-## Proposed attempt 5 -- not authorized
+## Proposed attempt 6 -- not authorized
 
-The next valid paid action is one clean task against corrected TaskQ 1.0.6. No API key
-may be read and no provider request may be made until the owner explicitly approves this
-new attempt after the 1.0.6 source, OCI, local gates, pushed `main`, and GitHub CI are green.
+The next valid paid action is one clean task against corrected TaskQ 1.0.6 with adapter
+0.4.0. No API key may be read and no provider request may be made until the owner explicitly
+approves this new attempt after the source, OCI, local gates, pushed `main`, and GitHub CI
+are green.
 
 | Dimension | Planned value |
 |---|---|
 | Provider / model | OpenAI / `gpt-5.6-luna` |
-| API / adapter / prompt | Responses API / `openai-responses@0.3.0` / `0.2.0` |
+| API / adapter / prompt | Responses API / `openai-responses@0.4.0` / `0.2.0` |
 | Conversation state | Manual history; replay complete `response.output` and linked `function_call_output` |
 | Provider storage | `store: false`; no `previous_response_id` |
 | Reasoning | `low` |
 | Task | `fx-taskq-py/clean` on fixture 1.0.6 |
 | Isolation | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3` |
-| Output | `runs/smoke/smoke-2026-08-11-attempt-5/clean` plus owner-only raw store |
+| Output | `runs/smoke/smoke-2026-08-11-attempt-6/clean` plus owner-only raw store |
 | Retry policy | One terminal outcome; no automatic or selective retry |
 
-The proposed limits remain 1,024 provider output tokens per request, 80,000 observed
+The proposed limits are 1,024 provider output tokens per request, 120,000 observed
 aggregate tokens, 12 tool calls, 300 seconds, and a USD 0.035 harness estimated-cost stop.
 Using `openai-gpt-5.6-luna@2026-08-11-r2`, expected cost is approximately USD
-0.004--0.015 and the requested maximum new provider-side exposure is USD 0.05. A clean
-finding or abnormal termination stops the gate without a retry. Only a passing clean task
-would make one separately approved B-001 mutated task eligible.
+0.006--0.015 and the requested maximum new provider-side exposure is USD 0.05 for clean.
+A clean finding or abnormal termination stops the gate without a retry. Only a passing
+clean task would make one B-001 mutated task eligible, under a separate additional maximum
+provider-side exposure of USD 0.05 and a distinct output identity. Neither task is
+authorized by this proposal.
 
 ## Approved attempt 4
 
@@ -224,3 +227,37 @@ Attempt 4's paid authorization is consumed. It did not authorize a mutated task,
 full suite, new reference registration, tag, GitHub Release, or Zenodo action. TaskQ 1.0.6
 corrects both defects under a new fixture/OCI identity, but this retained outcome remains
 1.0.5 evidence and does not authorize or validate attempt 5.
+
+## Retained outcome -- attempt 5
+
+The owner approved one TaskQ 1.0.6 clean task and a conditional B-001 task only if clean
+passed. Clean ran exactly once with adapter 0.3.0/prompt 0.2.0. It exhausted the observed
+token budget after its twelfth tool result, before a final provider turn, so the condition
+for B-001 was false and the mutated task was not run.
+
+| Field | Observed value |
+|---|---:|
+| Terminal outcome | `budget_exhausted_tokens` |
+| Findings | 0 |
+| LLM calls / tool calls | 12 / 12 |
+| Input / cached input / output | 84,035 / 66,663 / 515 tokens |
+| Reasoning tokens | 238 |
+| Estimated cost | USD 0.005426 (`openai-gpt-5.6-luna@2026-08-11-r2`) |
+
+The first eleven assistant function calls were replayed in subsequent requests with exact
+linked `function_call_output` records. The twelfth tool result has no subsequent provider
+request because the token budget stopped the run; this is expected terminal shape, not a
+missing-link defect. Every request used `store: false` and no `previous_response_id`.
+Re-sanitizing the owner-only raw events reproduced the committed public trace byte for byte.
+Public evidence contains no API key, raw request/response body, or private reasoning.
+
+Post-run review found a separate harness semantic defect: the loop reclassified every
+explicit clean completion with zero findings as `no_output`, so the documented clean gate
+could not represent a valid zero-finding completion. Adapter 0.4.0 now distinguishes an
+actual final assistant message from absent or malformed output, and the loop preserves
+that explicit reason. Attempt 5 remains adapter 0.3.0 evidence and is not relabeled.
+
+Attempt 5's paid authorization is consumed. The clean gate failed abnormally, the
+conditional mutated task was not eligible, and no new provider request is authorized.
+Recorded estimates across all five retained paid attempts total USD 0.084653 across their
+respective versioned price tables.

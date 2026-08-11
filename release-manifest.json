@@ -17,19 +17,19 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 6478,
+      "bytes": 6861,
       "path": "README.md",
-      "sha256": "ef9d0308d9399d06f74d41d9c6dacdd59a1b6d9f0552cfec0a25c99882f4d2e1"
+      "sha256": "299b6c82c1e796f0c3c6d8750f2208c0b920bd972c201887b39a49a0b36eb061"
     },
     {
-      "bytes": 11440,
+      "bytes": 11929,
       "path": "docs/BENCHMARK_CARD.md",
-      "sha256": "9533b8047f6bd549cbb18906975431fad448efb83d4a3fd8d69f22ea6cf3e91b"
+      "sha256": "a58019a7242d6915ccef6eb88b56bf4e1259a334bbfe741e1f672ef03748cfe5"
     },
     {
-      "bytes": 9560,
+      "bytes": 9704,
       "path": "docs/DATA_CARD.md",
-      "sha256": "d9c7b777b7e856a9614cb96d2176db34b1b55cb3707c68ba82474ddf0fbdc23d"
+      "sha256": "15362318cddf476f9f5f2729339bcd6116f896d6cd03d36009a31b0e6344cee2"
     },
     {
       "bytes": 8846,
@@ -42,19 +42,19 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 12147,
+      "bytes": 14227,
       "path": "docs/PAID_SMOKE_PLAN.md",
-      "sha256": "ff79aa09fd1f31b9edac8abb5eedbf2646817016660c045d89a1bbe9011f4fe8"
+      "sha256": "103ed4dd538a8630fdc39b92a4b1d7354b1d731cac0c113eb20bb6be230f2356"
     },
     {
       "bytes": 7607,
       "path": "docs/REFERENCE_SUITE.md",
-      "sha256": "e5c0eac6c9375036db45571a0bde67432d397210bf407d8e13e64aa87d9eb8d7"
+      "sha256": "fbcefb0ab37f0273f75ad9e4d9191e26f6f0740d19e54c9bf0599fba4f82d0f1"
     },
     {
-      "bytes": 12210,
+      "bytes": 12624,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "5776780e7eb43d06b8fd37b82c97be582d3a6021cb6e50bce36ae8742809e07d"
+      "sha256": "3781c1733633fa806eb769671420103ca94a72fb28ca466ac9d5980375cdc7ea"
     },
     {
       "bytes": 5276,
@@ -850,6 +850,21 @@
       "bytes": 22139,
       "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/trace.jsonl",
       "sha256": "c32ede8e2360542d041e1610a11c8f0fff1537d18d896b45c9594e011b78b692"
+    },
+    {
+      "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/findings.json",
+      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
+    },
+    {
+      "bytes": 1926,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/run.json",
+      "sha256": "d1d89aaabc8a41536a3bbb710486362f1f6a0d1598e8e3a1f08fdefe2761eb01"
+    },
+    {
+      "bytes": 20664,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/trace.jsonl",
+      "sha256": "6c7ec0c7bba3077333326ba38bfde7bfb64e9cd76738d818cd37c3513eb13ec6"
     },
     {
       "bytes": 21,

@@ -156,7 +156,7 @@ usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
 
 2026-08-10 reference suite 的 trace 雖是 schema 0.2.0，agent adapter 是
 `openai-responses@0.1.0`；conversation continuation 當時不符合目前官方 function-calling contract。
-它保留 terminal outcomes 與 cost/failure provenance，但不是 adapter 0.3／prompt 0.2 的有效性證據。
+它保留 terminal outcomes 與 cost/failure provenance，但不是 adapter 0.3／0.4、prompt 0.2 的有效性證據。
 兩個 adapter 0.2 clean smoke attempts 也因 token/tool budget exhaustion 而未通過。新的 paid
 execution 必須先通過 smoke gate，再以 registration schema 1.1 建立不同 suite ID。
 
@@ -165,6 +165,12 @@ Attempt 4 接著在 TaskQ 1.0.5 正常完成並提交兩個 clean-control findin
 reproducers 證實 concurrent idempotency duplication 與 non-resumable schema-migration window。
 兩次 gate 都失敗，沒有執行 mutated task，且 1.0.5 不是 clean release fixture。這些是
 AI-assisted engineering assessments，不是 formal human adjudication，也不產生 verified detection。
+
+Attempt 5 在 TaskQ 1.0.6 使用 adapter 0.3／prompt 0.2，保留 12 次 provider calls、12 次 tool
+results 與 USD 0.005426 cost evidence，但在 final provider turn 前達到 token budget，因此仍未通過
+clean gate，也沒有執行 mutated task。事後修正的 adapter 0.4 明確區分「有 final assistant message
+且零 findings」與「缺少／malformed final output」；目前只有 deterministic mocked evidence，不能回填
+或重新標記 attempts 1--5。
 
 ## Sandbox boundary
 
