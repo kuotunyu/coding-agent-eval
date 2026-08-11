@@ -32,11 +32,6 @@
       "sha256": "940978c46e639c24c06ee124ab46b31969ddeb5b674de95f9c93068877a89be2"
     },
     {
-      "bytes": 6390,
-      "path": "docs/HANDOFF.md",
-      "sha256": "f80a8c6105fd9548426ea2ff6df61e5b736f5878e8731112e8688bd98c9ff67c"
-    },
-    {
       "bytes": 7191,
       "path": "docs/MANUAL_RUN.md",
       "sha256": "fa8ffc064e1f3363a9b8bd4cd95b3a6af4732ce37c814eee4cc969ff371003dc"
