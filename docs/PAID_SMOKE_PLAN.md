@@ -1,11 +1,39 @@
-# Paid smoke gate（已停止：clean token budget）
+# Paid smoke gate
 
 This is the approval contract for the first live request made by the corrected
 conversation adapters. It is deliberately smaller than the 10-task reference suite.
 Passing it permits registration of a **new** suite ID; it never upgrades or overwrites
 the historical suite.
 
-## Fixed configuration
+## Proposed attempt 4（approval required）
+
+Attempt 4 is one corrected **clean task only**. It gets a new output identity and does not
+reuse or replace attempts 1–3.
+
+| Dimension | Planned value |
+|---|---|
+| Provider / model | OpenAI / `gpt-5.6-luna` |
+| API / adapter / prompt | Responses API / `openai-responses@0.3.0` / `0.2.0` |
+| Conversation state | Manual history; replay complete `response.output` and linked `function_call_output` |
+| Provider storage | `store: false`; no `previous_response_id` |
+| Reasoning | `low` |
+| Task | `fx-taskq-py/clean` on fixture 1.0.5 |
+| Isolation | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966` |
+| Output | `runs/smoke/smoke-2026-08-11-attempt-4/clean` plus owner-only raw store |
+| Retry policy | One terminal outcome; no automatic or selective retry |
+
+Limits for this one task are 1,024 provider output tokens per request, 80,000 observed
+aggregate tokens, 12 tool calls, 300 seconds, and a USD 0.035 harness estimated-cost stop.
+Based on attempt 3, expected cost is about USD 0.02–0.04. Because aggregate limits are
+checked after a response arrives, the requested maximum new provider-side exposure is USD
+0.05; this is a risk ceiling, not a spending target or guaranteed hard billing cap.
+
+No API key may be read and no request may be sent until this exact attempt is approved. A
+passing clean outcome would only unlock preparation of one B-001 mutated smoke, which needs
+its own paid approval. A finding on the clean task or any abnormal termination stops the
+gate without a rerun.
+
+## Historical attempts 1–2 configuration
 
 | Dimension | Planned value |
 |---|---|
