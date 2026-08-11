@@ -72,9 +72,11 @@ selecting a better outcome.
 | Paid smoke attempt 3 | Adapter 0.3/prompt 0.2 completed; one clean-control finding; USD 0.031539 | Normal completion and valid trace linkage; smoke gate still failed |
 | Human-verified evidence | None yet | No `verified_bug_recall`, `verified_finding_precision`, or release headline metric |
 
-Attempt 3's finding is mechanically reproducible but remains pending an independent human
-decision about fixture validity. The mutated smoke task and full new suite were not run.
-All three paid outcomes are retained; cumulative estimated cost was USD 0.072565.
+Attempt 3's finding was mechanically reproduced and conservatively treated as a real
+fixture defect; TaskQ 1.0.5 now binds completion to a monotonic lease generation. This is
+an AI-assisted engineering correction, not an independent human ruling or a verified
+benchmark detection. The mutated smoke task and full new suite were not run. All three
+paid outcomes are retained; cumulative estimated cost was USD 0.072565.
 
 ## Engineering contract and limitations
 

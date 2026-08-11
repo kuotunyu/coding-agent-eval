@@ -17,24 +17,24 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 5768,
+      "bytes": 5926,
       "path": "README.md",
-      "sha256": "a1bf815e15ede68546d3904ff324e4fee6db690d368c7f2a3b9c9c3743b66db1"
+      "sha256": "c5f3d1553517516e3c880512f1ab8e1861ab89bf84961e77a1f5ab1c97257afc"
     },
     {
-      "bytes": 10646,
+      "bytes": 11328,
       "path": "docs/BENCHMARK_CARD.md",
-      "sha256": "b1c737f5dad8b18185f7c7b27e2c386f0b3dbc4a722aa1f5fd6381208d0d019c"
+      "sha256": "2ea0dc6b1aada9d3c22d6f404b7f8ec2eaf03e9f47730471580811f8a6671145"
     },
     {
-      "bytes": 9165,
+      "bytes": 9418,
       "path": "docs/DATA_CARD.md",
-      "sha256": "940978c46e639c24c06ee124ab46b31969ddeb5b674de95f9c93068877a89be2"
+      "sha256": "8d975d6b61092806493632c3beaa62bde97d6b70024bf14d73f90c13864ef23e"
     },
     {
-      "bytes": 8677,
+      "bytes": 8745,
       "path": "docs/MANUAL_RUN.md",
-      "sha256": "e3254a0755d9d0de1c81538af15436b06f24cfb5650a4972788530550e00baaa"
+      "sha256": "5a512e091d6b06383c7ccd888d0f02e5fe853dbeee09fb190df4bcf8c20ee9b4"
     },
     {
       "bytes": 10936,
@@ -42,19 +42,19 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 6901,
+      "bytes": 7271,
       "path": "docs/PAID_SMOKE_PLAN.md",
-      "sha256": "ec2fc3929f73942b302447628617759811b20545df57cf657e1bc003e74c102f"
+      "sha256": "1fdaa2d20b6a42da5753be67ab188384571186db79fa46e9e3e32c63dd5499db"
     },
     {
-      "bytes": 7363,
+      "bytes": 7607,
       "path": "docs/REFERENCE_SUITE.md",
-      "sha256": "3dd44abdb688e4af4e711f80403c2f753f2b56c43b41ae689a1b3d24691654fa"
+      "sha256": "6699708afdcbc74a90339f38dea5cb04597d8d51133c20d40c98894043f17fee"
     },
     {
-      "bytes": 11714,
+      "bytes": 12034,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "75f9fd7a6e55c815ec6867fbfdab1535792c9f076f818de9c642c4f4dc75e6ce"
+      "sha256": "721ace74e66d6920194752931c0d63722c40fa96e07c38f3c32309eebfa43ea9"
     },
     {
       "bytes": 5276,
@@ -294,27 +294,27 @@
     {
       "bytes": 3214,
       "path": "fixtures/fx-taskq-py/bugs/B-001.yaml",
-      "sha256": "72e0e0b974cd4d120a4290bd3e04175c4ca013454026f57dae922d3be9c8c393"
+      "sha256": "b42186e1ea4cb6bbed67daa7661b9a9fdcf46a5818a0273b199ed61806ac5344"
     },
     {
       "bytes": 2558,
       "path": "fixtures/fx-taskq-py/bugs/B-002.yaml",
-      "sha256": "be5d5ee6ec2b9cc790a53354d8e4160a279a705fff17929c9f3fe553f03762c5"
+      "sha256": "f4525a2d17cc4d21d61e7c946045ccf71fa904633123ab8941cbecc0cd89abc0"
     },
     {
       "bytes": 2278,
       "path": "fixtures/fx-taskq-py/bugs/B-003.yaml",
-      "sha256": "df56fa74ccc574ce7b3c03c46f5fd8fabba42b6d924bcdadfa25abf038b1879a"
+      "sha256": "f7098f97762434b161bc4dfe244018f1bd7c58d97de4ee17e691200c9c6e8922"
     },
     {
       "bytes": 2118,
       "path": "fixtures/fx-taskq-py/bugs/B-004.yaml",
-      "sha256": "619fa662fa995d36f9deac389c968f869ddfca32b3a01b011c96e81c6c6e3cff"
+      "sha256": "62a7df6b04cf6d8fd38e6af20c4f306916bea8f3e6103e65231e7af72885e89f"
     },
     {
-      "bytes": 18590,
+      "bytes": 19966,
       "path": "fixtures/fx-taskq-py/defects.md",
-      "sha256": "3de1e050c0bd319058870ff7c41e7428ed38677ac913b2343ecc357631b5f8fe"
+      "sha256": "d545548a713b7f88b4a16990b36617b2579a80b66393eec012680ba3b10452c2"
     },
     {
       "bytes": 1216,
@@ -329,12 +329,12 @@
     {
       "bytes": 2549,
       "path": "fixtures/fx-taskq-py/fixture.yaml",
-      "sha256": "dcb8b893d88eb73e8d1f8fe5395368dbba4941737089133f96450dc161080c04"
+      "sha256": "d8a91fc7acb55ea8f8697857d5e89907b31e183e78cc80a5542df7cdf8e86fa8"
     },
     {
       "bytes": 779,
       "path": "fixtures/fx-taskq-py/known_residual_defects.yaml",
-      "sha256": "615e9e9503e5fa7c5fa2f2b6173a2170b3da3b2bc8fcce3cda3c0e272a1470bf"
+      "sha256": "0fa425d8ab0ed7ba72571415486d17c2fce1c6328a11deb6da08c7a70c174c7f"
     },
     {
       "bytes": 748,
@@ -362,9 +362,9 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 2448,
+      "bytes": 2686,
       "path": "fixtures/fx-taskq-py/tree/README.md",
-      "sha256": "e8a57622f06a3a59dd69f6e78e02617999f8805d6203d80f0c65710462ff0d15"
+      "sha256": "3c06f22e167b5526d6b6fd8423335d9b75e0cb9436311d55fcc64b43dd548061"
     },
     {
       "bytes": 568,
@@ -377,9 +377,9 @@
       "sha256": "e654e0624dca77ff894eb8b289428a8255b3085f74274a77ed92b56422e9b3f8"
     },
     {
-      "bytes": 7988,
+      "bytes": 8699,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/api.py",
-      "sha256": "f2229a9848ac931fb85c6f930c0494ba638106d07d4a55d70ca6b1b8422bf074"
+      "sha256": "44e73dea49c833a66c8884a0575d232bbe5934c35e38d593b8c38c1ef7d55dd3"
     },
     {
       "bytes": 2045,
@@ -387,9 +387,9 @@
       "sha256": "6f586f02c3b8dd8127092e3b271379ba6c73f711c15e3a9b0468b11440c653fb"
     },
     {
-      "bytes": 5465,
+      "bytes": 5697,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/client.py",
-      "sha256": "6bb567e968f199c48ef74b79ce5498a46f23e6cce9b7acb78ec749410c48bbd0"
+      "sha256": "9afed2413f1ca971a147234698a949063a2103242c71d25b3fc7faea84dde6c1"
     },
     {
       "bytes": 1939,
@@ -422,14 +422,14 @@
       "sha256": "f573558257f1623311bb960a6bab43eebbfd61ff5f62c58d47f6bc86e9ac5a8c"
     },
     {
-      "bytes": 2487,
+      "bytes": 2568,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/models.py",
-      "sha256": "72956b50ae4ddfbd169ff3f44a480a6adb1b8fd04ebcb81855f021325bf21650"
+      "sha256": "d7cf335cd98b64c5f72424f4a0bc439ca9de9b27477a892ff0d10585132ceaa7"
     },
     {
-      "bytes": 7526,
+      "bytes": 8628,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/queue.py",
-      "sha256": "489ed988d97ccf15827f3f45acc35567d91275c4a1e73b30a54cdcc4bbfb31be"
+      "sha256": "f060b3647323a061b965248f0a1e43a68dc717b36a47b5d4e874c70cad474789"
     },
     {
       "bytes": 4515,
@@ -437,9 +437,9 @@
       "sha256": "6f6167f12876bbaeef9203804e6cb17b6caa447f31be8d7a4a6637fa3bf32d10"
     },
     {
-      "bytes": 8374,
+      "bytes": 8865,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/storage.py",
-      "sha256": "0ed2c531a71b0f8f24285c21c578422c853b3c116b9ce29b16dae023ff525865"
+      "sha256": "66441c42a2a67b5e00cab7a5a0471359f9e9e3ea7792c13556061ef65a36df39"
     },
     {
       "bytes": 3759,
@@ -447,9 +447,9 @@
       "sha256": "80408567dea6c37d12b41497ba3acdde21ef39ffbec2c4cbf830ea1ed29fd4cf"
     },
     {
-      "bytes": 2601,
+      "bytes": 2984,
       "path": "fixtures/fx-taskq-py/tree/src/taskq/worker.py",
-      "sha256": "54614b1f23bc32d3ef5183c7257deadc1472160fd10d0607a8e83aab5e0cee7f"
+      "sha256": "31fe323c4c46fa3344e8d8458c3dbe11ea60235b87ce7f58058d484c3c58e566"
     },
     {
       "bytes": 0,
@@ -462,14 +462,14 @@
       "sha256": "e383629eca0333c3324494a9a98c37a93837c5632ac52f2aad0a8d0b13043aea"
     },
     {
-      "bytes": 5710,
+      "bytes": 5838,
       "path": "fixtures/fx-taskq-py/tree/tests/test_admin_routes.py",
-      "sha256": "3c4a47f85ba0286f21d3a2723ae0ed2d5c8db7248b6353a2106daab004bba261"
+      "sha256": "c62d6932631f6fa55a246ba8b5ceb037237000a36421a657cd8dc0233ca9981d"
     },
     {
-      "bytes": 7240,
+      "bytes": 9260,
       "path": "fixtures/fx-taskq-py/tree/tests/test_api.py",
-      "sha256": "9fb242460a346fc17fad70b2f0c86c5183c188f6feb9a654888e0a966630ee26"
+      "sha256": "b9286d258d1b3545b97a746ea84cfe5799fccbf73159148ca4f022d868794144"
     },
     {
       "bytes": 3677,
@@ -477,9 +477,9 @@
       "sha256": "4a0cfb11f79ff215040796532b1ed9fb41158a8b05516eacc66d1876e639aa3e"
     },
     {
-      "bytes": 4509,
+      "bytes": 4614,
       "path": "fixtures/fx-taskq-py/tree/tests/test_deadletter.py",
-      "sha256": "ff36f3b9659af6339693938e1f7177b38d32df408a023f8012a3747179a13b99"
+      "sha256": "a91314e53e2e11c82c995b33c57a1e2d353649599f38197a7b9ab48e9729bf04"
     },
     {
       "bytes": 3459,
@@ -487,34 +487,34 @@
       "sha256": "bda05f9bfe35ddfabff31f8873a912dec50c3198f1bf321c5483414b0dcbf3fd"
     },
     {
-      "bytes": 3241,
+      "bytes": 3266,
       "path": "fixtures/fx-taskq-py/tree/tests/test_limits.py",
-      "sha256": "bb6d201fe0e2d5aeeb72d09cb66dd3f763ad7a28ece42ab1b37ad23c6801e4d5"
+      "sha256": "b7338f6b101755b0a87de03e90dda6675edc93e219ff4e2019986eb0cb8f1b39"
     },
     {
-      "bytes": 4345,
+      "bytes": 4412,
       "path": "fixtures/fx-taskq-py/tree/tests/test_metrics.py",
-      "sha256": "c21494713f08c4d6cea18a58590184db428577cf62b86f78cc3977371aa34044"
+      "sha256": "4b6c6182a50ad3ea0af0b82f08d5ecc481ba21028e0c78093684261bcc174f87"
     },
     {
-      "bytes": 10084,
+      "bytes": 12968,
       "path": "fixtures/fx-taskq-py/tree/tests/test_queue.py",
-      "sha256": "3e54933c64ecdd6a231dac4134a20df12f568d2626f6b4d370db5abc8d125c41"
+      "sha256": "1835853b0a966112a39f55cc6071c5e05a0f0304ff0abcda8b04ea42ac0c758d"
     },
     {
-      "bytes": 5910,
+      "bytes": 6332,
       "path": "fixtures/fx-taskq-py/tree/tests/test_server.py",
-      "sha256": "35684cff12d39ff5875d0671079e91815bab59e1f3a0e5fcd170fd4c7740472e"
+      "sha256": "ca584edc5dd16d9ab2cc0defc75791d9b81b01fec05299ff0452baee9532677d"
     },
     {
-      "bytes": 4662,
+      "bytes": 6203,
       "path": "fixtures/fx-taskq-py/tree/tests/test_storage.py",
-      "sha256": "65a9094274b15177c9d48dcac14b4ee45a44ac4188c48da77014b5d8d03783c9"
+      "sha256": "b20ad97eb90a1300bf07778a86723a49f3d3850daf6ca57caf8e1853cdbb1b32"
     },
     {
-      "bytes": 3300,
+      "bytes": 3919,
       "path": "fixtures/fx-taskq-py/tree/tests/test_worker.py",
-      "sha256": "9b00c34a8a51042cd85b4dcb7662b860c02a01ea610dffed73038ee4ebc86f9b"
+      "sha256": "e003973b81998f22bdaf4a6b04324ce830d88cfdb8f0a785ef815e764cdb93dd"
     },
     {
       "bytes": 126,
@@ -532,9 +532,9 @@
       "sha256": "0f44037fda16087bd80b311c41c78902d471c16afeba397d8e645031794fce7e"
     },
     {
-      "bytes": 1961,
+      "bytes": 2025,
       "path": "fixtures/fx-taskq-py/witness/B-003/test_witness.py",
-      "sha256": "ccef189a7aa1b3939e44200ee8c4aaf316e0c2165dc6032c3b3340970628532b"
+      "sha256": "2d70cd2ae4b4167b8c9b409c998a0d33205d27e5e5ac73d26c8546196c56b2af"
     },
     {
       "bytes": 1413,
@@ -544,7 +544,7 @@
     {
       "bytes": 747,
       "path": "fixtures/fx-taskq-py/witness/clean_suite.yaml",
-      "sha256": "2a91d2fa7900dd557ac13a3da952c347f9b82e542331e49c1bc0bea381cc8b4d"
+      "sha256": "2c6659f9cacc62db1131def5b654b9457f279cdf0c70a8b77dc808c2dbdf069c"
     },
     {
       "bytes": 3386,
@@ -567,9 +567,9 @@
       "sha256": "50459cc31eed4ced1d504bbdcf4037eec76a561a32853fbc4c33e576cec7f136"
     },
     {
-      "bytes": 3435,
+      "bytes": 3734,
       "path": "runs/README.md",
-      "sha256": "cdc613696c2862291037f91b7b425ce10b7aefd6d5aedeb17bcb88e1dd18cca9"
+      "sha256": "04d31c17273c2ac01f34bacb312724c8ce21339718dfc42740c79dbf435948f2"
     },
     {
       "bytes": 1492,
@@ -584,12 +584,12 @@
     {
       "bytes": 1493,
       "path": "runs/baseline-fx-taskq-py-clean/results.json",
-      "sha256": "9009db84de019a132bb3d82b14839daf2eccc711a56ae911dc5dd8c3a5bb6cc9"
+      "sha256": "0a5bdd78183940c01563c8e935c9a5efde23872a90a1bc5278efb7ec6043922f"
     },
     {
       "bytes": 1273,
       "path": "runs/baseline-fx-taskq-py-mutated/results.json",
-      "sha256": "9ab73e2f4bd1915675abdbf1070260e62b782727cd612c709f45adc664c0e220"
+      "sha256": "641dcbd8d79d6246b3b1120ec69bfda43d66f47a2f751360e6b168c3a1ab4d13"
     },
     {
       "bytes": 1860,
@@ -600,6 +600,11 @@
       "bytes": 469,
       "path": "runs/reference/summary.json",
       "sha256": "8df5ed7325feee71824444e900c9a984a9f212b612953a54db180f2d64ededc3"
+    },
+    {
+      "bytes": 3863,
+      "path": "runs/reference/task-registry.json",
+      "sha256": "cd595c76e1ec3454b207ec54de2d82c4ebee9a82f40ca403f170cbf3701cc57a"
     },
     {
       "bytes": 21,
@@ -899,7 +904,7 @@
     {
       "bytes": 3863,
       "path": "tasks/v0.1.json",
-      "sha256": "cd595c76e1ec3454b207ec54de2d82c4ebee9a82f40ca403f170cbf3701cc57a"
+      "sha256": "bca9dd329c0b74d0171da4409a661ffb8ff22f6bfb7b41c16cac5f94a3da05b7"
     },
     {
       "bytes": 103103,

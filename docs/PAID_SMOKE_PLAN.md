@@ -128,11 +128,15 @@ local reproduction showed that after an expired task is re-leased under the same
 ID, acknowledging with the old worker's task ID transitions the current lease to
 `done`. This is machine evidence only, not a human validity ruling.
 
-The smoke gate therefore remains **failed** pending independent human confirmation of
-whether the reported behavior is a real in-scope clean-fixture defect. Cumulative
-observed cost across all three attempts is USD 0.072565, below the approved USD 1.00
-maximum exposure. No mutated task, 10-task suite, verified metric, or selective rerun
-was produced.
+The smoke gate therefore remains **failed**. The behavior was reproduced deterministically
+and conservatively accepted as an in-scope engineering defect without representing that
+assessment as an independent human ruling. TaskQ 1.0.5 fixes it with a monotonic lease
+generation and a new immutable OCI identity; attempt 3 remains 1.0.4 evidence and cannot
+validate the correction. Cumulative observed cost across all three attempts is USD
+0.072565, below the approved USD 1.00 maximum exposure. No mutated task, 10-task suite,
+verified metric, or selective rerun was produced.
 
-No further paid request is authorized by the attempt-3 approval. No new reference
-registration, tag, GitHub Release, or Zenodo action is authorized.
+No further paid request is authorized by the attempt-3 approval. The next paid action must
+be a newly approved 1.0.5 clean smoke with a new output identity; only a passing clean gate
+may unlock one mutated task. No new reference registration, tag, GitHub Release, or Zenodo
+action is authorized.

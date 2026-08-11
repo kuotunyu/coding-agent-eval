@@ -13,7 +13,7 @@ agent defect-discovery evaluation vertical slice。
 
 ## Dataset composition
 
-`tasks/v0.1.json` 是唯一 versioned task registry，共 10 tasks：
+`tasks/v0.1.json` 是 current versioned task registry，共 10 tasks：
 
 - `fx-taskq-py`：1 clean control＋4 mutations；
 - `fx-ledger-ts`：1 clean control＋4 mutations。
@@ -119,6 +119,8 @@ model comparison，需建立 private／rotating holdout corpus，而不是只擴
 
 2026-08-10 reference suite 使用 OpenAI `gpt-5.6-luna`、Responses API、high reasoning，按固定順序
 執行 10 tasks 且 `no_automatic_retry`。所有 outcomes 都保留為 `budget_exhausted`，共提交 0 findings。
+該 suite 綁定的是 TaskQ 1.0.4；`runs/reference/task-registry.json` 保存 registration hash 所指的
+exact registry bytes。Current `tasks/v0.1.json` 與 TaskQ 1.0.5 不會回填到這份歷史 evidence。
 
 因此本次沒有 candidate pairs，也沒有 human rulings。這不是缺少應做的 annotation：review domain 是
 空集合；它也不能被描述為 independent adjudication evidence。未來任何產生 candidate 的 completed
@@ -132,7 +134,7 @@ Legacy `ledger/adjudications.jsonl` 是 append-only single-review historical evi
 | Artifact | Location | Release／retention |
 |---|---|---|
 | Fixtures、bugs、patches、witnesses | Git／release artifacts | Permanent |
-| Task registry、registration、status、sanitized trace、findings | Git／release artifacts | Permanent |
+| Current task registry；reference registry snapshot、registration、status、sanitized trace、findings | Git／release artifacts | Permanent |
 | Formal review sets（若有 candidates） | `ledger/review-sets/` | Public、append-only evidence |
 | Release manifest | `release-manifest.json` | Public；records bytes＋SHA-256 |
 | Raw provider／tool events | `.run-store/` | Local only；預設 30 days，可由 `cae store prune` 清除 |

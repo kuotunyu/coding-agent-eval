@@ -84,7 +84,9 @@ primary scoring path，避免啟發式合併只會單向提高 precision。
 
 ## Registered reference result
 
-Registration 與完整 evidence 位於 `runs/reference/`。
+Registration、其 hash 綁定的 `task-registry.json` 與完整 evidence 位於 `runs/reference/`。
+這份 frozen registry 描述 TaskQ 1.0.4；current `tasks/v0.1.json` 描述 1.0.5，publication audit
+分開驗證兩者，不將舊結果重新解讀為新 fixture evidence。
 
 | 面向 | 觀察值 | Evidence |
 |---|---:|---|
@@ -158,6 +160,11 @@ usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
 兩個 adapter 0.2 clean smoke attempts 也因 token/tool budget exhaustion 而未通過。新的 paid
 execution 必須先通過 smoke gate，再以 registration schema 1.1 建立不同 suite ID。
 
+Adapter 0.3／prompt 0.2 的第三次 clean smoke 正常完成並提交一個 finding；deterministic
+reproduction 證實 1.0.4 的 lease ownership 行為，因此該 clean gate 仍失敗。Fixture 1.0.5 已修正
+並重新 pin OCI identity，但尚未取得新的 paid clean observation。這是 AI-assisted engineering
+assessment，不是 formal human adjudication，也不產生 verified detection。
+
 ## Sandbox boundary
 
 Agent 的 measure tool surface 只有 read file、list directory、search tree、submit findings。
@@ -181,7 +188,8 @@ workspace non-mutation；它們不構成 formal security proof。詳見 [SANDBOX
 6. **Contamination／target leakage**：新 mutations 降低已知污染風險，但公開後會衰減；maintainer 知道答案。
 7. **Cost model**：`estimated_cost_usd` 依版本化 pricing table，可能與後續價格或 invoice 不同。
 8. **Sandbox**：是 observed behavior，不是 security certification；Docker／kernel／registry 都在 trust boundary。
-9. **Historical evidence**：`runs/live-*` 是舊 harness 的診斷紀錄，不能與 current suite 合併統計。
+9. **Historical evidence**：早期 schema-0.1 live diagnostics 已從 release tree 移除但仍可由 Git
+   history 追溯；它們不能與 current suite 合併統計。
 
 ## Evidence traceability
 

@@ -172,7 +172,8 @@ synthetic ledger 永遠不能產生 `publishable: true`。
 
 ## Historical live attempts（非 reference result）
 
-`runs/live-*` 保存 2026-08-06 的八次 harness-development attempts：兩次 zero-usage provider errors；
+2026-08-06 的八次 `runs/live-*` harness-development diagnostics 已從 current release tree 移除並
+保留於 Git history：其中包含兩次 zero-usage provider errors；
 六次 billable runs 的 historical estimated cost 合計 USD 0.399115。三次使用
 `chat_completions`／reasoning none，三次使用 Responses／reasoning high。
 

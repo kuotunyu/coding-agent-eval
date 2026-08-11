@@ -11,9 +11,10 @@ private/public boundary 與 replay rules 都有 machine-checkable evidence；但
 tasks 全部因 token budget 終止且沒有 findings；它能支持 reproducibility、instrumentation 與
 failure-analysis claims，不能支持 model effectiveness、human-verified recall 或跨 model ranking。
 
-必須先由 adapter 0.3／prompt 0.2 paid smoke gate 驗證 clean／mutated completion，再決定是否建立
-schema 1.1 的新 reference registration。Source/tag、GitHub Release、Zenodo draft、Zenodo publish
-仍各需獨立批准。
+Adapter 0.3／prompt 0.2 的 clean smoke 已觀察到正常 completion，但 finding 暴露 1.0.4 fixture
+defect，因此 gate 仍失敗。TaskQ 1.0.5 已完成本機與 OCI 修正；必須以新批准的 paid clean／mutated
+smoke 驗證後，才決定是否建立 schema 1.1 registration。Source/tag、GitHub Release、Zenodo draft、
+Zenodo publish 仍各需獨立批准。
 
 ## Claim-to-evidence matrix（2026-08-11）
 
@@ -25,7 +26,7 @@ schema 1.1 的新 reference registration。Source/tag、GitHub Release、Zenodo 
 | Corpus 規模 | `tasks/v0.1.json` 的 `tasks[*].snapshot` 與 `bug_id`；`fixtures/*/fixture.yaml` 的 `bugs` | 10 tasks＝2 clean controls＋8 single-mutation tasks，分布於 2 fixtures。 |
 | Fixture 規模 | `fixtures/*/fixture.yaml` 的 `fixture_version`、`scope.in_scope_loc`；`fixtures/*/witness/clean_suite.yaml` 的 `expected_clean.stdout_contains` | `fx-taskq-py` 1.0.5：1,456 LOC／220 tests；`fx-ledger-ts` 1.0.3：1,183 LOC／174 tests。 |
 | 舊 agent configuration | `runs/reference/registration.json` 與各 trace header | `openai`／`gpt-5.6-luna`／Responses API／`high`／adapter 0.1；只代表舊協定 retained outcomes。 |
-| Pre-registration identity | `runs/reference/registration.json` 的 `suite_id`、`ordered_task_ids`、`task_registry_sha256` | `suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`；順序固定。 |
+| Pre-registration identity | `runs/reference/registration.json` 的 `suite_id`、`ordered_task_ids`、`task_registry_sha256`；`runs/reference/task-registry.json` 的 exact bytes | `suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`；順序固定，TaskQ 1.0.4 snapshot 與 current 1.0.5 registry 分離。 |
 | Budget 與 retry | `runs/reference/registration.json` 的 `budgets`、`retry_policy` | 每 task：200,000 tokens／60 tool calls／900 s／USD 0.25；suite 上限 USD 2.50；`no_automatic_retry`。 |
 | Retained outcomes | `runs/reference/summary.json` 的 `task_count`、`counts`；各 `status.json` | 10/10 有 terminal outcome；10 個皆為 `budget_exhausted`。這不是 10/10 task success。 |
 | Failure classification | 各 `run.json` 的 `termination_reason`；各 `trace.jsonl` 最後一筆 `termination.payload.reason` | 10/10 為 `budget_exhausted_tokens`；provider error 與 harness error 皆為 0。 |
@@ -55,8 +56,8 @@ success-rate 敘述。
 | R3 | 在第一個 provider call 前 pre-register adapter/prompt identity、conversation state、provider、model、API、reasoning、task order、budgets、retry 與 OCI identity。 | Schema 1.1 與 tests 已實作；舊 schema 1.0 僅可讀，新的 paid registration 尚未建立。 |
 | R4 | 十個 tasks 每一個都保留 terminal outcome；failure 不得移除或重跑取代。 | `runs/reference/summary.json` 與 10 個 `status.json`；目前 10/10 `budget_exhausted`。 |
 | R5 | Current public traces 使用 schema 0.2.0，具唯一 header／cost／termination、per-call latency、usage、OCI identity；legacy contract 固定不可發布。 | Current `trace.jsonl` artifacts、trace schema、sanitizer／replay tests；已由測試取代的 schema-0.1 provider diagnostics 不納入 release tree，仍可由 Git history 追溯。 |
-| R6 | 每個 completed outcome 的 candidate pairs 都需 dual blinded human review 與 deterministic replay；空 candidate set 不得製造 rulings。 | 本次 0 completed、0 candidates，因此沒有 current results／review sets；publication audit 仍 fail closed 驗證規則。 |
-| R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得把 adapter 0.1／0.2 outcomes 當成 0.3 結果。 | Benchmark Card、Reference Suite 與本 matrix；README portfolio rewrite 尚待 smoke gate 後完成。 |
+| R6 | 每個 completed mutated outcome 的 candidate pairs 都需 dual blinded human review 與 deterministic replay；空 candidate set 不得製造 rulings。 | 第三次 smoke completed 於已淘汰的 1.0.4 clean fixture，沒有 mutated candidate pair 或 formal ruling；publication audit 仍 fail closed 驗證規則。 |
+| R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得把 adapter 0.1／0.2 outcomes 當成 0.3 結果。 | README、Benchmark Card、Reference Suite 與本 matrix 已分層；1.0.4 attempt 3 也不冒充 1.0.5 evidence。 |
 | R8 | Offline publication audit、full tests、Ruff、format、strict mypy、build、Docker／Linux gates 全部可從公開 source 執行，不需 API key。 | `.github/workflows/ci.yml`、`scripts/verify_release.sh`；paid provider 不在 CI。 |
 | R9 | Release lineage 僅 `kuotunyu`，沒有 `Co-authored-by`；public artifacts 不含 secrets、raw store、worksheet keymaps 或 Docker credentials。 | `git.owner_only`、`artifact.private_data`、leak scan 與 history commands。 |
 | R10 | Source/tag、GitHub Release、Zenodo draft、Zenodo publish 各自是不可合併的 explicit owner gate。 | Release process policy；目前全數停在外部寫入前。 |
@@ -76,15 +77,15 @@ budget 與 `no_automatic_retry`。10 個 outcomes 的 estimated cost 合計 USD 
 - 不可把 clean-control silence 當成完整 code-review 成功；
 - 不可將沒有 candidates 說成 independent reviewers 達成一致。
 
-Historical `runs/live-*` 與 deterministic baselines 保留 diagnostic／arithmetic value，但都不是本次
-registration 的結果，也不能合併到上述數字。
+早期 `runs/live-*` diagnostics 已從 release tree 移除並保留於 Git history；deterministic baselines
+保留 arithmetic value。兩者都不是本次 registration 的結果，也不能合併到上述數字。
 
 ## Flagship threshold
 
-尚未達到。程式層的 conversation validity、privacy boundary 與 registration identity 已由 offline mocks
-閉合；adapter 0.2 的兩次 paid clean smoke 都保留為 budget-exhausted outcomes，而 adapter 0.3／prompt
-0.2 尚無 paid endpoint observation。README 尚未完成 recruiter-first rewrite，也沒有新協定 reference
-outcome。至少要先通過一個 clean＋一個 mutated smoke run，且完整保留任何 terminal outcome，才能
+尚未達到。程式層的 conversation validity、privacy boundary、registration identity、recruiter-first
+README 與 TaskQ 1.0.5 fixture correction 已閉合；adapter 0.2 的兩次 paid clean smoke 保留為
+budget-exhausted outcomes，adapter 0.3／prompt 0.2 attempt 3 則因揭露 1.0.4 fixture defect 而 gate
+failed。至少要在 1.0.5 通過一個 clean＋一個 mutated smoke，且完整保留 terminal outcomes，才能
 重新評估旗艦門檻。
 
 ## Reproducibility 與 release gates

@@ -18,9 +18,9 @@
   },
   "decision_source": "synthetic",
   "fixture_id": "fx-taskq-py",
-  "fixture_version": "1.0.4",
+  "fixture_version": "1.0.5",
   "metrics": {
-    "benchmark_unsupported_findings_per_kloc": 3.6576444769568397,
+    "benchmark_unsupported_findings_per_kloc": 3.4340659340659343,
     "cost_per_verified_bug": null,
     "exact_duplicates_removed": 0,
     "localization_recall": null,
