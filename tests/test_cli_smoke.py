@@ -15,7 +15,11 @@ import pytest
 
 from coding_agent_eval import BENCHMARK_VERSION
 from coding_agent_eval.cli import build_parser, main, manual_run_id, subcommand_names
+from coding_agent_eval.trace.raw_store import RawStore
+from coding_agent_eval.trace.sanitizer import sanitize_events
 from tests.conftest import REPO_ROOT, requires_checkout
+from tests.hygiene.corpus import SAMPLE_API_KEY
+from tests.trace.test_sanitizer_failclosed import clean_events
 
 EXPECTED_SUBCOMMANDS = {
     "validate",
@@ -68,14 +72,174 @@ def test_version_prints_benchmark_version(capsys: pytest.CaptureFixture[str]) ->
     assert BENCHMARK_VERSION in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("command", ["sanitize"])
-def test_an_unimplemented_subcommand_exits_two_not_zero(command: str) -> None:
-    """A stub must not look like success. Exit 2 keeps CI honest.
+def test_sanitize_projects_an_existing_raw_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / ".run-store"
+    events = clean_events()
+    raw = RawStore(root, run_id="run-001")
+    for record in events:
+        raw.append_record(record)
+    expected = tmp_path / "expected.jsonl"
+    sanitize_events(events, expected)
+    output = tmp_path / "public" / "trace.jsonl"
 
-    Everything else is now wired — `validate`, `evaluate`, `store`, `hygiene`,
-    `fixture`, and `run` — so `sanitize` is the last one this covers.
-    """
-    assert main([command]) == 2
+    assert (
+        main(
+            [
+                "sanitize",
+                "run-001",
+                "--store-root",
+                str(root),
+                "--out",
+                str(output),
+            ]
+        )
+        == 0
+    )
+    assert output.read_bytes() == expected.read_bytes()
+    assert capsys.readouterr().out.strip() == f"sanitized {len(events)} events to {output}"
+
+
+def write_cli_raw_run(root: Path, run_id: str, events: list[dict[str, object]]) -> None:
+    raw = RawStore(root, run_id=run_id)
+    for record in events:
+        raw.append_record(record)
+
+
+@pytest.mark.parametrize("run_id", ["..", "../escape", "a/b", r"a\b"])
+def test_sanitize_rejects_an_invalid_run_id_as_operator_syntax(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    run_id: str,
+) -> None:
+    root = tmp_path / ".run-store"
+    output = tmp_path / "trace.jsonl"
+
+    assert main(["sanitize", run_id, "--store-root", str(root), "--out", str(output)]) == 2
+    captured = capsys.readouterr()
+    assert "RUN_ID must be one ordinary path segment" in captured.err
+    assert run_id not in captured.err
+    assert not output.exists()
+    assert not root.exists()
+
+
+@pytest.mark.parametrize("mode", ["missing", "empty", "malformed", "envelope"])
+def test_sanitize_rejects_unusable_raw_runs_without_echoing_content(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+) -> None:
+    root = tmp_path / ".run-store"
+    run_id = "run-001"
+    run_dir = root / run_id
+    secret = "RAW-SECRET-DO-NOT-ECHO"
+    if mode != "missing":
+        run_dir.mkdir(parents=True)
+        content = {
+            "empty": "",
+            "malformed": f'{{"payload":"{secret}"',
+            "envelope": '{"seq":0,"secret":"RAW-SECRET-DO-NOT-ECHO"}',
+        }[mode]
+        (run_dir / "events.jsonl").write_text(content, encoding="utf-8")
+    output = tmp_path / "trace.jsonl"
+
+    assert main(["sanitize", run_id, "--store-root", str(root), "--out", str(output)]) == 1
+    captured = capsys.readouterr()
+    assert secret not in captured.out
+    assert secret not in captured.err
+    assert not output.exists()
+
+
+def test_sanitize_rejects_an_output_inside_the_private_store(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    write_cli_raw_run(root, "run-001", clean_events())
+    output = root / "public" / "trace.jsonl"
+
+    assert main(["sanitize", "run-001", "--store-root", str(root), "--out", str(output)]) == 2
+    assert not output.exists()
+
+
+def test_sanitize_refuses_to_replace_existing_output_without_force(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    write_cli_raw_run(root, "run-001", clean_events())
+    output = tmp_path / "trace.jsonl"
+    original = b"existing public evidence\n"
+    output.write_bytes(original)
+
+    assert main(["sanitize", "run-001", "--store-root", str(root), "--out", str(output)]) == 2
+    assert output.read_bytes() == original
+
+
+def test_sanitize_force_replaces_existing_output_atomically(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    events = clean_events()
+    write_cli_raw_run(root, "run-001", events)
+    output = tmp_path / "trace.jsonl"
+    output.write_bytes(b"old\n")
+    expected = tmp_path / "expected.jsonl"
+    sanitize_events(events, expected)
+
+    assert (
+        main(
+            [
+                "sanitize",
+                "run-001",
+                "--store-root",
+                str(root),
+                "--out",
+                str(output),
+                "--force",
+            ]
+        )
+        == 0
+    )
+    assert output.read_bytes() == expected.read_bytes()
+
+
+def test_sanitize_privacy_failure_preserves_existing_output_with_force(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    events = clean_events()
+    events[1]["payload"]["excerpt"] = SAMPLE_API_KEY
+    write_cli_raw_run(root, "run-001", events)
+    output = tmp_path / "trace.jsonl"
+    original = b"existing public evidence\n"
+    output.write_bytes(original)
+
+    assert (
+        main(
+            [
+                "sanitize",
+                "run-001",
+                "--store-root",
+                str(root),
+                "--out",
+                str(output),
+                "--force",
+            ]
+        )
+        == 1
+    )
+    assert output.read_bytes() == original
+    assert sorted(output.parent.glob(f".{output.name}.*.tmp")) == []
+
+
+def test_sanitize_unknown_field_leaves_no_new_or_temporary_output(tmp_path: Path) -> None:
+    root = tmp_path / ".run-store"
+    events = clean_events()
+    events[1]["payload"]["brand_new_field"] = "unclassified"
+    write_cli_raw_run(root, "run-001", events)
+    output = tmp_path / "public" / "trace.jsonl"
+
+    assert main(["sanitize", "run-001", "--store-root", str(root), "--out", str(output)]) == 1
+    assert not output.exists()
+    assert not output.parent.exists()
+
+
+def test_sanitize_requires_run_id_and_output() -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["sanitize"])
+    assert exc.value.code == 2
 
 
 def test_evaluate_replay_requires_run_dir_fixture_and_bugs() -> None:

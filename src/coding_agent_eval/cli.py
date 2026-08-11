@@ -136,6 +136,11 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--primary-id", help="init: primary human reviewer")
             sub.add_argument("--independent-id", help="init: independent human reviewer")
             sub.add_argument("--resolver-id", help="resolve-import: third human reviewer")
+        elif name == "sanitize":
+            sub.add_argument("run_id", help="existing private run identifier")
+            sub.add_argument("--store-root", type=Path, default=Path(".run-store"))
+            sub.add_argument("--out", type=Path, required=True)
+            sub.add_argument("--force", action="store_true")
         elif name == "store":
             sub.add_argument("action", choices=("prune",))
             sub.add_argument("--root", type=Path, default=Path(".run-store"))
@@ -986,6 +991,40 @@ def _run_store(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_sanitize(args: argparse.Namespace) -> int:
+    from coding_agent_eval.trace import (
+        InvalidRunIdError,
+        RawStoreError,
+        SanitizerError,
+        read_existing_events,
+        sanitize_events,
+    )
+
+    try:
+        store_root = args.store_root.resolve(strict=False)
+        output = args.out.resolve(strict=False)
+    except OSError:
+        print("cae sanitize: output path could not be resolved", file=sys.stderr)
+        return 2
+    if output == store_root or output.is_relative_to(store_root):
+        print("cae sanitize: output must be outside the private store", file=sys.stderr)
+        return 2
+    if output.exists() and not args.force:
+        print("cae sanitize: output exists; pass --force to replace it", file=sys.stderr)
+        return 2
+    try:
+        raw_events = read_existing_events(store_root, args.run_id)
+        sanitize_events(raw_events, output)
+    except InvalidRunIdError:
+        print("cae sanitize: RUN_ID must be one ordinary path segment", file=sys.stderr)
+        return 2
+    except (RawStoreError, SanitizerError, OSError):
+        print("cae sanitize: raw run could not be safely sanitized", file=sys.stderr)
+        return 1
+    print(f"sanitized {len(raw_events)} events to {args.out}")
+    return 0
+
+
 def _run_release(args: argparse.Namespace) -> int:
     from coding_agent_eval.release_audit import audit_release, audit_repository
 
@@ -1039,6 +1078,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return evaluate_actions[args.action](args)
     if args.command == "store":
         return _run_store(args)
+    if args.command == "sanitize":
+        return _run_sanitize(args)
     if args.command == "suite":
         return _run_suite(args)
     if args.command == "release":
