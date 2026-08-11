@@ -1,136 +1,179 @@
 # coding-agent-eval
 
-**A reproducible benchmark harness for measuring whether coding agents find seeded defects—and for keeping unsupported findings, cost, failures, and evidence boundaries visible.**
-
 [![CI](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![OCI Sandboxed](https://img.shields.io/badge/OCI-Sandboxed-2496ED?logo=docker&logoColor=white)
 [![Release](https://img.shields.io/github/v/release/kuotunyu/coding-agent-eval)](https://github.com/kuotunyu/coding-agent-eval/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-`coding-agent-eval` turns agent defect discovery into an auditable experiment. It
-registers immutable tasks and OCI environments, runs agents through a constrained tool
-surface, separates private provider payloads from sanitized public traces, and reserves
-`verified_*` metrics for complete blinded human review.
+本專案建立一套針對 Coding Agent 程式缺陷發現能力之可重現評測基準工具鏈 (Reproducible Defect Discovery Benchmark Harness)：將缺陷挖掘轉化為具備嚴格審計追蹤之科學實驗——註冊不可變任務與 OCI 安全隔離容器、將私有原始 Payload 與白名單脫敏公開 Trace 嚴格隔離、並將 `verified_*` 量化指標保留給完全雙盲人工審核 (Blinded Human Adjudication)。
+
+---
+
+## 系統設計與關鍵特性
+
+1. **不可變任務註冊與 OCI 沙盒隔離 (Task Registration & OCI Sandboxing)**：
+   支援 Python (MIT) 與 TypeScript 雙原生測試夾具，包含 2,650 行受測代碼、396 項原生單元測試、8 組單一變異缺陷注入 (Seeded Mutations) 與 2 組乾淨對照組 (Clean Controls)；執行於無網路、唯讀 Root、權限降級之安全 OCI 容器。
+2. **Fail-Closed 脫敏器與隱私保護 (Privacy & Sanitization)**：
+   原始 Provider 通訊內容一律保留於未追蹤之 `.run-store/`，公開 Trace 僅允許白名單結構化欄位輸出，杜絕任何金鑰、本機路徑或敏感程式碼外洩。
+3. **確定性候選匹配與雙盲人工審裁 (Deterministic Matching & Blinded Review)**：
+   先以自動化規則完成檔案與行號範圍之候選匹配，再由去識別化雙盲工作表進行人工最終審定，避免將未經人工驗證之模型候選直接宣稱為正式指標。
+4. **完整成本與失敗透明追蹤 (Cost & Failure Telemetry)**：
+   所有 API 呼叫均綁定版本化定價表與 Token 預算監控，誠實保存所有終端失敗或超額輪次，不進行私下重試或挑選最佳結果。
+
+---
+
+## 系統架構與 Pipeline
+
+### 1. 缺陷發現評測與脫敏審查流程
 
 ```mermaid
-flowchart LR
-    A["Registered fixture + mutation"] --> B["Isolated agent tool loop"]
-    B --> C["Private raw events"]
-    C --> D["Fail-closed sanitizer"]
-    D --> E["Public trace + cost"]
-    E --> F["Deterministic candidate matching"]
-    F --> G["Blinded human adjudication"]
+%%{init: {'themeVariables': {'fontSize': '18px'}}}%%
+flowchart TD
+    subgraph TaskStage ["階段一：任務註冊與沙盒隔離執行 (Task & Sandbox Loop)"]
+        direction LR
+        Task[("註冊任務夾具 + 變異缺陷<br/>(Python / TS 2,650 行)")] --> Sandbox["OCI 容器隔離執行環境<br/>(無網路 · 唯讀 Root · 權限降級)"] --> Loop["受限 Tool Loop 互動<br/>(Responses / Chat Completions)"]
+    end
+
+    subgraph SanitizeStage ["階段二：私有事件記錄與 Fail-Closed 脫敏"]
+        direction LR
+        Loop --> RawStore[("私有原始事件庫<br/>(.run-store / 永不進 Git)")] --> Sanitizer["Fail-Closed 脫敏器<br/>(過濾路徑與敏感 Payload)"] --> PubTrace[("白名單公開 Trace<br/>(含 Token 成本與時間戳)")]
+    end
+
+    subgraph EvalStage ["階段三：確定性比對與雙盲人工審裁 (Adjudication)"]
+        direction LR
+        PubTrace --> Matcher["確定性候選缺陷比對<br/>(檔案與位置關聯)"] --> Blind["去識別化雙盲審核<br/>(Blinded Human Review)"] --> Verified(["Verified 基準指標<br/>(Recall · Precision · 審計報告)"])
+    end
+
+    TaskStage --> SanitizeStage --> EvalStage
+
+    classDef srcStyle fill:#e7f5ff,stroke:#1971c2,stroke-width:2px,color:#212529
+    classDef procStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#212529
+    classDef evalStyle fill:#e6fcf5,stroke:#0ca678,stroke-width:2px,color:#212529
+
+    class Task,RawStore,PubTrace srcStyle
+    class Sandbox,Loop,Sanitizer,Matcher,Blind procStyle
+    class Verified evalStyle
+
+    style TaskStage fill:#f8f9fa,stroke:#1971c2,stroke-width:2px,color:#1971c2,stroke-dasharray: 4 4
+    style SanitizeStage fill:#faf5ff,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2,stroke-dasharray: 4 4
+    style EvalStage fill:#f4fbf7,stroke:#0ca678,stroke-width:2px,color:#0ca678,stroke-dasharray: 4 4
 ```
 
-## 30-second offline quickstart
+### 2. 執行環境與邊界防護架構
 
-Requires Python 3.12 and [uv](https://docs.astral.sh/uv/). These commands do not read an
-API key or call a paid provider.
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '18px'}}}%%
+flowchart TD
+    subgraph ClientStage ["階段一：CLI 評測調度與組態綁定"]
+        direction LR
+        CLI["CAE 命令列介面<br/>(cae validate / sanitize)"] --> Config[("不可變 Suite 組態<br/>(Prompt + Tool 預算綁定)")]
+    end
+
+    subgraph OCIStage ["階段二：OCI 容器安全防禦層 (Security Defense)"]
+        direction LR
+        Config --> Net["網路完全隔離<br/>(Network None)"] & Root["唯讀根檔案系統<br/>(Read-Only RootFS)"] & Caps["權限降級保護<br/>(Drop All Capabilities)"]
+    end
+
+    subgraph AuditStage ["階段三：發布前審計與稽核 (Release Audit)"]
+        direction LR
+        Net & Root & Caps --> Audit{"Release Audit 門禁<br/>(漂移 / 洩漏 / 完整性)"}
+        Audit -->|"通過"| SafeRelease[("可公開發布產物<br/>(Public Traces & Manifest)")]
+        Audit -->|"未通過"| Block(["阻擋發布並報警<br/>(Fail-Closed Block)"])
+    end
+
+    ClientStage --> OCIStage --> AuditStage
+
+    classDef srcStyle fill:#e7f5ff,stroke:#1971c2,stroke-width:2px,color:#212529
+    classDef procStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#212529
+    classDef condStyle fill:#fff9db,stroke:#f59f00,stroke-width:2px,color:#212529
+    classDef safeStyle fill:#e6fcf5,stroke:#0ca678,stroke-width:2px,color:#212529
+    classDef rejStyle fill:#ffe3e3,stroke:#e03131,stroke-width:2px,color:#212529
+
+    class CLI,Config srcStyle
+    class Net,Root,Caps procStyle
+    class Audit condStyle
+    class SafeRelease safeStyle
+    class Block rejStyle
+
+    style ClientStage fill:#f8f9fa,stroke:#1971c2,stroke-width:2px,color:#1971c2,stroke-dasharray: 4 4
+    style OCIStage fill:#faf5ff,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2,stroke-dasharray: 4 4
+    style AuditStage fill:#f4fbf7,stroke:#0ca678,stroke-width:2px,color:#0ca678,stroke-dasharray: 4 4
+```
+
+---
+
+## 實驗證據與評測矩陣
+
+本軟體 v0.1.1 版本建立於 BugSeed 基準 v0.1.0 之上，提供獨立脫敏協議與套件發布支援。本專案嚴格保持證據邊界，所有數值均有對應記錄佐證：
+
+| 證據層級 (Evidence Layer) | 現有產物與記錄 | 所能支持之客觀推論 |
+|---|---|---|
+| Scripted Baseline | 確定性乾淨／變異夾具與合成審裁 | 驗證 Pipeline、匹配器、分母計算與重放回歸測試（非模型效能排名） |
+| 2026-08-10 Reference Suite | 10/10 終端結果（10 tasks 均耗盡 Token 預算，0 檢出） | 舊版適配器／組態失敗歸因分析（非任務成功或排名依據） |
+| Paid Smoke Attempt 1–2 | 對話連結修正；乾淨對照組耗盡預算 | 適配器 0.2 Trace 格式、隱私邊界與預算追蹤佐證 |
+| Paid Smoke Attempt 3 | 適配器 0.3 / Prompt 0.2 完成；乾淨組 1 項檢出 (USD 0.031539) | 正常完成與 Trace 連結驗證；Smoke 門禁未通過 |
+| Paid Smoke Attempt 4 | TaskQ 1.0.5 乾淨組完成；2 項機器重現候選 (USD 0.006662) | 當前計價、連結與隱私佐證；乾淨門禁未通過 |
+| Paid Smoke Attempt 5 | TaskQ 1.0.6 乾淨組經 12 次工具呼叫耗盡預算 (USD 0.005426) | 適配器 0.3 連結、隱私與預算佐證；Smoke 門禁未通過 |
+| Paid Smoke Attempt 6 | 適配器 0.4 乾淨組達 `step_exhausted` (USD 0.007277) | 適配器 0.4 多輪連結與隱私佐證；乾淨門禁未通過 |
+| Human-verified Evidence | 尚無（保持空缺） | 不宣稱 `verified_bug_recall`、`verified_finding_precision` 或正式排行榜指標 |
+
+---
+
+## 快速開始
+
+環境需求：Python 3.12 與 [uv](https://docs.astral.sh/uv/)。以下指令完全離線執行，無需 API Key 或付費 Provider：
+
+### 1. 離線夾具驗證與發布審計
 
 ```bash
+# 1. 複製專案並安裝鎖定依賴
 git clone https://github.com/kuotunyu/coding-agent-eval.git
 cd coding-agent-eval
 uv sync --locked
+
+# 2. 驗證測試夾具與發布產物合規性
 uv run cae validate fixtures
 uv run cae release audit --publication
 ```
 
-Reproducible output from the current tree:
+執行輸出預期為乾淨無警告：
 
 ```text
 fixture validation clean: fixtures
 release artifact audit clean (0 warning(s))
 ```
 
-To publish a trace from an existing ignored raw run without repeating a provider call:
+### 2. 脫敏公開 Trace 產生
+
+從現有未追蹤的原始運行紀錄中匯出安全公開 Trace：
 
 ```bash
 uv run cae sanitize RUN_ID --store-root .run-store --out public-trace.jsonl
 ```
 
-The command accepts one existing run ID, refuses output inside the private store, does not
-overwrite unless `--force` is explicit, and emits only the sanitizer's allowlisted public
-projection. It does not create benchmark results, review decisions, or completeness claims.
+該指令僅接受單一現有 Run ID，拒絕將輸出寫入私有儲存區，且僅輸出脫敏器白名單之公開結構化投影，不產生未經審核之基準結論。
 
-## What I built
+---
 
-- A versioned Python CLI for fixture validation, agent execution, sanitization, replay,
-  evaluation, suite registration, and publication auditing.
-- Two first-party MIT fixtures—Python and TypeScript—with 2,650 in-scope LOC, 396 own
-  tests, eight single-defect mutations, and two clean controls.
-- Digest-qualified OCI environments and runtime checks for network isolation, read-only
-  roots, dropped capabilities, resource limits, and host-path separation.
-- Responses API and Chat Completions adapters with deterministic mocked coverage for
-  multi-round tool calls, exact call-ID linkage, tool errors, completion, budgets, and
-  replay.
-- An append-only evidence model: owner-only raw events stay ignored; public traces expose
-  allowlisted metadata; release audits detect drift, leakage, incomplete review, and
-  non-owner Git provenance.
+## 工程邊界與限制
 
-The hardest engineering problems were preserving provider-native conversation state
-without publishing raw payloads, binding prompts and runtime configuration into suite
-identity, and making failures first-class evidence instead of silently retrying or
-selecting a better outcome.
+1. **缺陷發現專屬評測**：本基準專注衡量缺陷發現 (Defect Discovery) 能力，非修復品質或通用代碼生成表現。
+2. **第一方測試夾具邊界**：注入式夾具能精準控制 Ground Truth，但代碼規模有限，不能直接等同大型生產級代碼庫。
+3. **安全沙盒定位**：容器門禁為實測防禦表現，非安全沙盒合規認證。
+4. **候選與正式指標隔離**：完成之 Provider 回應不等於基準任務成功，未經雙盲人工審核之候選檢出不等於 Verified 檢出。
 
-## Evidence, without inflated claims
+---
 
-Software v0.1.1 is a tooling and distribution patch over BugSeed benchmark v0.1.0. It adds
-the standalone sanitizer contract and package metadata; it adds no task, provider run,
-human ruling, or empirical result.
+## 專案結構與文件導覽
 
-| Evidence layer | What exists | What it supports |
-|---|---|---|
-| Scripted baseline | Deterministic clean/mutated fixtures with synthetic adjudication | Pipeline, matcher, denominator, and replay regression tests—not model performance |
-| 2026-08-10 reference suite | 10/10 retained terminal outcomes; all exhausted the token budget; zero findings | A legacy adapter/configuration failure analysis—not task success or a ranking |
-| Paid smoke attempts 1–2 | Corrected conversation linkage; both clean runs exhausted their budgets | Adapter-0.2 trace, privacy, and budget evidence only |
-| Paid smoke attempt 3 | Adapter 0.3/prompt 0.2 completed; one clean-control finding; USD 0.031539 | Normal completion and valid trace linkage; smoke gate still failed |
-| Paid smoke attempt 4 | TaskQ 1.0.5 clean completed; two machine-reproduced candidates; USD 0.006662 | Current pricing/linkage/privacy evidence; clean gate still failed |
-| Paid smoke attempt 5 | TaskQ 1.0.6 clean exhausted its token budget after 12 tools; USD 0.005426 | Retained adapter-0.3 linkage/privacy/budget evidence; smoke gate still failed |
-| Paid smoke attempt 6 | Adapter 0.4 clean reached `step_exhausted` after 12 tools; USD 0.007277 | Live adapter-0.4 linkage/privacy/budget evidence; clean gate still failed |
-| Human-verified evidence | None yet | No `verified_bug_recall`, `verified_finding_precision`, or release headline metric |
+- [Benchmark Card](docs/BENCHMARK_CARD.md)：評測指標定義、分母規範、實驗結果與局限性。
+- [Data Card](docs/DATA_CARD.md)：語料來源、資料血統、開源授權與防污染邊界。
+- [Reference Suite](docs/REFERENCE_SUITE.md)：基準註冊、執行、重放與證據鏈規範。
+- [Release Readiness](docs/RELEASE_READINESS.md)：宣稱對照矩陣與發布門禁。
 
-Attempt 3's finding was mechanically reproduced and conservatively treated as a real
-fixture defect; TaskQ 1.0.5 binds completion to a monotonic lease generation. Attempt 4
-then exposed two further 1.0.5 clean-tree defects—non-atomic concurrent idempotent enqueue
-and a non-resumable migration window—and both conditions were reproduced offline. These
-are AI-assisted engineering findings, not independent human rulings or verified benchmark
-detections. TaskQ 1.0.6 corrects both conditions and passes the deterministic clean and
-mutation contracts. Attempt 5 exercised that fixture but exhausted its token budget before
-a final provider turn, so it did not validate the clean gate. Adapter 0.4 now distinguishes
-a clean final message with zero findings from absent output. Attempt 6 validates its live
-multi-turn linkage and privacy boundary, but exhausted the tool-call budget before a final
-message, so the terminal-classification branch still has mocked evidence only. No mutated
-smoke or new full suite was run. All six paid outcomes are retained; their recorded estimates
-total USD 0.091930 across their respective versioned price tables.
+---
 
-## Engineering contract and limitations
+## 授權與引用
 
-- This benchmark measures defect discovery, not repair quality or general coding ability.
-- Seeded first-party fixtures improve ground-truth control but are small and may not
-  represent large production codebases.
-- Container gates are observed-behaviour evidence, not a sandbox security certification.
-- Provider prices and behavior can change; pricing versions and dates travel with runs.
-- Public source necessarily reveals benchmark construction over time, so the project
-  claims contamination resistance—not contamination freedom.
-- A completed provider response is not a successful benchmark task, and a candidate
-  finding is not a verified detection.
-
-Detailed contracts:
-
-- [Benchmark Card](docs/BENCHMARK_CARD.md): metrics, denominators, results, limitations
-- [Data Card](docs/DATA_CARD.md): corpus, provenance, licensing, contamination boundaries
-- [Reference Suite](docs/REFERENCE_SUITE.md): registration, execution, replay, evidence
-- [Release Readiness](docs/RELEASE_READINESS.md): claim-to-evidence matrix and gates
-
-## 正體中文導覽
-
-這是一個 coding-agent 缺陷發現評估工具鏈，核心不是宣稱模型表現，而是讓 task
-registration、OCI 執行環境、tool-calling trace、成本、失敗結果、sanitization 與 human
-review 邊界可以重現與稽核。目前新版 smoke gate 尚未通過，也沒有可發布的
-`verified_*` 指標；完整方法與限制請閱讀上方四份文件。
-
-## Citation and license
-
-Citation metadata is prepared in [CITATION.cff](CITATION.cff) and
-[.zenodo.json](.zenodo.json), but no DOI or Zenodo publication is claimed. Source and
-fixtures are released under the [MIT License](LICENSE).
+學術引用資訊已準備於 [CITATION.cff](CITATION.cff) 與 [.zenodo.json](.zenodo.json)。專案原始程式碼與測試夾具均採 [MIT License](LICENSE) 開源授權。

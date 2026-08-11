@@ -30,9 +30,19 @@ node_modules/
 # control regardless of what the worksheet was named via --out.
 *.keymap.json
 
+# --- Local agent workflow and maintainer notes ---
+.agents/
+.claude/
+CLAUDE.md
+PLAN.md
+PROGRESS.md
+PROJECT_PLAN.md
+interview*.md
+INTERVIEW_PREP.md
+*.private.md
+
 # --- OS / IDE ---
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-.claude/
