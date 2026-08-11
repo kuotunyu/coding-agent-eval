@@ -1,962 +1,962 @@
 {
-  "schema_version": "0.1.0",
-  "benchmark_version": "0.1.0",
   "artifact_scope": "benchmark_contracts_and_evidence",
   "artifacts": [
     {
-      "path": ".zenodo.json",
       "bytes": 1209,
+      "path": ".zenodo.json",
       "sha256": "54fc222070748f22a1d56636bd614e2916a64e8fe8b34bc1b04ac57bce1de071"
     },
     {
-      "path": "CITATION.cff",
       "bytes": 1091,
+      "path": "CITATION.cff",
       "sha256": "418abc7e22e32750f6edc21057aedc50a4b305d1bb0f2d4e8f9c00d456969906"
     },
     {
-      "path": "LICENSE",
       "bytes": 1065,
+      "path": "LICENSE",
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
+      "bytes": 8271,
       "path": "README.md",
-      "bytes": 9959,
-      "sha256": "aff9d26addc3c1da3940a8ffc6e3b1f19eeed7853544f4b3309bab7afec17076"
+      "sha256": "36d08c66b6de6f954a091205c371307034de7ca6c024173659d6e2152b294668"
     },
     {
-      "path": "docs/BENCHMARK_CARD.md",
       "bytes": 12389,
-      "sha256": "865da911bfa85b75ba66b4a1f40eeb3abf836e09409bce6536a8d6c53460b4ec"
+      "path": "docs/BENCHMARK_CARD.md",
+      "sha256": "c0ec7b7c7c91e289b7f4072d56ff1c890f6fe8f2abe2910aca80477283134e3f"
     },
     {
-      "path": "docs/DATA_CARD.md",
       "bytes": 9894,
+      "path": "docs/DATA_CARD.md",
       "sha256": "6e4977b2bf5054a32d7edcb09fd4b8a89cac50ce09eed24432a9ee3d7e587dcb"
     },
     {
-      "path": "docs/MANUAL_RUN.md",
       "bytes": 8846,
+      "path": "docs/MANUAL_RUN.md",
       "sha256": "165607175c10f259039fc4936247367a1998a17136fe661239a7f952081359b0"
     },
     {
-      "path": "docs/METRICS.md",
       "bytes": 10936,
+      "path": "docs/METRICS.md",
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "path": "docs/PAID_SMOKE_PLAN.md",
       "bytes": 15994,
+      "path": "docs/PAID_SMOKE_PLAN.md",
       "sha256": "d53014e75ab4f7e8e0eea61eefc96121f2a7d9195897c8f5020718169bd949c9"
     },
     {
-      "path": "docs/REFERENCE_SUITE.md",
       "bytes": 7607,
+      "path": "docs/REFERENCE_SUITE.md",
       "sha256": "fbcefb0ab37f0273f75ad9e4d9191e26f6f0740d19e54c9bf0599fba4f82d0f1"
     },
     {
+      "bytes": 13460,
       "path": "docs/RELEASE_READINESS.md",
-      "bytes": 13609,
-      "sha256": "5182537c9135bf08f410e47d4347cacf710802e515fcf0e1c9df30690b3b899a"
+      "sha256": "d4b269e365cbabcf130b0fc67d5d08ef392b2632f4ab8bee37a7890d603a8c1c"
     },
     {
-      "path": "docs/SANDBOX_VERIFICATION.md",
       "bytes": 5276,
+      "path": "docs/SANDBOX_VERIFICATION.md",
       "sha256": "0c76600fb63ab93312794b7cf5d6f8888e893a5a1c982081a5d844a70bbef28e"
     },
     {
-      "path": "docs/THREAT_MODEL.md",
       "bytes": 18187,
+      "path": "docs/THREAT_MODEL.md",
       "sha256": "c42b177b9222741cc88c74f8d86d1ad5950923cdf7e169fc2be88d75e4ea7401"
     },
     {
-      "path": "fixtures/fx-ledger-ts/bugs/B-001.yaml",
       "bytes": 2833,
+      "path": "fixtures/fx-ledger-ts/bugs/B-001.yaml",
       "sha256": "772fd2a98686e568e34e74d6ff04de8aead8ead42c425293584e61326c1cec64"
     },
     {
-      "path": "fixtures/fx-ledger-ts/bugs/B-002.yaml",
       "bytes": 2506,
+      "path": "fixtures/fx-ledger-ts/bugs/B-002.yaml",
       "sha256": "e64b20bc6d10c4c61d6971fa063ce3ab5cfd223d1968f0b492ca0dc0a44e08df"
     },
     {
-      "path": "fixtures/fx-ledger-ts/bugs/B-003.yaml",
       "bytes": 2589,
+      "path": "fixtures/fx-ledger-ts/bugs/B-003.yaml",
       "sha256": "550d6ca3f24c21573600c9db13ebf3703e16f6dd27cc4897c7765272fab5a8e6"
     },
     {
-      "path": "fixtures/fx-ledger-ts/bugs/B-004.yaml",
       "bytes": 2535,
+      "path": "fixtures/fx-ledger-ts/bugs/B-004.yaml",
       "sha256": "e58f110ff0b7c87c62883f73e380a137a43f6d58b262bd5201ba8d2e027969d6"
     },
     {
-      "path": "fixtures/fx-ledger-ts/defects.md",
       "bytes": 20329,
+      "path": "fixtures/fx-ledger-ts/defects.md",
       "sha256": "d0a72d426f73b7094003594416455c1dbfd3aad0574e04e49c5ec208698216ba"
     },
     {
-      "path": "fixtures/fx-ledger-ts/env/Dockerfile",
       "bytes": 1640,
+      "path": "fixtures/fx-ledger-ts/env/Dockerfile",
       "sha256": "65c355e4a69524fdc07c7364a104006c4f834da9d7fd0522b94caabf29dbad18"
     },
     {
-      "path": "fixtures/fx-ledger-ts/env/env.lock.json",
       "bytes": 1195,
+      "path": "fixtures/fx-ledger-ts/env/env.lock.json",
       "sha256": "a6698f6ed29fd09df388ca1688a14d69a3a7f24e816cd2d44b31974fc96328ab"
     },
     {
-      "path": "fixtures/fx-ledger-ts/fixture.yaml",
       "bytes": 2104,
+      "path": "fixtures/fx-ledger-ts/fixture.yaml",
       "sha256": "e938ef69e9bc0182207ff03644c93897dbe6f31d1c861c0c0b2ede6ff069e7e4"
     },
     {
-      "path": "fixtures/fx-ledger-ts/known_residual_defects.yaml",
       "bytes": 937,
+      "path": "fixtures/fx-ledger-ts/known_residual_defects.yaml",
       "sha256": "4a2e1033289941615d307bf96eaa2a95817c69d6f9608515eafc40a362fd2ea5"
     },
     {
-      "path": "fixtures/fx-ledger-ts/patches/B-001.patch",
       "bytes": 1210,
+      "path": "fixtures/fx-ledger-ts/patches/B-001.patch",
       "sha256": "19902b698e77390642dab18bb0f44e9fca9c76dc6a011a43f523eeeca1205ffc"
     },
     {
-      "path": "fixtures/fx-ledger-ts/patches/B-002.patch",
       "bytes": 502,
+      "path": "fixtures/fx-ledger-ts/patches/B-002.patch",
       "sha256": "e4f4f68c37e7580fb6b1cb422d11a817404caf8cfccc033413abf6cfd7a77794"
     },
     {
-      "path": "fixtures/fx-ledger-ts/patches/B-003.patch",
       "bytes": 399,
+      "path": "fixtures/fx-ledger-ts/patches/B-003.patch",
       "sha256": "4186d95963bedeff5523e127b7cc40b2b7ad7fc5fed6ad4c085eafd4ff0a4aea"
     },
     {
-      "path": "fixtures/fx-ledger-ts/patches/B-004.patch",
       "bytes": 410,
+      "path": "fixtures/fx-ledger-ts/patches/B-004.patch",
       "sha256": "ab9a014e2dc336bdd7d2855f1c108f82b0a66c46cc9f5034c244db26a1288625"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/.gitignore",
       "bytes": 28,
+      "path": "fixtures/fx-ledger-ts/tree/.gitignore",
       "sha256": "5ea0a3b6a3cf16f2bc31d6330815cda80c791dc360daad3dc463889be5d2af50"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/LICENSE",
       "bytes": 1065,
+      "path": "fixtures/fx-ledger-ts/tree/LICENSE",
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/README.md",
       "bytes": 3201,
+      "path": "fixtures/fx-ledger-ts/tree/README.md",
       "sha256": "ad0741ec9696e10e842a939121c961976fd7beacdc57f3e90ee40d57870f0e62"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/package-lock.json",
       "bytes": 1495,
+      "path": "fixtures/fx-ledger-ts/tree/package-lock.json",
       "sha256": "ce159b4a1e8d7c781e4f7e37aeebef378c42988c21007b0db2cac67f5b521f04"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/package.json",
       "bytes": 506,
+      "path": "fixtures/fx-ledger-ts/tree/package.json",
       "sha256": "01dfe47dfb0c53f1ba600cb8c94959e289b5ec040bab248e5a7e91b209887caf"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/accounts.ts",
       "bytes": 4905,
+      "path": "fixtures/fx-ledger-ts/tree/src/accounts.ts",
       "sha256": "d94aebd56eeff3d27ab1ebd49415977b59a3f626d25cf659442b2bdb8a76fa29"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/api.ts",
       "bytes": 6709,
+      "path": "fixtures/fx-ledger-ts/tree/src/api.ts",
       "sha256": "6365ce656022a651a254f59269227ee35953df354482cbe165b07e349980b7cd"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/app.ts",
       "bytes": 4477,
+      "path": "fixtures/fx-ledger-ts/tree/src/app.ts",
       "sha256": "b17f51cc5e033748e34258daa41fd1ddc53ddfc9975350ab0982115ea1303955"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/auth.ts",
       "bytes": 2679,
+      "path": "fixtures/fx-ledger-ts/tree/src/auth.ts",
       "sha256": "de97057f1112187ab3c515c859ec2ae51248fac270487e1f5fe7c2ee14ff9487"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/errors.ts",
       "bytes": 1616,
+      "path": "fixtures/fx-ledger-ts/tree/src/errors.ts",
       "sha256": "9371a3c15ca49f2128a2d50a556c1256aa57248028695123200c50a4a43a62f2"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/idempotency.ts",
       "bytes": 2261,
+      "path": "fixtures/fx-ledger-ts/tree/src/idempotency.ts",
       "sha256": "1b9dee495ed36e36e5afa20088a89a4778e5b9a1b22937d3f108dc277121685a"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/journal.ts",
       "bytes": 4696,
+      "path": "fixtures/fx-ledger-ts/tree/src/journal.ts",
       "sha256": "dfaaa593379e1af1f3e951b555cb661af8ac091bb1e601967b71d048798f386b"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/ledger.ts",
       "bytes": 8137,
+      "path": "fixtures/fx-ledger-ts/tree/src/ledger.ts",
       "sha256": "68fed84dafc272977ae2fad99e1077d78a92a460500d841433818d2c2d58fe29"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/locks.ts",
       "bytes": 2979,
+      "path": "fixtures/fx-ledger-ts/tree/src/locks.ts",
       "sha256": "8729b80d023e3dab6d7e7dcbc50dde7ce242424cef42faac0b96b37dbe7d48c0"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/money.ts",
       "bytes": 4975,
+      "path": "fixtures/fx-ledger-ts/tree/src/money.ts",
       "sha256": "591df1a9ab4edf4c335c25910cbf6c98d2fb82c5740249bafaaeb8073a6345ab"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/server.ts",
       "bytes": 3926,
+      "path": "fixtures/fx-ledger-ts/tree/src/server.ts",
       "sha256": "ea6291acbc3b196a4d59c46379a7b251bb22b5a0d5e1f392e3eff73139dbb470"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/settlement.ts",
       "bytes": 3564,
+      "path": "fixtures/fx-ledger-ts/tree/src/settlement.ts",
       "sha256": "7edbc43b66a61bf09b3699904133cd48883d42d86141e967cf065488db15717a"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/src/transfers.ts",
       "bytes": 7637,
+      "path": "fixtures/fx-ledger-ts/tree/src/transfers.ts",
       "sha256": "5edd03882f744f9d3c3b1ccf81c7f77a010c6506cc2c4a49c200746ddb76e760"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/api.test.ts",
       "bytes": 8516,
+      "path": "fixtures/fx-ledger-ts/tree/tests/api.test.ts",
       "sha256": "1a921e5d3fe30140a54a2615921080acb5b8b814738136fd2b49b329e39be1d6"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/auth.test.ts",
       "bytes": 4739,
+      "path": "fixtures/fx-ledger-ts/tree/tests/auth.test.ts",
       "sha256": "ac4985ca834ac44db77c4584309c4aad4b131a98080b5c17484ec89309aff82f"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/concurrency.test.ts",
       "bytes": 9498,
+      "path": "fixtures/fx-ledger-ts/tree/tests/concurrency.test.ts",
       "sha256": "32d7a94780072b26ffcf4dbac326e65971dcdbe3e0ab50cfff0f81f48b8f5a46"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/journal.test.ts",
       "bytes": 11202,
+      "path": "fixtures/fx-ledger-ts/tree/tests/journal.test.ts",
       "sha256": "4545af029d5600332ee4092a0fc997567ca0570f52fbea99cc248bde727bc94b"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/ledger.test.ts",
       "bytes": 10122,
+      "path": "fixtures/fx-ledger-ts/tree/tests/ledger.test.ts",
       "sha256": "7a7a09c55a968b7b9aef52285bf2f5df4f5e0f11551975e134a62330524903b6"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/money.test.ts",
       "bytes": 5295,
+      "path": "fixtures/fx-ledger-ts/tree/tests/money.test.ts",
       "sha256": "52cb5e742dddbed300bb709434e9d18d5329914209465ff82f52ea3b30707bcd"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/server.test.ts",
       "bytes": 5381,
+      "path": "fixtures/fx-ledger-ts/tree/tests/server.test.ts",
       "sha256": "481b3c20f2db476b0594e18b9dd306268a748108029a61c487c224151003a583"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tests/settlement.test.ts",
       "bytes": 6368,
+      "path": "fixtures/fx-ledger-ts/tree/tests/settlement.test.ts",
       "sha256": "fae90a9c40c51f5806893fed85e7602f8b89b337d69f47acf378a83d59f5bcc1"
     },
     {
-      "path": "fixtures/fx-ledger-ts/tree/tsconfig.json",
       "bytes": 526,
+      "path": "fixtures/fx-ledger-ts/tree/tsconfig.json",
       "sha256": "7c30fe5937297eb1fe088cca17ff719ba8b64dd102ff8ddd968a6d7ac520c542"
     },
     {
-      "path": "fixtures/fx-ledger-ts/witness/B-001/witness.test.js",
       "bytes": 2834,
+      "path": "fixtures/fx-ledger-ts/witness/B-001/witness.test.js",
       "sha256": "eac1e3a87e4aa5861451ef2c2073eef156089acce9de36e6671632772ee2f8f1"
     },
     {
-      "path": "fixtures/fx-ledger-ts/witness/B-002/witness.test.js",
       "bytes": 1449,
+      "path": "fixtures/fx-ledger-ts/witness/B-002/witness.test.js",
       "sha256": "f9cbb2736d9d3281f8b42f5c0052537b1071d32cfefe80b682ed3c0c3b7c1e7d"
     },
     {
-      "path": "fixtures/fx-ledger-ts/witness/B-003/witness.test.js",
       "bytes": 1950,
+      "path": "fixtures/fx-ledger-ts/witness/B-003/witness.test.js",
       "sha256": "b5f296af49fc116354773218f40a5ac44223d5c1c6ad90429cb177c3fc390019"
     },
     {
-      "path": "fixtures/fx-ledger-ts/witness/B-004/witness.test.js",
       "bytes": 1642,
+      "path": "fixtures/fx-ledger-ts/witness/B-004/witness.test.js",
       "sha256": "dc6e9757b36890437057321fafb1dde16c042398ea57d62cf4d0ec3d6195cc7d"
     },
     {
-      "path": "fixtures/fx-ledger-ts/witness/clean_suite.yaml",
       "bytes": 1159,
+      "path": "fixtures/fx-ledger-ts/witness/clean_suite.yaml",
       "sha256": "458b9b80de20d4265bb6a0bd45173dc87c8e0347eba921641b120c90fa331884"
     },
     {
-      "path": "fixtures/fx-taskq-py/bugs/B-001.yaml",
       "bytes": 3214,
+      "path": "fixtures/fx-taskq-py/bugs/B-001.yaml",
       "sha256": "8c5383434d9bd1db7e0e47548093278ca0cf9d9cb21aea513333650a6358d77b"
     },
     {
-      "path": "fixtures/fx-taskq-py/bugs/B-002.yaml",
       "bytes": 2558,
+      "path": "fixtures/fx-taskq-py/bugs/B-002.yaml",
       "sha256": "595d31acd279862e78d8353e1284e46194272b2684a0a543090c57880dbc0a07"
     },
     {
-      "path": "fixtures/fx-taskq-py/bugs/B-003.yaml",
       "bytes": 2278,
+      "path": "fixtures/fx-taskq-py/bugs/B-003.yaml",
       "sha256": "5eb5212d5019871ea4eccc5e3b214a06c25efa09cb80080bd1f1075b1470c819"
     },
     {
-      "path": "fixtures/fx-taskq-py/bugs/B-004.yaml",
       "bytes": 2118,
+      "path": "fixtures/fx-taskq-py/bugs/B-004.yaml",
       "sha256": "24c3a2ccab3baecfa1ba4c1f4db70992001bfc335c1480476ee86ef957a8c7c3"
     },
     {
-      "path": "fixtures/fx-taskq-py/defects.md",
       "bytes": 22040,
+      "path": "fixtures/fx-taskq-py/defects.md",
       "sha256": "6bbd25a0d7140b77bb7142e980fb59436d3b9804c4056e287fcb81c2019f2553"
     },
     {
-      "path": "fixtures/fx-taskq-py/env/Dockerfile",
       "bytes": 1216,
+      "path": "fixtures/fx-taskq-py/env/Dockerfile",
       "sha256": "9175ee678dacac82fff0c05f8454e3f824af52385f5f6a7d717ce3ac6b671739"
     },
     {
-      "path": "fixtures/fx-taskq-py/env/env.lock.json",
       "bytes": 635,
+      "path": "fixtures/fx-taskq-py/env/env.lock.json",
       "sha256": "1b02b5a0ac0eafea1e63fe47d6f6f0b499252a00e3101fc9883a5456c2775961"
     },
     {
-      "path": "fixtures/fx-taskq-py/fixture.yaml",
       "bytes": 2549,
+      "path": "fixtures/fx-taskq-py/fixture.yaml",
       "sha256": "645f949f51560d97b1df00a11e40c64f8655dd63f8c50d0fae48d6b70e4ed6d2"
     },
     {
-      "path": "fixtures/fx-taskq-py/known_residual_defects.yaml",
       "bytes": 785,
+      "path": "fixtures/fx-taskq-py/known_residual_defects.yaml",
       "sha256": "6feedcdc14fdd7132cfcdc6a42305a1dcd2fb4a93eff89727729de13d777f5c3"
     },
     {
-      "path": "fixtures/fx-taskq-py/patches/B-001.patch",
       "bytes": 748,
+      "path": "fixtures/fx-taskq-py/patches/B-001.patch",
       "sha256": "c811ac3c5e5293af05708fb4d620d64c8fcda53ffc5dc58b692193ebf2dbc446"
     },
     {
-      "path": "fixtures/fx-taskq-py/patches/B-002.patch",
       "bytes": 613,
+      "path": "fixtures/fx-taskq-py/patches/B-002.patch",
       "sha256": "1be343971b826891d2a24f4ccc0a5e608920511d5bafe040331de8f7b25698cc"
     },
     {
-      "path": "fixtures/fx-taskq-py/patches/B-003.patch",
       "bytes": 1108,
+      "path": "fixtures/fx-taskq-py/patches/B-003.patch",
       "sha256": "7a6646319615666f8266922b0c7ae8b913edf68a07e7de26f5e15caa4f40b5d7"
     },
     {
-      "path": "fixtures/fx-taskq-py/patches/B-004.patch",
       "bytes": 444,
+      "path": "fixtures/fx-taskq-py/patches/B-004.patch",
       "sha256": "8f394b29997f73a6842ae0a4ae996b09c0ce21f04e1e0c02efed6b261b09b152"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/LICENSE",
       "bytes": 1065,
+      "path": "fixtures/fx-taskq-py/tree/LICENSE",
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/README.md",
       "bytes": 2686,
+      "path": "fixtures/fx-taskq-py/tree/README.md",
       "sha256": "3c06f22e167b5526d6b6fd8423335d9b75e0cb9436311d55fcc64b43dd548061"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/pyproject.toml",
       "bytes": 568,
+      "path": "fixtures/fx-taskq-py/tree/pyproject.toml",
       "sha256": "4956b97ff5f011d34943062bddd648af83fc533698cea77ae0f6c16889898178"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/__init__.py",
       "bytes": 142,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/__init__.py",
       "sha256": "e654e0624dca77ff894eb8b289428a8255b3085f74274a77ed92b56422e9b3f8"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/api.py",
       "bytes": 8699,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/api.py",
       "sha256": "44e73dea49c833a66c8884a0575d232bbe5934c35e38d593b8c38c1ef7d55dd3"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/auth.py",
       "bytes": 2045,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/auth.py",
       "sha256": "6f586f02c3b8dd8127092e3b271379ba6c73f711c15e3a9b0468b11440c653fb"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/client.py",
       "bytes": 5697,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/client.py",
       "sha256": "9afed2413f1ca971a147234698a949063a2103242c71d25b3fc7faea84dde6c1"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/config.py",
       "bytes": 1939,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/config.py",
       "sha256": "50490371bcba83ce5f089ec67085e6b756a15b603fdb30e279be7a68f8929a3d"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/deadletter.py",
       "bytes": 3505,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/deadletter.py",
       "sha256": "35a10495dccd5c2d0a92c23d44d8fc1a83f2238aba4776053f0d1e0fdca3c040"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/errors.py",
       "bytes": 1147,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/errors.py",
       "sha256": "a1020541fd33fe46f34ce0e65b5851c8bcf1bfdcb72fbd7baf2ba3ea8536e7f9"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/idempotency.py",
       "bytes": 3809,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/idempotency.py",
       "sha256": "4fb5948b0456ca45615ead8bb95d6ce3b7b8cf536dac1fd8e00f51f9175d47de"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/limits.py",
       "bytes": 3654,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/limits.py",
       "sha256": "4d0ea99201475ca18cc1b2e161040f59cb1aa967c0d18068e326a1d18d70a389"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/metrics.py",
       "bytes": 4368,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/metrics.py",
       "sha256": "f573558257f1623311bb960a6bab43eebbfd61ff5f62c58d47f6bc86e9ac5a8c"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/models.py",
       "bytes": 2568,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/models.py",
       "sha256": "d7cf335cd98b64c5f72424f4a0bc439ca9de9b27477a892ff0d10585132ceaa7"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/queue.py",
       "bytes": 8896,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/queue.py",
       "sha256": "21f5c1e5c4e32c7cba613f0d84be3d9a96174d7bd2fcb6a49ac3fa187233faa8"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/server.py",
       "bytes": 4515,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/server.py",
       "sha256": "6f6167f12876bbaeef9203804e6cb17b6caa447f31be8d7a4a6637fa3bf32d10"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/storage.py",
       "bytes": 9129,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/storage.py",
       "sha256": "c9003d7c7102fcbe472bbe90127136a3d012896445d07f034d6c986cddd51299"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/util.py",
       "bytes": 3759,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/util.py",
       "sha256": "80408567dea6c37d12b41497ba3acdde21ef39ffbec2c4cbf830ea1ed29fd4cf"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/src/taskq/worker.py",
       "bytes": 2984,
+      "path": "fixtures/fx-taskq-py/tree/src/taskq/worker.py",
       "sha256": "31fe323c4c46fa3344e8d8458c3dbe11ea60235b87ce7f58058d484c3c58e566"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/__init__.py",
       "bytes": 0,
+      "path": "fixtures/fx-taskq-py/tree/tests/__init__.py",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/conftest.py",
       "bytes": 1494,
+      "path": "fixtures/fx-taskq-py/tree/tests/conftest.py",
       "sha256": "e383629eca0333c3324494a9a98c37a93837c5632ac52f2aad0a8d0b13043aea"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_admin_routes.py",
       "bytes": 5838,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_admin_routes.py",
       "sha256": "c62d6932631f6fa55a246ba8b5ceb037237000a36421a657cd8dc0233ca9981d"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_api.py",
       "bytes": 9260,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_api.py",
       "sha256": "b9286d258d1b3545b97a746ea84cfe5799fccbf73159148ca4f022d868794144"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_auth.py",
       "bytes": 3677,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_auth.py",
       "sha256": "4a0cfb11f79ff215040796532b1ed9fb41158a8b05516eacc66d1876e639aa3e"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_deadletter.py",
       "bytes": 4614,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_deadletter.py",
       "sha256": "a91314e53e2e11c82c995b33c57a1e2d353649599f38197a7b9ab48e9729bf04"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_idempotency.py",
       "bytes": 5772,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_idempotency.py",
       "sha256": "324d54d4366f35712b52cace2a5fcb4a839daa8ef9ac8f22984d605d43099c08"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_limits.py",
       "bytes": 3266,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_limits.py",
       "sha256": "b7338f6b101755b0a87de03e90dda6675edc93e219ff4e2019986eb0cb8f1b39"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_metrics.py",
       "bytes": 4412,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_metrics.py",
       "sha256": "4b6c6182a50ad3ea0af0b82f08d5ecc481ba21028e0c78093684261bcc174f87"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_queue.py",
       "bytes": 12968,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_queue.py",
       "sha256": "1835853b0a966112a39f55cc6071c5e05a0f0304ff0abcda8b04ea42ac0c758d"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_server.py",
       "bytes": 6332,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_server.py",
       "sha256": "ca584edc5dd16d9ab2cc0defc75791d9b81b01fec05299ff0452baee9532677d"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_storage.py",
       "bytes": 7397,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_storage.py",
       "sha256": "982843a3fb77b9685668cb8feba1d2e3ad82502a037aa94dac566a2578e808f1"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/tests/test_worker.py",
       "bytes": 3919,
+      "path": "fixtures/fx-taskq-py/tree/tests/test_worker.py",
       "sha256": "e003973b81998f22bdaf4a6b04324ce830d88cfdb8f0a785ef815e764cdb93dd"
     },
     {
-      "path": "fixtures/fx-taskq-py/tree/uv.lock",
       "bytes": 126,
+      "path": "fixtures/fx-taskq-py/tree/uv.lock",
       "sha256": "a668f33b5419b0a6356c9a9b4265160ea513005a3c3e231f8ab4211b1ab5bcdb"
     },
     {
-      "path": "fixtures/fx-taskq-py/witness/B-001/test_witness.py",
       "bytes": 1958,
+      "path": "fixtures/fx-taskq-py/witness/B-001/test_witness.py",
       "sha256": "7ca0dacf0125ff78507dbc170600d1bc38731dd80807e0fa3b7d9e7502609f17"
     },
     {
-      "path": "fixtures/fx-taskq-py/witness/B-002/test_witness.py",
       "bytes": 1777,
+      "path": "fixtures/fx-taskq-py/witness/B-002/test_witness.py",
       "sha256": "0f44037fda16087bd80b311c41c78902d471c16afeba397d8e645031794fce7e"
     },
     {
-      "path": "fixtures/fx-taskq-py/witness/B-003/test_witness.py",
       "bytes": 2025,
+      "path": "fixtures/fx-taskq-py/witness/B-003/test_witness.py",
       "sha256": "2d70cd2ae4b4167b8c9b409c998a0d33205d27e5e5ac73d26c8546196c56b2af"
     },
     {
-      "path": "fixtures/fx-taskq-py/witness/B-004/test_witness.py",
       "bytes": 1413,
+      "path": "fixtures/fx-taskq-py/witness/B-004/test_witness.py",
       "sha256": "bfddd23a35df7c9de35e3ed8731fa67ab488a4ef8daad379721ee9dfce0efc3c"
     },
     {
-      "path": "fixtures/fx-taskq-py/witness/clean_suite.yaml",
       "bytes": 747,
+      "path": "fixtures/fx-taskq-py/witness/clean_suite.yaml",
       "sha256": "7ec82745befb1688a29bfd44bf5d802028f34c970a93917b373cbbca21c5b124"
     },
     {
-      "path": "ledger/README.md",
       "bytes": 3386,
+      "path": "ledger/README.md",
       "sha256": "0bba3f52e7c1d89a50ed836ee820b67a7ac29497dd3913571dd2fe1b7f380758"
     },
     {
-      "path": "ledger/adjudications.jsonl",
       "bytes": 971,
+      "path": "ledger/adjudications.jsonl",
       "sha256": "4de59b27929bf164cb9dda57bb92060ff40078b92cd8804b1714a30fdd3efe6a"
     },
     {
-      "path": "ledger/review-sets/README.md",
       "bytes": 3742,
+      "path": "ledger/review-sets/README.md",
       "sha256": "92e9121e0c05e816f029fd192e4850b130bd9e45109c8341e369f8d9068cf4fa"
     },
     {
-      "path": "pyproject.toml",
       "bytes": 2813,
+      "path": "pyproject.toml",
       "sha256": "e4df9ecc55a3e064afe34b627fb4fdcf1dea544195566bc6dcb7d116e9130a92"
     },
     {
-      "path": "runs/README.md",
       "bytes": 3734,
+      "path": "runs/README.md",
       "sha256": "23e9b6ac99fd11ca54a602b7f4e2a3d2d16f5d57a504d5cc4cdf8aec054938b2"
     },
     {
-      "path": "runs/baseline-fx-ledger-ts-clean/results.json",
       "bytes": 1492,
+      "path": "runs/baseline-fx-ledger-ts-clean/results.json",
       "sha256": "bb60bb6dbb5fe00485bc0836a1161052fc01a8ca98c102dee5980ffd0e27b95a"
     },
     {
-      "path": "runs/baseline-fx-ledger-ts-mutated/results.json",
       "bytes": 1274,
+      "path": "runs/baseline-fx-ledger-ts-mutated/results.json",
       "sha256": "339b733e9df3561e9874e25d0fd74a54931d70bd0a28761d1961af8addd3eb6d"
     },
     {
-      "path": "runs/baseline-fx-taskq-py-clean/results.json",
       "bytes": 1493,
+      "path": "runs/baseline-fx-taskq-py-clean/results.json",
       "sha256": "18346ba3d0c2099cf27bcb2f1ca772454a310d5d957fd8f263358736f84ec74c"
     },
     {
-      "path": "runs/baseline-fx-taskq-py-mutated/results.json",
       "bytes": 1273,
+      "path": "runs/baseline-fx-taskq-py-mutated/results.json",
       "sha256": "061bf7a6ed28778e9652748c85f226fb672480c6248e26194b855c82a059cdff"
     },
     {
-      "path": "runs/reference/registration.json",
       "bytes": 1860,
+      "path": "runs/reference/registration.json",
       "sha256": "bca49e173276ac82a2fe8d548793086ce9416505f3254bc46e69a0a5d9090c1d"
     },
     {
-      "path": "runs/reference/summary.json",
       "bytes": 469,
+      "path": "runs/reference/summary.json",
       "sha256": "8df5ed7325feee71824444e900c9a984a9f212b612953a54db180f2d64ededc3"
     },
     {
-      "path": "runs/reference/task-registry.json",
       "bytes": 3863,
+      "path": "runs/reference/task-registry.json",
       "sha256": "cd595c76e1ec3454b207ec54de2d82c4ebee9a82f40ca403f170cbf3701cc57a"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-001/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-001/run.json",
       "bytes": 1976,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/run.json",
       "sha256": "e9892969d68f55feb786f4f8fc2eb41f2a1ff549d586178fc13f4d119234d092"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-001/status.json",
       "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/status.json",
       "sha256": "d332e14d082b5aa826f6251427c5ffc6c26ab24971276229a5320157a44be76d"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-001/trace.jsonl",
       "bytes": 34181,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-001/trace.jsonl",
       "sha256": "d5da7dd50a59d81a4143741e18c0918887c2b21f7f73c5eb00bd4ded7d65b42b"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-002/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-002/run.json",
       "bytes": 1978,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/run.json",
       "sha256": "97d5654a545ea0d03992311a1a75bd0396c899b39b64f496d35e600729aa08fd"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-002/status.json",
       "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/status.json",
       "sha256": "5fb2e1a749b85630900a0a0ce3326296b2d798c1441eafe0100889457b1e2219"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-002/trace.jsonl",
       "bytes": 31168,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-002/trace.jsonl",
       "sha256": "2ab16b6d6eb453880261ed8d5cd17594a268bcd254ca15f178095050fb85b7e5"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-003/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-003/run.json",
       "bytes": 1976,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/run.json",
       "sha256": "29f8e3619d891190903a5760bd9477dded1c78930ae85d018de3a534d4ecdf89"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-003/status.json",
       "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/status.json",
       "sha256": "38353c16bd1bdfbb81a8bb62fe02931dc2b09200323e770ce626635f00b54701"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-003/trace.jsonl",
       "bytes": 32712,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-003/trace.jsonl",
       "sha256": "57b15231a207aae3d0bf6d67720337e55a023038d8815dde0b4f3be11b89adc8"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-004/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-004/run.json",
       "bytes": 1977,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/run.json",
       "sha256": "35c80c6b5e09880f7a3f979c60a8083e35dc0c38efca22a34a7dd45651ea5bd1"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-004/status.json",
       "bytes": 204,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/status.json",
       "sha256": "82d607f18330992f1b64b61d350e4150b89591883c14e244828463641dcb30d0"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/B-004/trace.jsonl",
       "bytes": 34210,
+      "path": "runs/reference/tasks/fx-ledger-ts/B-004/trace.jsonl",
       "sha256": "b8a4b88e8efeca3e596f31d147abc028ec5c6051abd549fa4975a37491258eb2"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/clean/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/clean/run.json",
       "bytes": 1946,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/run.json",
       "sha256": "e28830b65b87b59b70b4caa45e72e70f2907cdd9d8b957205bf972606a4a537f"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/clean/status.json",
       "bytes": 203,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/status.json",
       "sha256": "9a3302612cff215500d7d381f0d1acb8970e774a7853cde8d4b7b135246409e6"
     },
     {
-      "path": "runs/reference/tasks/fx-ledger-ts/clean/trace.jsonl",
       "bytes": 34195,
+      "path": "runs/reference/tasks/fx-ledger-ts/clean/trace.jsonl",
       "sha256": "56ceaa3965938e3f63a13df19be4e9a59dd3162e3fe88a7ce2e866860f8d7d1e"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-001/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-001/run.json",
       "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/run.json",
       "sha256": "c3d6afa44c2a8ccd715bcce46045cab7fed69e2017ecfe966a6b3747a6b428d4"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-001/status.json",
       "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/status.json",
       "sha256": "0e4dd6b489bc99c41c3b8c1f831a66d85fbf61645e88be00006ca8a5582f2855"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-001/trace.jsonl",
       "bytes": 35794,
+      "path": "runs/reference/tasks/fx-taskq-py/B-001/trace.jsonl",
       "sha256": "af60a15d5f328c1995e543ba6b5223dfbbd35b9f66764d9a4b4ac8e138e9d3dc"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-002/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-002/run.json",
       "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/run.json",
       "sha256": "cbac6b38c6038c5a7bc36c618b63ab42b767c8f95bcee8a1c0bb80d8d0e4c9fb"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-002/status.json",
       "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/status.json",
       "sha256": "1a3035894302da35e7ec4653fd28ea6ec140141732c54d79a9d53eda12f7ab25"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-002/trace.jsonl",
       "bytes": 35776,
+      "path": "runs/reference/tasks/fx-taskq-py/B-002/trace.jsonl",
       "sha256": "9da68e7358670ca53ca8d3fa7a2b2a9f4ef7d091108f8396f6d7bc23fe95c7a6"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-003/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-003/run.json",
       "bytes": 1973,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/run.json",
       "sha256": "3e178502c89b538dbe6c4a847ea5d039e3ef8e072e0b451425c34d5b6ab0306e"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-003/status.json",
       "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/status.json",
       "sha256": "c3b488aafc0b0dada450fffec060c7b4550a5f5b21ef4b5aa3fd98250a3d256e"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-003/trace.jsonl",
       "bytes": 35777,
+      "path": "runs/reference/tasks/fx-taskq-py/B-003/trace.jsonl",
       "sha256": "378efac6b5f618c2052088845eb3ea19ddbf6d982bc5f824f6ab08c60eae6a89"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-004/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-004/run.json",
       "bytes": 1974,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/run.json",
       "sha256": "f072c0fffbfbb303a927a06a7023fb9c5aeb04b6337d199a2f6c8ba6757012a4"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-004/status.json",
       "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/status.json",
       "sha256": "3176bf6ffddf8f0824c851a87fe3382266406a85d57bb7b376e2b7179b767a8c"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/B-004/trace.jsonl",
       "bytes": 35810,
+      "path": "runs/reference/tasks/fx-taskq-py/B-004/trace.jsonl",
       "sha256": "e8d72cd0aaaf6c944d862cbb251742e5ac8a39378decaafb60a7e3e9bb8b54e0"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/clean/findings.json",
       "bytes": 21,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/clean/run.json",
       "bytes": 1944,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/run.json",
       "sha256": "d1f410379da725787d6e9b64b417eb2874a85b9c482d2f2e07bb2a4fd102d837"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/clean/status.json",
       "bytes": 202,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/status.json",
       "sha256": "82ef127239cfa97f1b19b4a6eb618950bdd793dad3c781eaa2b72687c17cd31c"
     },
     {
-      "path": "runs/reference/tasks/fx-taskq-py/clean/trace.jsonl",
       "bytes": 35792,
+      "path": "runs/reference/tasks/fx-taskq-py/clean/trace.jsonl",
       "sha256": "7f43c2c2b65a0291dc46899faf7b41ef1d399a55acf1a91d848f90812eed2348"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/findings.json",
       "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/run.json",
       "bytes": 1919,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/run.json",
       "sha256": "b59b1d58e627c54a036c31046568ff447096f3b523051db1b2d39d86e34ed757"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/trace.jsonl",
       "bytes": 20578,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-2/clean/trace.jsonl",
       "sha256": "4801d3bd392489a91cf6781b64144c2ca3c344ddc4271511235f8a59970c0a4c"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/findings.json",
       "bytes": 1104,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/findings.json",
       "sha256": "90082155be448625223478c685d4c496843467a064a501febbeecd17034fc03d"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/run.json",
       "bytes": 1907,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/run.json",
       "sha256": "b65f44c15d3f624714402e9f217077340501e6e9820ae8ae13de3e34863c420e"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/trace.jsonl",
       "bytes": 21161,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/trace.jsonl",
       "sha256": "edc81bcf0869615173ca8bfb1bb45efdd72df8de74561f4317b95ebeadb10be1"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/findings.json",
       "bytes": 2059,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/findings.json",
       "sha256": "d79e95b4b5562ec8cdcfe7e65a88901ac2d804fc528c5d2cf4c8da4b9e5e1ed0"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/run.json",
       "bytes": 1913,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/run.json",
       "sha256": "8ce085ce1e9b1bd12318e0be5f1af3cc6784cdfba0bb620152a0849172a1c9cc"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/trace.jsonl",
       "bytes": 22139,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/trace.jsonl",
       "sha256": "c32ede8e2360542d041e1610a11c8f0fff1537d18d896b45c9594e011b78b692"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/findings.json",
       "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/run.json",
       "bytes": 1926,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/run.json",
       "sha256": "d1d89aaabc8a41536a3bbb710486362f1f6a0d1598e8e3a1f08fdefe2761eb01"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/trace.jsonl",
       "bytes": 20664,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-5/clean/trace.jsonl",
       "sha256": "6c7ec0c7bba3077333326ba38bfde7bfb64e9cd76738d818cd37c3513eb13ec6"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/findings.json",
       "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/run.json",
       "bytes": 1919,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/run.json",
       "sha256": "3ec2c0fcbf823ffafe0f48b7d6cae63a239f87830026f5156eb0e92fe7d9b9a8"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/trace.jsonl",
       "bytes": 21706,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-6/clean/trace.jsonl",
       "sha256": "8b25a1b3734a8b866ee8f7c06bf2f18b3d7b50ab29e0dca58a2b3a919c798329"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11/clean/findings.json",
       "bytes": 21,
+      "path": "runs/smoke/smoke-2026-08-11/clean/findings.json",
       "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11/clean/run.json",
       "bytes": 1897,
+      "path": "runs/smoke/smoke-2026-08-11/clean/run.json",
       "sha256": "f84839b5ddc3c08d873a8ad35a7f6b5292a3dba903e4bb696d2727b17e9d23d0"
     },
     {
-      "path": "runs/smoke/smoke-2026-08-11/clean/trace.jsonl",
       "bytes": 12971,
+      "path": "runs/smoke/smoke-2026-08-11/clean/trace.jsonl",
       "sha256": "654ef82835ef50b3213160a4eb0f0289f41eb37eebd60fd97743c033a1082876"
     },
     {
-      "path": "schemas/bug.schema.json",
       "bytes": 8762,
+      "path": "schemas/bug.schema.json",
       "sha256": "9af082a8ef1c8f8f84f3b671dd15d8a8bf3131272732f7a9a47f1503f8284eec"
     },
     {
-      "path": "schemas/finding.schema.json",
       "bytes": 1972,
+      "path": "schemas/finding.schema.json",
       "sha256": "ea2eed7bb89b5377a36a1a0393167c6a9a96b169d76fc6e27457a1e8de4b3166"
     },
     {
-      "path": "schemas/fixture.schema.json",
       "bytes": 6022,
+      "path": "schemas/fixture.schema.json",
       "sha256": "fbd7ee6d30d9c5581bff97cb2cf040e3ec5946c4c50f1fbe4dcf5915ee9d6a33"
     },
     {
-      "path": "schemas/known-residual-defects.schema.json",
       "bytes": 1006,
+      "path": "schemas/known-residual-defects.schema.json",
       "sha256": "9b0a48155182fd9386abb50937ffc374f237904321b726562b86c0398c5dfb01"
     },
     {
-      "path": "schemas/ledger-entry.schema.json",
       "bytes": 1828,
+      "path": "schemas/ledger-entry.schema.json",
       "sha256": "69eaf0752f0597c3335065f618c591649934a5314e9bb618a5fd010df9b1abd6"
     },
     {
-      "path": "schemas/results.schema.json",
       "bytes": 9197,
+      "path": "schemas/results.schema.json",
       "sha256": "dca890dca757e9fc59523c7378d9fa93a22dda8a93eb717b82711ccc93903679"
     },
     {
-      "path": "schemas/review-set.schema.json",
       "bytes": 3659,
+      "path": "schemas/review-set.schema.json",
       "sha256": "a5a7fce2c32a93edcfe4d90d4b5a4fadb362943b45e32760668f271f85f3a027"
     },
     {
-      "path": "schemas/suite-registration.schema.json",
       "bytes": 4171,
+      "path": "schemas/suite-registration.schema.json",
       "sha256": "2a71f4622e515a758d64c16adc9b9f2785168f979ca58c81885696f989efebbe"
     },
     {
-      "path": "schemas/task.schema.json",
       "bytes": 2499,
+      "path": "schemas/task.schema.json",
       "sha256": "89166bd11f3965a644286d74666061ab91301c7b38b02614a5482f9a64b460a8"
     },
     {
-      "path": "schemas/trace-record.schema.json",
       "bytes": 4304,
+      "path": "schemas/trace-record.schema.json",
       "sha256": "7462efc19c0a83b803651abab83702298448c417470216bbd92400681f1bd314"
     },
     {
-      "path": "tasks/v0.1.json",
       "bytes": 3863,
+      "path": "tasks/v0.1.json",
       "sha256": "a455810bbba3d0cf593b9abea997c79f5b9c9cdddc524df5cf2f14d737758048"
     },
     {
-      "path": "uv.lock",
       "bytes": 103103,
+      "path": "uv.lock",
       "sha256": "df8e782a1e62c6b932ae906cb5f8742b43eae7a749840ac75108fc3da2b212ce"
     }
-  ]
+  ],
+  "benchmark_version": "0.1.0",
+  "schema_version": "0.1.0"
 }

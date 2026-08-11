@@ -33,6 +33,8 @@ node_modules/
 # --- Local agent workflow and maintainer notes ---
 .agents/
 .claude/
+.codex/
+docs/superpowers/
 CLAUDE.md
 PLAN.md
 PROGRESS.md

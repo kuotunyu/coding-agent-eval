@@ -207,5 +207,5 @@ workspace non-mutation；它們不構成 formal security proof。詳見 [SANDBOX
 ## Evidence traceability
 
 重要 public claims、精確欄位與重算方式列於
-[RELEASE_READINESS.md](RELEASE_READINESS.md#claim-to-evidence-matrix2026-08-11)。Release artifacts 的
+[RELEASE_READINESS.md](RELEASE_READINESS.md#claim-to-evidence-matrix2026-08-12)。Release artifacts 的
 bytes 與 SHA-256 列於根目錄 `release-manifest.json`。
