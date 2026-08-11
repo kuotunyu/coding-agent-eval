@@ -19,9 +19,9 @@ the measure container (spec §9.1). Without it they run in this process, and the
 run header says `host_process` so a reader is never left inferring it.
 
 **Which adapter is opt-in and recorded too.** `configuration.api` picks between
-`/v1/chat/completions` (default) and `/v1/responses`. Both have retained live
-observations and mock coverage. The run header names the adapter that actually
-built the request, not a literal.
+`/v1/chat/completions` (default) and `/v1/responses`. Current adapters have mock
+coverage; retained live observations identify older adapter versions. The run
+header names the adapter that actually built the request, not a literal.
 """
 
 from __future__ import annotations
@@ -234,10 +234,11 @@ def write_evidence(run: LiveRun, directory: Path) -> Path:
     header: dict[str, Any] = {**run.header(), "usage": run.usage_total()}
     failure = run.failure
     if failure:
-        # The whole diagnostic goes here rather than only its public half. This
-        # file is the operator's own artifact and never published as-is — the
-        # trace projection is what is publishable, and it drops the free text.
-        header["provider_error"] = failure
+        # The evidence directory is publishable as a unit. Provider free text
+        # remains only in the owner-only raw store and immediate CLI diagnostic.
+        header["provider_error"] = {
+            key: value for key, value in failure.items() if key != "message"
+        }
     _write_json(directory / "run.json", header)
     _write_json(directory / "findings.json", {"findings": run.result.findings})
 
@@ -251,6 +252,9 @@ def build_adapter(configuration: RunConfiguration, *, client: httpx.Client | Non
     adapter it drives, and so a test can build one without going through a
     full run.
     """
+    from coding_agent_eval.agent.provider import render_system_prompt
+
+    system_prompt = render_system_prompt(configuration.budget.max_tool_calls)
     if configuration.api == "responses":
         from coding_agent_eval.agent.responses_provider import OpenAIResponsesAdapter
 
@@ -260,6 +264,8 @@ def build_adapter(configuration: RunConfiguration, *, client: httpx.Client | Non
             base_url=configuration.base_url,
             pricing=configuration.pricing,
             reasoning_effort=configuration.reasoning_effort,
+            max_output_tokens_per_request=configuration.max_output_tokens_per_request,
+            system_prompt=system_prompt,
             client=client,
         )
     return OpenAICompatibleAdapter(
@@ -268,6 +274,8 @@ def build_adapter(configuration: RunConfiguration, *, client: httpx.Client | Non
         base_url=configuration.base_url,
         pricing=configuration.pricing,
         reasoning_effort=configuration.reasoning_effort,
+        max_output_tokens_per_request=configuration.max_output_tokens_per_request,
+        system_prompt=system_prompt,
         client=client,
     )
 

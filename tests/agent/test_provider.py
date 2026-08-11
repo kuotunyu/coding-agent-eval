@@ -20,7 +20,7 @@ import httpx
 import pytest
 
 from coding_agent_eval.agent.loop import run_agent
-from coding_agent_eval.agent.protocol import Budget, Observation, TerminationReason
+from coding_agent_eval.agent.protocol import Budget, TerminationReason
 from coding_agent_eval.agent.provider import (
     PLACEHOLDER_PRICING,
     OpenAICompatibleAdapter,
@@ -29,6 +29,7 @@ from coding_agent_eval.agent.provider import (
     build_messages,
     estimate_cost,
     normalise_usage,
+    render_system_prompt,
 )
 from coding_agent_eval.agent.tools import ToolContext
 
@@ -41,17 +42,34 @@ PRICING = PricingTable(
 )
 
 
+def test_system_prompt_defines_both_completion_paths_and_the_tool_budget() -> None:
+    prompt = render_system_prompt(12)
+
+    assert "at most 12 tool calls" in prompt
+    assert "without calling write_findings" in prompt
+    assert "one write_findings call" in prompt
+    assert "final response without a tool call" in prompt
+
+
+def test_unbounded_prompt_does_not_invent_a_tool_count() -> None:
+    prompt = render_system_prompt(None)
+
+    assert "at most" not in prompt
+    assert "finite tool budget" in prompt
+
+
 def completion(
     *,
     tool_name: str | None = "read_file",
     arguments: dict[str, Any] | None = None,
     usage: dict[str, Any] | None = None,
+    call_id: str = "call_1",
 ) -> dict[str, Any]:
     message: dict[str, Any] = {"role": "assistant", "content": None}
     if tool_name is not None:
         message["tool_calls"] = [
             {
-                "id": "call_1",
+                "id": call_id,
                 "type": "function",
                 "function": {
                     "name": tool_name,
@@ -107,18 +125,6 @@ def test_the_system_prompt_comes_first() -> None:
     assert messages[0]["role"] == "system"
 
 
-def test_each_observation_becomes_a_message() -> None:
-    messages = build_messages(
-        [
-            Observation(tool_name="read_file", content="line one", is_error=False),
-            Observation(tool_name="read_file", content="no such file", is_error=True),
-        ]
-    )
-    assert len(messages) == 3
-    assert "line one" in messages[1]["content"]
-    assert "[read_file error]" in messages[2]["content"]
-
-
 def test_the_request_carries_the_model_and_the_tools() -> None:
     captured: list[dict[str, Any]] = []
 
@@ -136,6 +142,31 @@ def test_the_request_carries_the_model_and_the_tools() -> None:
     assert body["tools"][0]["type"] == "function"
     assert body["tools"][0]["function"]["name"] == "read_file"
     assert body["messages"][0]["role"] == "system"
+
+
+def test_chat_requests_disable_parallel_tool_calls() -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    adapter_with(handler).next_step(tools=[], transcript=[])
+    assert captured[0]["parallel_tool_calls"] is False
+
+
+def test_max_completion_tokens_is_only_sent_when_explicitly_configured() -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    adapter_with(handler).next_step(tools=[], transcript=[])
+    adapter_with(handler, max_output_tokens_per_request=2048).next_step(tools=[], transcript=[])
+
+    assert "max_completion_tokens" not in captured[0]
+    assert captured[1]["max_completion_tokens"] == 2048
 
 
 def test_a_successful_call_carries_replayable_private_and_public_metadata() -> None:
@@ -183,6 +214,102 @@ def test_a_tool_call_round_trips_into_an_invocation() -> None:
     assert step.invocation.arguments == {"path": "src/auth.py"}
 
 
+def test_second_chat_request_replays_the_assistant_call_and_linked_tool_result(
+    tree: Path,
+) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json=completion(
+                    tool_name="read_file",
+                    arguments={"path": "src/auth.py"},
+                    call_id="call_read_1",
+                ),
+            )
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert captured[1]["messages"][1]["role"] == "assistant"
+    assert captured[1]["messages"][1]["tool_calls"][0]["id"] == "call_read_1"
+    assert captured[1]["messages"][2] == {
+        "role": "tool",
+        "tool_call_id": "call_read_1",
+        "content": (
+            '{"content":"     1\\tdef verify(a, b):\\n     2\\t    return a == b","is_error":false}'
+        ),
+    }
+
+
+def test_chat_tool_error_is_a_tool_message_with_the_original_call_id(tree: Path) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json=completion(
+                    tool_name="read_file",
+                    arguments={"path": "missing.py"},
+                    call_id="call_missing",
+                ),
+            )
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert captured[1]["messages"][-1] == {
+        "role": "tool",
+        "tool_call_id": "call_missing",
+        "content": '{"content":"no file at \'missing.py\'","is_error":true}',
+    }
+
+
+def test_third_chat_request_retains_both_prior_tool_call_exchanges(tree: Path) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json=completion(
+                    tool_name="read_file",
+                    arguments={"path": "src/auth.py"},
+                    call_id="call_read",
+                ),
+            )
+        if len(captured) == 2:
+            return httpx.Response(
+                200,
+                json=completion(
+                    tool_name="list_directory",
+                    arguments={"path": "src"},
+                    call_id="call_list",
+                ),
+            )
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    linked = [
+        (message["role"], message.get("tool_call_id") or message["tool_calls"][0]["id"])
+        for message in captured[2]["messages"]
+        if message["role"] in {"assistant", "tool"}
+    ]
+    assert linked == [
+        ("assistant", "call_read"),
+        ("tool", "call_read"),
+        ("assistant", "call_list"),
+        ("tool", "call_list"),
+    ]
+
+
 def test_a_response_with_no_tool_call_stops_the_run() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=completion(tool_name=None))
@@ -202,6 +329,34 @@ def test_malformed_tool_arguments_do_not_end_the_run() -> None:
     step = adapter_with(handler).next_step(tools=[], transcript=[])
     assert step.invocation is not None
     assert step.invocation.arguments == {}
+
+
+def test_multiple_chat_tool_calls_are_rejected_instead_of_partly_answered() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        body = completion()
+        body["choices"][0]["message"]["tool_calls"].append(
+            {
+                "id": "call_2",
+                "type": "function",
+                "function": {"name": "list_directory", "arguments": "{}"},
+            }
+        )
+        return httpx.Response(200, json=body)
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.PROVIDER_ERROR
+    assert step.error["exception"] == "UnexpectedParallelToolCalls"
+
+
+def test_a_chat_tool_call_without_id_is_rejected_before_tool_execution() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        body = completion()
+        del body["choices"][0]["message"]["tool_calls"][0]["id"]
+        return httpx.Response(200, json=body)
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.PROVIDER_ERROR
+    assert step.error["exception"] == "MissingToolCallId"
 
 
 # -------------------------------------------------------------- usage rules

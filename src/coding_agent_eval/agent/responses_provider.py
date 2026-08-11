@@ -1,29 +1,23 @@
 """An adapter for OpenAI's `/v1/responses` endpoint (design spec §11, extends F3).
 
-The adapter has exhaustive mock coverage and three retained live observations
-from 2026-08-06. Those historical traces predate the current strict-replay event
-contract. It exists because `/v1/chat/completions` refused function tools on the
-measured model at any `reasoning_effort` other than `"none"`, so observing that
-model with reasoning enabled required this different request and response shape.
+The current conversation contract has exhaustive mock coverage. Retained live
+observations from 2026-08-06 used adapter 0.1 and therefore remain historical
+evidence only; they do not validate this 0.2 implementation.
 
 Three shape differences from `/v1/chat/completions`, each handled here rather
 than in the shared module:
 
-**`input`, not `messages`.** Items are `{"role": ..., "content": ...}` for
-text, which the Responses API accepts as shorthand for a full message item —
-matching the harness's transcript exactly as `provider.build_messages` does
-for the other adapter. Tool output is still sent as a `user`-role item, not a
-`function_call_output` referencing a call id: this harness's transcript
-(`Observation`) does not carry the assistant turn's `call_id` to reference,
-the same constraint the other adapter has, handled the same way.
+**`input`, not `messages`.** State is managed manually with `store: false`.
+Every assistant output item is retained, followed by a `function_call_output`
+that references the exact `call_id` returned by the model.
 
 **A flat tool schema.** `{"type": "function", "name": ..., "description": ...,
 "parameters": ...}` rather than nesting the schema under `"function"`.
 
 **`output`, not `choices[0].message`.** A list of typed items —
-`function_call`, `message`, `reasoning`, and others not handled here — and the
-harness only ever asks for one action per step, so `parallel_tool_calls` is
-sent `false` and only the first `function_call` item is read.
+`function_call`, `message`, `reasoning`, and others. The harness asks for one
+action per step with `parallel_tool_calls: false` and rejects a response that
+returns more than one function call instead of silently answering only one.
 
 **A response can be HTTP 200 and still not be usable.** A `status` other than
 `"completed"` — truncated by a token limit, refused, incomplete — is treated as
@@ -50,7 +44,13 @@ from typing import Any
 
 import httpx
 
-from coding_agent_eval.agent.protocol import Observation, Step, TerminationReason, ToolInvocation
+from coding_agent_eval.agent.protocol import (
+    AssistantTurn,
+    Observation,
+    Step,
+    TerminationReason,
+    ToolInvocation,
+)
 from coding_agent_eval.agent.provider import (
     DEFAULT_SYSTEM_PROMPT,
     PLACEHOLDER_PRICING,
@@ -61,9 +61,10 @@ from coding_agent_eval.agent.provider import (
     normalise_usage,
     provider_call_trace,
     response_body_for_trace,
+    tool_output_for_model,
 )
 
-ADAPTER_VERSION = "0.1.0"
+ADAPTER_VERSION = "0.3.0"
 
 #: The only status this adapter proceeds on. Anything else — a string that is
 #: present and different, including one never observed — is a provider error.
@@ -73,19 +74,18 @@ _USABLE_STATUS = "completed"
 def build_input(
     transcript: Sequence[Observation], *, system_prompt: str = DEFAULT_SYSTEM_PROMPT
 ) -> list[dict[str, Any]]:
-    """Turn the harness transcript into Responses API `input` items.
-
-    Mirrors `provider.build_messages` field for field. See the module
-    docstring for why tool output is a plain `user` item rather than a
-    `function_call_output`.
-    """
+    """Replay all assistant output and its linked tool result as API input."""
     items: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
     for observation in transcript:
-        label = "error" if observation.is_error else "result"
+        turn = observation.assistant_turn
+        if turn is None or turn.api != "responses":
+            raise ValueError("Responses observation lacks its assistant function-call output")
+        items.extend(turn.output)
         items.append(
             {
-                "role": "user",
-                "content": f"[{observation.tool_name} {label}]\n{observation.content}",
+                "type": "function_call_output",
+                "call_id": turn.tool_call_id,
+                "output": tool_output_for_model(observation),
             }
         )
     return items
@@ -99,23 +99,6 @@ def responses_tool_schemas(tools: Sequence[dict[str, Any]]) -> list[dict[str, An
     the Responses API wants it at the top level next to `"type"`.
     """
     return [{"type": "function", **schema} for schema in tools]
-
-
-def first_function_call(output: Any) -> dict[str, Any] | None:
-    """The first `function_call` item in an `output` array, or `None`.
-
-    A response may carry several item types — reasoning, message, and (absent
-    `parallel_tool_calls: false`) more than one function_call. This harness
-    asks for one action per step, so only the first is read; a second one
-    present anyway would be the provider disregarding the request rather than
-    a case this adapter has to act on.
-    """
-    if not isinstance(output, list):
-        return None
-    for item in output:
-        if isinstance(item, dict) and item.get("type") == "function_call":
-            return item
-    return None
 
 
 @dataclass
@@ -135,6 +118,7 @@ class OpenAIResponsesAdapter:
     #: unset means the request does not mention it, and the model applies its
     #: own default, which is a decision this adapter does not make for it.
     reasoning_effort: str | None = None
+    max_output_tokens_per_request: int | None = None
     client: httpx.Client | None = None
     pricing: PricingTable = PLACEHOLDER_PRICING
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
@@ -173,13 +157,15 @@ class OpenAIResponsesAdapter:
             "input": build_input(transcript, system_prompt=self.system_prompt),
             "tools": responses_tool_schemas(tools),
             "tool_choice": "auto",
-            # One action per step is what this harness asks for; without this a
-            # response may carry several function_call items and only the
-            # first would ever be read (see `first_function_call`).
+            "store": False,
+            # One action per step is what this harness can execute. A provider
+            # that returns several calls anyway is rejected below.
             "parallel_tool_calls": False,
         }
         if self.reasoning_effort is not None:
             payload["reasoning"] = {"effort": self.reasoning_effort}
+        if self.max_output_tokens_per_request is not None:
+            payload["max_output_tokens"] = self.max_output_tokens_per_request
 
         response: httpx.Response | None = None
         started_ns = time.monotonic_ns()
@@ -231,9 +217,35 @@ class OpenAIResponsesAdapter:
                 trace=trace,
             )
 
-        call = first_function_call(body.get("output"))
-        if call is None:
+        output = body.get("output")
+        calls = (
+            [
+                item
+                for item in output
+                if isinstance(item, dict) and item.get("type") == "function_call"
+            ]
+            if isinstance(output, list)
+            else []
+        )
+        if not calls:
             return Step(stop=TerminationReason.COMPLETED, usage=reported, trace=trace)
+        if len(calls) > 1:
+            return Step(
+                stop=TerminationReason.PROVIDER_ERROR,
+                usage=reported,
+                error={"exception": "UnexpectedParallelFunctionCalls", "count": len(calls)},
+                trace=trace,
+            )
+
+        call = calls[0]
+        call_id = call.get("call_id")
+        if not isinstance(call_id, str) or not call_id:
+            return Step(
+                stop=TerminationReason.PROVIDER_ERROR,
+                usage=reported,
+                error={"exception": "MissingFunctionCallId"},
+                trace=trace,
+            )
 
         arguments = call.get("arguments")
         if isinstance(arguments, str):
@@ -251,4 +263,9 @@ class OpenAIResponsesAdapter:
             invocation=ToolInvocation(tool_name=call.get("name", ""), arguments=arguments),
             usage=reported,
             trace=trace,
+            assistant_turn=AssistantTurn(
+                api="responses",
+                output=tuple(item for item in output if isinstance(item, dict)),
+                tool_call_id=call_id,
+            ),
         )

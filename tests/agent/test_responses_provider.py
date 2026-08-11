@@ -18,12 +18,11 @@ import httpx
 import pytest
 
 from coding_agent_eval.agent.loop import run_agent
-from coding_agent_eval.agent.protocol import Budget, Observation, TerminationReason
+from coding_agent_eval.agent.protocol import Budget, TerminationReason
 from coding_agent_eval.agent.provider import PricingTable, ProviderConfigurationError
 from coding_agent_eval.agent.responses_provider import (
     OpenAIResponsesAdapter,
     build_input,
-    first_function_call,
     responses_tool_schemas,
 )
 from coding_agent_eval.agent.tools import ToolContext
@@ -44,6 +43,7 @@ def response(
     usage: dict[str, Any] | None = None,
     status: str = "completed",
     extra_output: list[dict[str, Any]] | None = None,
+    call_id: str = "call_1",
 ) -> dict[str, Any]:
     output: list[dict[str, Any]] = list(extra_output or [])
     if tool_name is not None:
@@ -51,7 +51,7 @@ def response(
             {
                 "type": "function_call",
                 "id": "fc_1",
-                "call_id": "call_1",
+                "call_id": call_id,
                 "name": tool_name,
                 "arguments": json.dumps(arguments if arguments is not None else {"path": "."}),
             }
@@ -96,25 +96,6 @@ def test_a_missing_api_key_raises_without_attempting_a_request() -> None:
 def test_the_system_item_comes_first() -> None:
     items = build_input([])
     assert items[0]["role"] == "system"
-
-
-def test_each_observation_becomes_a_user_item() -> None:
-    items = build_input(
-        [
-            Observation(tool_name="read_file", content="line one", is_error=False),
-            Observation(tool_name="read_file", content="no such file", is_error=True),
-        ]
-    )
-    assert len(items) == 3
-    assert all(item["role"] == "user" for item in items[1:])
-    assert "line one" in items[1]["content"]
-    assert "[read_file error]" in items[2]["content"]
-
-
-def test_no_function_call_output_item_is_ever_produced() -> None:
-    """The harness has no call_id to reference; see the module docstring."""
-    items = build_input([Observation(tool_name="read_file", content="x", is_error=False)])
-    assert all(item.get("type") != "function_call_output" for item in items)
 
 
 # ---------------------------------------------------------- shape: tool schema
@@ -178,8 +159,7 @@ def test_a_successful_call_carries_replayable_private_and_public_metadata() -> N
 
 
 def test_parallel_tool_calls_is_always_sent_false() -> None:
-    """Without this a response could carry several function_call items and
-    only the first would ever be read — silently, not as a reported gap."""
+    """The harness executes one action per step and rejects extra calls."""
     captured: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -188,6 +168,31 @@ def test_parallel_tool_calls_is_always_sent_false() -> None:
 
     adapter_with(handler).next_step(tools=[], transcript=[])
     assert captured[0]["parallel_tool_calls"] is False
+
+
+def test_every_request_disables_server_side_response_storage() -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json=response(tool_name=None))
+
+    adapter_with(handler).next_step(tools=[], transcript=[])
+    assert captured[0]["store"] is False
+
+
+def test_max_output_tokens_is_only_sent_when_explicitly_configured() -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json=response(tool_name=None))
+
+    adapter_with(handler).next_step(tools=[], transcript=[])
+    adapter_with(handler, max_output_tokens_per_request=2048).next_step(tools=[], transcript=[])
+
+    assert "max_output_tokens" not in captured[0]
+    assert captured[1]["max_output_tokens"] == 2048
 
 
 def test_the_authorization_header_carries_the_key() -> None:
@@ -268,9 +273,7 @@ def test_a_response_with_no_function_call_stops_the_run() -> None:
 
 
 def test_a_reasoning_item_ahead_of_the_function_call_is_skipped() -> None:
-    """`first_function_call` must not stop at the first *item* — only the first
-    item whose type is function_call. A reasoning summary item first is the
-    documented common case for a reasoning model."""
+    """A reasoning item is context, not the action selected for the harness."""
 
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -286,14 +289,140 @@ def test_a_reasoning_item_ahead_of_the_function_call_is_skipped() -> None:
     assert step.invocation.tool_name == "read_file"
 
 
-def test_only_the_first_of_several_function_calls_is_read() -> None:
-    output = [
-        {"type": "function_call", "call_id": "c1", "name": "read_file", "arguments": "{}"},
-        {"type": "function_call", "call_id": "c2", "name": "list_directory", "arguments": "{}"},
+def test_second_request_replays_every_assistant_output_before_the_linked_result(
+    tree: Any,
+) -> None:
+    captured: list[dict[str, Any]] = []
+    reasoning = {
+        "type": "reasoning",
+        "id": "r_1",
+        "summary": [],
+        "encrypted_content": "opaque-test-ciphertext",
+    }
+    function_call = {
+        "type": "function_call",
+        "id": "fc_1",
+        "call_id": "call_1",
+        "name": "read_file",
+        "arguments": '{"path":"src/auth.py"}',
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json={"status": "completed", "output": [reasoning, function_call], "usage": {}},
+            )
+        return httpx.Response(200, json=response(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert captured[1]["input"][1:] == [
+        reasoning,
+        function_call,
+        {
+            "type": "function_call_output",
+            "call_id": "call_1",
+            "output": (
+                '{"content":"     1\\tdef verify(a, b):\\n'
+                '     2\\t    return a == b","is_error":false}'
+            ),
+        },
     ]
-    call = first_function_call(output)
-    assert call is not None
-    assert call["call_id"] == "c1"
+
+
+def test_tool_error_is_linked_to_the_call_that_caused_it(tree: Any) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json=response(
+                    tool_name="read_file",
+                    arguments={"path": "missing.py"},
+                ),
+            )
+        return httpx.Response(200, json=response(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    assert captured[1]["input"][-1] == {
+        "type": "function_call_output",
+        "call_id": "call_1",
+        "output": '{"content":"no file at \'missing.py\'","is_error":true}',
+    }
+
+
+def test_third_request_retains_both_prior_function_call_exchanges(tree: Any) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        if len(captured) == 1:
+            return httpx.Response(
+                200,
+                json=response(
+                    tool_name="read_file",
+                    arguments={"path": "src/auth.py"},
+                    call_id="call_read",
+                ),
+            )
+        if len(captured) == 2:
+            return httpx.Response(
+                200,
+                json=response(
+                    tool_name="list_directory",
+                    arguments={"path": "src"},
+                    call_id="call_list",
+                ),
+            )
+        return httpx.Response(200, json=response(tool_name=None))
+
+    run_agent(adapter_with(handler), context=ToolContext(root=tree))
+
+    linked = [
+        (item["type"], item["call_id"])
+        for item in captured[2]["input"]
+        if item.get("type") in {"function_call", "function_call_output"}
+    ]
+    assert linked == [
+        ("function_call", "call_read"),
+        ("function_call_output", "call_read"),
+        ("function_call", "call_list"),
+        ("function_call_output", "call_list"),
+    ]
+
+
+def test_multiple_function_calls_are_rejected_instead_of_partly_answered() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        body = response()
+        body["output"].append(
+            {
+                "type": "function_call",
+                "call_id": "call_2",
+                "name": "list_directory",
+                "arguments": "{}",
+            }
+        )
+        return httpx.Response(200, json=body)
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.PROVIDER_ERROR
+    assert step.error["exception"] == "UnexpectedParallelFunctionCalls"
+
+
+def test_a_function_call_without_call_id_is_rejected_before_tool_execution() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        body = response()
+        del body["output"][0]["call_id"]
+        return httpx.Response(200, json=body)
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.PROVIDER_ERROR
+    assert step.error["exception"] == "MissingFunctionCallId"
 
 
 def test_malformed_arguments_do_not_end_the_run() -> None:

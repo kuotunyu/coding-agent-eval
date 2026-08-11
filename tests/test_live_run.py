@@ -39,8 +39,9 @@ from coding_agent_eval.agent.provider import (
     estimate_cost,
     normalise_usage,
     pricing_for,
+    render_system_prompt,
 )
-from coding_agent_eval.live import execute, write_evidence
+from coding_agent_eval.live import build_adapter, execute, write_evidence
 from coding_agent_eval.runconfig import (
     ConfigurationError,
     load_configuration,
@@ -80,17 +81,17 @@ def configuration(**overrides: str) -> Any:
 
 def test_the_luna_rates_are_the_ones_that_were_read_from_the_model_page() -> None:
     """Pinned by value, with the source that makes them checkable."""
-    assert GPT_5_6_LUNA_PRICING.input_per_mtok_usd == 0.20
-    assert GPT_5_6_LUNA_PRICING.output_per_mtok_usd == 1.20
-    assert GPT_5_6_LUNA_PRICING.cached_input_per_mtok_usd == 0.02
-    assert GPT_5_6_LUNA_PRICING.effective_date == "2026-08-06"
+    assert GPT_5_6_LUNA_PRICING.input_per_mtok_usd == 1.00
+    assert GPT_5_6_LUNA_PRICING.output_per_mtok_usd == 6.00
+    assert GPT_5_6_LUNA_PRICING.cached_input_per_mtok_usd == 0.10
+    assert GPT_5_6_LUNA_PRICING.effective_date == "2026-08-11"
     assert GPT_5_6_LUNA_PRICING.source.startswith("https://")
 
 
 def test_a_priced_run_costs_what_the_rates_say() -> None:
     """Arithmetic checked by hand, so a units error shows up as a wrong number.
 
-    1M input, 1M output: 0.20 + 1.20 = 1.40.
+    1M input, 1M output: 1.00 + 6.00 = 7.00.
     """
     usage = normalise_usage(
         {
@@ -101,12 +102,12 @@ def test_a_priced_run_costs_what_the_rates_say() -> None:
         }
     )
     estimate = estimate_cost(usage, GPT_5_6_LUNA_PRICING)
-    assert estimate.estimated_cost_usd == pytest.approx(1.40)
+    assert estimate.estimated_cost_usd == pytest.approx(7.00)
     assert estimate.completeness == "complete"
 
 
 def test_cached_input_is_charged_once_at_the_cached_rate() -> None:
-    """Half the input cached: 0.5M x 0.20 + 0.5M x 0.02 = 0.10 + 0.01."""
+    """Half the input cached: 0.5M x 1.00 + 0.5M x 0.10 = 0.50 + 0.05."""
     usage = normalise_usage(
         {
             "prompt_tokens": 1_000_000,
@@ -115,7 +116,7 @@ def test_cached_input_is_charged_once_at_the_cached_rate() -> None:
             "completion_tokens_details": {"reasoning_tokens": 0},
         }
     )
-    assert estimate_cost(usage, GPT_5_6_LUNA_PRICING).estimated_cost_usd == pytest.approx(0.11)
+    assert estimate_cost(usage, GPT_5_6_LUNA_PRICING).estimated_cost_usd == pytest.approx(0.55)
 
 
 def test_reasoning_tokens_are_not_charged_a_second_time() -> None:
@@ -200,12 +201,36 @@ def test_a_malformed_budget_is_refused_rather_than_ignored() -> None:
         configuration(CAE_MAX_TOKENS="lots")
 
 
+def test_a_per_request_output_limit_is_validated_and_recorded() -> None:
+    config = configuration(CAE_MAX_OUTPUT_TOKENS_PER_REQUEST="2048")
+
+    assert config.max_output_tokens_per_request == 2048
+    assert config.redacted()["max_output_tokens_per_request"] == 2048
+
+
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_a_non_positive_per_request_output_limit_is_refused(value: str) -> None:
+    with pytest.raises(ConfigurationError, match="greater than zero"):
+        configuration(CAE_MAX_OUTPUT_TOKENS_PER_REQUEST=value)
+
+
 def test_the_default_api_is_chat_completions() -> None:
     assert configuration().api == "chat_completions"
 
 
 def test_the_responses_api_may_be_selected() -> None:
     assert configuration(CAE_PROVIDER_API="responses").api == "responses"
+
+
+@pytest.mark.parametrize("api", ["chat_completions", "responses"])
+def test_both_live_adapters_receive_the_registered_tool_budget_in_the_prompt(
+    api: str,
+) -> None:
+    config = configuration(CAE_PROVIDER_API=api, CAE_MAX_TOOL_CALLS="12")
+
+    adapter = build_adapter(config, client=None)
+
+    assert adapter.system_prompt == render_system_prompt(12)
 
 
 def test_an_unknown_api_value_is_refused() -> None:
@@ -674,18 +699,18 @@ def test_the_usage_summary_can_be_reconciled_with_its_own_cost(tmp_path: Path) -
     usage = run.usage_total()
     assert usage["cached_input_tokens"] == 900_000
 
-    # 100k at 0.20 plus 900k at 0.02, both per million.
+    # 100k at 1.00 plus 900k at 0.10, both per million.
     reconciled = (
-        (usage["input_tokens"] - usage["cached_input_tokens"]) * 0.20 / 1e6
-        + usage["cached_input_tokens"] * 0.02 / 1e6
-        + usage["output_tokens"] * 1.20 / 1e6
+        (usage["input_tokens"] - usage["cached_input_tokens"]) * 1.00 / 1e6
+        + usage["cached_input_tokens"] * 0.10 / 1e6
+        + usage["output_tokens"] * 6.00 / 1e6
     )
     assert usage["estimated_cost_usd"] == pytest.approx(reconciled, abs=1e-9)
-    assert reconciled == pytest.approx(0.038)
+    assert reconciled == pytest.approx(0.19)
 
 
 def test_the_usage_total_prices_the_run_with_the_real_table(tmp_path: Path) -> None:
-    """Two calls at 1000 in / 200 out each: 2000 x 0.20 + 400 x 1.20 per million."""
+    """Two calls at 1000 in / 200 out each: 2000 x 1.00 + 400 x 6.00 per million."""
     handler, calls = submit_then_stop()
     run = execute(
         FIXTURE,
@@ -695,7 +720,7 @@ def test_the_usage_total_prices_the_run_with_the_real_table(tmp_path: Path) -> N
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
     usage = run.usage_total()
-    expected = usage["input_tokens"] * 0.20 / 1e6 + usage["output_tokens"] * 1.20 / 1e6
+    expected = usage["input_tokens"] * 1.00 / 1e6 + usage["output_tokens"] * 6.00 / 1e6
 
     assert usage["input_tokens"] == 1000 * len(calls)
     assert usage["estimated_cost_usd"] == pytest.approx(expected, abs=1e-9)
@@ -878,14 +903,20 @@ def test_the_provider_message_stays_out_of_the_public_trace(tmp_path: Path) -> N
     assert secret_sounding not in trace
     assert "def verify" not in trace, "no fragment of the quoted request may survive"
 
+    raw = json.dumps(run.raw_store.read_events())
+    assert secret_sounding in raw, "the owner-only store must retain the actionable diagnostic"
+
     payload = json.loads(trace.splitlines()[-1])["payload"]
     assert payload["provider_error"]["status"] == 400
     assert payload["provider_error"]["code"] == "c"
     assert "provider_error_message" not in payload
 
-    # The operator still gets it, in the artifact that is not published as-is.
+    # `write_evidence` creates a publishable directory, so its companion JSON
+    # follows the same boundary as the sanitized trace. The operator still has
+    # the complete message in `.run-store` and in the immediate CLI diagnostic.
     header = json.loads((directory / "run.json").read_text(encoding="utf-8"))
-    assert header["provider_error"]["message"] == secret_sounding
+    assert secret_sounding not in json.dumps(header)
+    assert "message" not in header["provider_error"]
 
 
 def test_a_long_provider_message_is_truncated(tmp_path: Path) -> None:

@@ -1,9 +1,9 @@
 """An OpenAI-compatible provider adapter (plan F3, design spec §11).
 
-The adapter has mock coverage and three retained live observations from 2026-08-06.
-Those historical traces predate the current strict-replay event contract, and
-nothing in CI may require an API key — a gate that needs a secret is a gate that
-does not run for anyone who lacks one, which is the same as not having it.
+The current conversation contract has mock coverage. Retained live observations
+from 2026-08-06 used adapter 0.1 and remain historical evidence only. Nothing in
+CI may require an API key — a gate that needs a secret is a gate that does not
+run for anyone who lacks one, which is the same as not having it.
 
 Two rules from §11.2 are load-bearing and are enforced here rather than left to
 whoever reads the response:
@@ -33,10 +33,16 @@ from typing import Any
 
 import httpx
 
-from coding_agent_eval.agent.protocol import Observation, Step, TerminationReason, ToolInvocation
+from coding_agent_eval.agent.protocol import (
+    AssistantTurn,
+    Observation,
+    Step,
+    TerminationReason,
+    ToolInvocation,
+)
 from coding_agent_eval.agent.tools import model_schemas
 
-ADAPTER_VERSION = "0.1.0"
+ADAPTER_VERSION = "0.3.0"
 
 #: Usage fields that bear on price. Each is reported or explicitly unknown.
 PRICED_USAGE_FIELDS: tuple[str, ...] = (
@@ -46,12 +52,29 @@ PRICED_USAGE_FIELDS: tuple[str, ...] = (
     "reasoning_tokens",
 )
 
-DEFAULT_SYSTEM_PROMPT = (
-    "You are reviewing a code tree for defects. Use the tools to read it, then "
-    "submit findings with write_findings. Report only defects you have evidence "
-    "for, and cite the file and line range where each one lives."
-)
-SYSTEM_PROMPT_VERSION = "0.1.0"
+SYSTEM_PROMPT_VERSION = "0.2.0"
+
+
+def render_system_prompt(max_tool_calls: int | None) -> str:
+    """Render the shared, finite review and completion contract."""
+    budget = (
+        f"You have at most {max_tool_calls} tool calls; stop before using all of them. "
+        if max_tool_calls is not None
+        else "You have a finite tool budget; use tools selectively. "
+    )
+    return (
+        "You are reviewing a code tree for defects. This is a selective review, not "
+        "a proof that no defect exists. "
+        + budget
+        + "Report only defects supported by evidence and cite the file and line range. "
+        "If supported defects exist, submit all of them in one write_findings call, "
+        "then return a final response without a tool call. If none were found, return "
+        "a final response without calling write_findings. Do not keep reading solely "
+        "to prove the absence of defects."
+    )
+
+
+DEFAULT_SYSTEM_PROMPT = render_system_prompt(None)
 
 
 def request_hash(payload: dict[str, Any]) -> str:
@@ -133,14 +156,14 @@ PLACEHOLDER_PRICING = PricingTable(
 #: They are still recorded on the usage report, because a run that spent most of
 #: its output budget on reasoning is a different run from one that did not.
 GPT_5_6_LUNA_PRICING = PricingTable(
-    version="openai-gpt-5.6-luna@2026-08-06",
-    effective_date="2026-08-06",
+    version="openai-gpt-5.6-luna@2026-08-11",
+    effective_date="2026-08-11",
     source="https://developers.openai.com/api/docs/models/gpt-5.6-luna",
-    input_per_mtok_usd=0.20,
-    output_per_mtok_usd=1.20,
-    cached_input_per_mtok_usd=0.02,
+    input_per_mtok_usd=1.00,
+    output_per_mtok_usd=6.00,
+    cached_input_per_mtok_usd=0.10,
     limitations=(
-        "Rates were read from the model page on 2026-08-06 and are not re-checked "
+        "Rates were read from the model page on 2026-08-11 and are not re-checked "
         "at run time. A run costed after a price change reports a figure the "
         "provider no longer charges, which is why the date travels with the table.",
         "Reasoning tokens are billed inside the output-token count and are priced "
@@ -378,24 +401,31 @@ def describe_provider_failure(exc: Exception, response: httpx.Response | None) -
 def build_messages(
     transcript: Sequence[Observation], *, system_prompt: str = DEFAULT_SYSTEM_PROMPT
 ) -> list[dict[str, Any]]:
-    """Turn the harness transcript into chat messages.
-
-    Tool output is carried as a `user` message rather than a `tool` one. A
-    `tool` message has to reference the id of the call it answers, and this
-    adapter does not replay the assistant turns that produced those ids — so
-    referencing them would produce a conversation the provider must reject.
-    Stating what the observation was keeps the exchange well formed.
-    """
+    """Replay assistant tool calls and their linked results as chat messages."""
     messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
     for observation in transcript:
-        label = "error" if observation.is_error else "result"
+        turn = observation.assistant_turn
+        if turn is None or turn.api != "chat_completions":
+            raise ValueError("chat observation lacks its assistant tool-call turn")
+        messages.extend(turn.output)
         messages.append(
             {
-                "role": "user",
-                "content": f"[{observation.tool_name} {label}]\n{observation.content}",
+                "role": "tool",
+                "tool_call_id": turn.tool_call_id,
+                "content": tool_output_for_model(observation),
             }
         )
     return messages
+
+
+def tool_output_for_model(observation: Observation) -> str:
+    """Stable structured tool output shared by both OpenAI wire formats."""
+    return json.dumps(
+        {"content": observation.content, "is_error": observation.is_error},
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
 
 @dataclass
@@ -423,6 +453,7 @@ class OpenAICompatibleAdapter:
     #: automatically. The operator sets it, and it is recorded in the run header
     #: so no result can hide which configuration produced it.
     reasoning_effort: str | None = None
+    max_output_tokens_per_request: int | None = None
     client: httpx.Client | None = None
     pricing: PricingTable = PLACEHOLDER_PRICING
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
@@ -461,9 +492,12 @@ class OpenAICompatibleAdapter:
             "messages": build_messages(transcript, system_prompt=self.system_prompt),
             "tools": [{"type": "function", "function": schema} for schema in tools],
             "tool_choice": "auto",
+            "parallel_tool_calls": False,
         }
         if self.reasoning_effort is not None:
             payload["reasoning_effort"] = self.reasoning_effort
+        if self.max_output_tokens_per_request is not None:
+            payload["max_completion_tokens"] = self.max_output_tokens_per_request
 
         response: httpx.Response | None = None
         started_ns = time.monotonic_ns()
@@ -512,8 +546,24 @@ class OpenAICompatibleAdapter:
         calls = message.get("tool_calls") or []
         if not calls:
             return Step(stop=TerminationReason.COMPLETED, usage=reported, trace=trace)
+        if len(calls) > 1:
+            return Step(
+                stop=TerminationReason.PROVIDER_ERROR,
+                usage=reported,
+                error={"exception": "UnexpectedParallelToolCalls", "count": len(calls)},
+                trace=trace,
+            )
 
-        call = calls[0].get("function", {})
+        call_record = calls[0]
+        call_id = call_record.get("id")
+        if not isinstance(call_id, str) or not call_id:
+            return Step(
+                stop=TerminationReason.PROVIDER_ERROR,
+                usage=reported,
+                error={"exception": "MissingToolCallId"},
+                trace=trace,
+            )
+        call = call_record.get("function", {})
         arguments = call.get("arguments")
         if isinstance(arguments, str):
             try:
@@ -530,6 +580,11 @@ class OpenAICompatibleAdapter:
             invocation=ToolInvocation(tool_name=call.get("name", ""), arguments=arguments),
             usage=reported,
             trace=trace,
+            assistant_turn=AssistantTurn(
+                api="chat_completions",
+                output=(message,),
+                tool_call_id=call_id,
+            ),
         )
 
 
