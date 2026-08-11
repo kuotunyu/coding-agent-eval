@@ -156,12 +156,12 @@ PLACEHOLDER_PRICING = PricingTable(
 #: They are still recorded on the usage report, because a run that spent most of
 #: its output budget on reasoning is a different run from one that did not.
 GPT_5_6_LUNA_PRICING = PricingTable(
-    version="openai-gpt-5.6-luna@2026-08-11",
+    version="openai-gpt-5.6-luna@2026-08-11-r2",
     effective_date="2026-08-11",
     source="https://developers.openai.com/api/docs/models/gpt-5.6-luna",
-    input_per_mtok_usd=1.00,
-    output_per_mtok_usd=6.00,
-    cached_input_per_mtok_usd=0.10,
+    input_per_mtok_usd=0.20,
+    output_per_mtok_usd=1.20,
+    cached_input_per_mtok_usd=0.02,
     limitations=(
         "Rates were read from the model page on 2026-08-11 and are not re-checked "
         "at run time. A run costed after a price change reports a figure the "

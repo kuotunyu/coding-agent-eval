@@ -81,17 +81,21 @@ def configuration(**overrides: str) -> Any:
 
 def test_the_luna_rates_are_the_ones_that_were_read_from_the_model_page() -> None:
     """Pinned by value, with the source that makes them checkable."""
-    assert GPT_5_6_LUNA_PRICING.input_per_mtok_usd == 1.00
-    assert GPT_5_6_LUNA_PRICING.output_per_mtok_usd == 6.00
-    assert GPT_5_6_LUNA_PRICING.cached_input_per_mtok_usd == 0.10
+    assert GPT_5_6_LUNA_PRICING.version == "openai-gpt-5.6-luna@2026-08-11-r2"
+    assert GPT_5_6_LUNA_PRICING.input_per_mtok_usd == 0.20
+    assert GPT_5_6_LUNA_PRICING.output_per_mtok_usd == 1.20
+    assert GPT_5_6_LUNA_PRICING.cached_input_per_mtok_usd == 0.02
     assert GPT_5_6_LUNA_PRICING.effective_date == "2026-08-11"
-    assert GPT_5_6_LUNA_PRICING.source.startswith("https://")
+    assert (
+        GPT_5_6_LUNA_PRICING.source
+        == "https://developers.openai.com/api/docs/models/gpt-5.6-luna"
+    )
 
 
 def test_a_priced_run_costs_what_the_rates_say() -> None:
     """Arithmetic checked by hand, so a units error shows up as a wrong number.
 
-    1M input, 1M output: 1.00 + 6.00 = 7.00.
+    1M input, 1M output: 0.20 + 1.20 = 1.40.
     """
     usage = normalise_usage(
         {
@@ -102,12 +106,12 @@ def test_a_priced_run_costs_what_the_rates_say() -> None:
         }
     )
     estimate = estimate_cost(usage, GPT_5_6_LUNA_PRICING)
-    assert estimate.estimated_cost_usd == pytest.approx(7.00)
+    assert estimate.estimated_cost_usd == pytest.approx(1.40)
     assert estimate.completeness == "complete"
 
 
 def test_cached_input_is_charged_once_at_the_cached_rate() -> None:
-    """Half the input cached: 0.5M x 1.00 + 0.5M x 0.10 = 0.50 + 0.05."""
+    """Half cached: 0.5M x 0.20 + 0.5M x 0.02 = 0.10 + 0.01."""
     usage = normalise_usage(
         {
             "prompt_tokens": 1_000_000,
@@ -116,7 +120,25 @@ def test_cached_input_is_charged_once_at_the_cached_rate() -> None:
             "completion_tokens_details": {"reasoning_tokens": 0},
         }
     )
-    assert estimate_cost(usage, GPT_5_6_LUNA_PRICING).estimated_cost_usd == pytest.approx(0.55)
+    assert estimate_cost(usage, GPT_5_6_LUNA_PRICING).estimated_cost_usd == pytest.approx(0.11)
+
+
+def test_current_luna_pricing_reconciles_attempt_3_usage() -> None:
+    """Literal retained usage: uncached input + cached input + output."""
+    usage = normalise_usage(
+        {
+            "input_tokens": 88_934,
+            "output_tokens": 1_052,
+            "input_tokens_details": {"cached_tokens": 70_786},
+            "output_tokens_details": {"reasoning_tokens": 446},
+        }
+    )
+
+    estimate = estimate_cost(usage, GPT_5_6_LUNA_PRICING)
+
+    assert estimate.estimated_cost_usd == pytest.approx(0.00630772)
+    assert estimate.pricing_table_version == "openai-gpt-5.6-luna@2026-08-11-r2"
+    assert estimate.completeness == "complete"
 
 
 def test_reasoning_tokens_are_not_charged_a_second_time() -> None:
@@ -699,18 +721,18 @@ def test_the_usage_summary_can_be_reconciled_with_its_own_cost(tmp_path: Path) -
     usage = run.usage_total()
     assert usage["cached_input_tokens"] == 900_000
 
-    # 100k at 1.00 plus 900k at 0.10, both per million.
+    # 100k at 0.20 plus 900k at 0.02, both per million.
     reconciled = (
-        (usage["input_tokens"] - usage["cached_input_tokens"]) * 1.00 / 1e6
-        + usage["cached_input_tokens"] * 0.10 / 1e6
-        + usage["output_tokens"] * 6.00 / 1e6
+        (usage["input_tokens"] - usage["cached_input_tokens"]) * 0.20 / 1e6
+        + usage["cached_input_tokens"] * 0.02 / 1e6
+        + usage["output_tokens"] * 1.20 / 1e6
     )
     assert usage["estimated_cost_usd"] == pytest.approx(reconciled, abs=1e-9)
-    assert reconciled == pytest.approx(0.19)
+    assert reconciled == pytest.approx(0.038)
 
 
 def test_the_usage_total_prices_the_run_with_the_real_table(tmp_path: Path) -> None:
-    """Two calls at 1000 in / 200 out each: 2000 x 1.00 + 400 x 6.00 per million."""
+    """Two calls at 1000 in / 200 out each, priced with the current table."""
     handler, calls = submit_then_stop()
     run = execute(
         FIXTURE,
@@ -720,7 +742,7 @@ def test_the_usage_total_prices_the_run_with_the_real_table(tmp_path: Path) -> N
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
     usage = run.usage_total()
-    expected = usage["input_tokens"] * 1.00 / 1e6 + usage["output_tokens"] * 6.00 / 1e6
+    expected = usage["input_tokens"] * 0.20 / 1e6 + usage["output_tokens"] * 1.20 / 1e6
 
     assert usage["input_tokens"] == 1000 * len(calls)
     assert usage["estimated_cost_usd"] == pytest.approx(expected, abs=1e-9)
