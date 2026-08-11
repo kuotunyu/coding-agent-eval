@@ -148,9 +148,7 @@ def test_existing_run_reader_hides_malformed_json_content(tmp_path: Path) -> Non
         raw_record(0, unknown="RAW-SECRET-DO-NOT-ECHO"),
     ],
 )
-def test_existing_run_reader_rejects_malformed_envelopes(
-    tmp_path: Path, record: object
-) -> None:
+def test_existing_run_reader_rejects_malformed_envelopes(tmp_path: Path, record: object) -> None:
     root = tmp_path / ".run-store"
     write_raw_lines(root, RUN_ID, [json.dumps(record)])
 
