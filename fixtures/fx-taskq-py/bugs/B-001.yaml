@@ -12,7 +12,7 @@
 schema_version: "0.1"
 bug_id: fx-taskq-py/B-001
 fixture_id: fx-taskq-py
-fixture_version: 1.0.5
+fixture_version: 1.0.6
 
 category: security
 subcategory: authentication_bypass

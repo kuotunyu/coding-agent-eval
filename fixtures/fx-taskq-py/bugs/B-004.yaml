@@ -6,7 +6,7 @@
 schema_version: "0.1"
 bug_id: fx-taskq-py/B-004
 fixture_id: fx-taskq-py
-fixture_version: 1.0.5
+fixture_version: 1.0.6
 
 category: release_claim
 subcategory: documented_boundary_off_by_one

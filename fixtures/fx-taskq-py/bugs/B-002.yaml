@@ -6,7 +6,7 @@
 schema_version: "0.1"
 bug_id: fx-taskq-py/B-002
 fixture_id: fx-taskq-py
-fixture_version: 1.0.5
+fixture_version: 1.0.6
 
 category: data_boundary
 subcategory: cross_tenant_identifier_exposure

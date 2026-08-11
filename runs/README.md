@@ -15,7 +15,7 @@ end and produces the values it was predicted to produce.
 | Run | Snapshot | What it shows |
 |---|---|---|
 | `baseline-fx-taskq-py-mutated` | one seeded bug applied | a perfect agent scores recall and precision 1 |
-| `baseline-fx-taskq-py-clean` | clean control | five unsupported findings over 1,456 in-scope lines |
+| `baseline-fx-taskq-py-clean` | clean control | five unsupported findings over 1,467 in-scope lines |
 | `baseline-fx-ledger-ts-mutated` | one seeded bug applied | the same, on the TypeScript fixture |
 | `baseline-fx-ledger-ts-clean` | clean control | five unsupported findings over 1,183 in-scope lines |
 
@@ -30,7 +30,7 @@ per-KLOC figure is `5 / (in_scope_loc / 1000)` and can be checked by hand.
 
 The 2026-08-10 model-backed reference suite is a separate historical evidence set.
 `reference/task-registry.json` preserves the exact TaskQ 1.0.4 registry bytes bound by its
-registration; `tasks/v0.1.json` describes the current TaskQ 1.0.5 corpus. Neither set is
+registration; `tasks/v0.1.json` describes the current TaskQ 1.0.6 corpus. Neither set is
 silently interpreted as the other.
 
 ## What these files are not

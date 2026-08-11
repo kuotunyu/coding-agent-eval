@@ -85,7 +85,7 @@ primary scoring path，避免啟發式合併只會單向提高 precision。
 ## Registered reference result
 
 Registration、其 hash 綁定的 `task-registry.json` 與完整 evidence 位於 `runs/reference/`。
-這份 frozen registry 描述 TaskQ 1.0.4；current `tasks/v0.1.json` 描述 1.0.5，publication audit
+這份 frozen registry 描述 TaskQ 1.0.4；current `tasks/v0.1.json` 描述 1.0.6，publication audit
 分開驗證兩者，不將舊結果重新解讀為新 fixture evidence。
 
 | 面向 | 觀察值 | Evidence |

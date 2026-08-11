@@ -45,7 +45,7 @@ pytestmark = [
 FIXTURES = {
     "fx-taskq-py": (
         "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
-        "sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966"
+        "sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3"
     ),
     "fx-ledger-ts": (
         "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@"
@@ -53,7 +53,7 @@ FIXTURES = {
     ),
 }
 FIXTURE_TAGS = {
-    "fx-taskq-py": "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.5",
+    "fx-taskq-py": "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.6",
     "fx-ledger-ts": "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts:1.0.3",
 }
 

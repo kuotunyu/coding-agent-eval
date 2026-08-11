@@ -367,7 +367,7 @@ def test_fixture_verify_runs_the_clean_suite_and_every_bug(
     assert calls == ["clean control", *[f"fx-taskq-py/B-{index:03d}" for index in range(1, 5)]]
     immutable_ref = (
         "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
-        "sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966"
+        "sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3"
     )
     assert image_refs == [immutable_ref] * 5
     assert "clean control" in capsys.readouterr().out

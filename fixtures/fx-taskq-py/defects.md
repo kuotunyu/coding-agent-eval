@@ -1,15 +1,18 @@
 # fx-taskq-py — clean tree defect audit
 
-- **Fixture version**: 1.0.5
-- **Audited**: 2026-08-05 (re-audited through 1.0.5)
-- **Auditor**: kuotunyu (also the fixture author — see the data card)
-- **Result at 1.0.5**: five benchmark-scope defects found and fixed — two at
-  1.0.0, one at 1.0.1, one at 1.0.2, and one in the 1.0.4 lease-ownership
-  contract. `known_residual_defects.yaml` is empty again, which is what v0.1
-  requires (design spec §6.8).
-- **Not found by a person.** The 1.0.2 defect was found by `gpt-5.6-luna` with
-  reasoning disabled, on a clean-control run costing $0.0164. Two author passes
-  over the same file had missed it.
+- **Fixture version**: 1.0.6
+- **Original author audit**: kuotunyu, 2026-08-05 (also the fixture author —
+  see the data card).
+- **1.0.6 correction review**: deterministic regressions plus clean and mutation
+  gates; no independent human re-audit or ruling is claimed.
+- **Result at 1.0.6**: seven benchmark-scope defects found and fixed — two at
+  1.0.0, one at 1.0.1, one at 1.0.2, one in the 1.0.4 lease-ownership
+  contract, and two at 1.0.5. `known_residual_defects.yaml` is empty again,
+  which is what v0.1 requires (design spec §6.8).
+- **AI-assisted findings are not human rulings.** GPT-5.6 Luna surfaced the
+  1.0.2, 1.0.4, and 1.0.5 defects in clean-control runs. Each was reproduced
+  deterministically before correction, but none is represented as independent
+  human adjudication or a verified benchmark detection.
 - **Seeded bugs**: four, described under "Seeded bugs" below. None of them is
   in `tree/`; each exists only as a patch, and this file audits the tree
   before any patch is applied.
@@ -27,7 +30,7 @@ where that claim is made checkable rather than asserted.
 
 ## Scope
 
-- **In scope**: `src/**` — 1,456 counted lines across 16 files (15 modules plus
+- **In scope**: `src/**` — 1,467 counted lines across 16 files (15 modules plus
   a package `__init__.py` holding only the version string).
 - **Out of scope**: `tests/**`. A defect in a test is not a defect in the
   service, and counting one would make an agent's correct silence look like a
@@ -56,6 +59,39 @@ is reachable by any programmatic caller including the shipped client.
 
 Fixed with `fullmatch`. Mutating it back fails
 `test_enqueue_rejects_a_queue_name_with_a_trailing_newline`.
+
+## Defects found at 1.0.5
+
+Paid smoke attempt 4 completed normally against the 1.0.5 clean tree and
+submitted both findings below. Separate deterministic reproducers confirmed the
+conditions. This remains AI-assisted machine evidence, not an independent human
+ruling; the retained attempt stays a failed clean control.
+
+### Concurrent idempotent enqueue could create duplicate tasks (`concurrency`)
+
+`TaskQueue.enqueue` looked up an idempotency key, inserted a new task, and only
+then recorded the key, with no shared transaction. Two connections could both
+observe the key as absent and commit distinct tasks before either binding the
+key; the later `ON CONFLICT` update merely chose which duplicate the key named.
+
+Version 1.0.6 keeps request validation outside the lock but runs live-key
+lookup, prior-task lookup, task insertion, and key recording inside the existing
+`BEGIN IMMEDIATE` transaction. The first commit wins across threads and SQLite
+connections. `test_concurrent_enqueues_with_the_same_key_create_one_task`
+controls the old interleaving and asserts one returned ID and one pending row.
+
+### An interrupted schema-2 migration could never resume (`correctness`)
+
+The 1.0.5 migration added `lease_generation` and recorded schema version 2 in
+separate autocommit statements. Interruption between them left a physical
+schema-2 column with version 0/1; every later startup unconditionally repeated
+the `ALTER TABLE` and failed with `duplicate column name: lease_generation`.
+
+Version 1.0.6 inspects the physical task columns, adds the column only when it
+is absent, and records the version in the same immediate transaction. It does
+not suppress unrelated SQLite failures.
+`test_an_interrupted_schema_two_migration_resumes` constructs the exact partial
+state and requires one column plus schema version 2.
 
 ## Defect found at 1.0.4
 
@@ -340,7 +376,7 @@ That filter is not an optimisation, it is the requirement. A seeded defect the
 fixture's own tests catch measures whether an agent runs the test suite, not
 whether it can read code, and every bug it contributed would inflate recall for
 a behaviour the benchmark is not trying to measure. Every bug above survives
-the full suite (220 tests) on the mutated tree.
+the full suite (222 tests) on the mutated tree.
 
 ### What the screening said about this tree
 
@@ -411,8 +447,8 @@ necessary rather than obvious.
 
 ## Completeness
 
-The completeness claim holds at this size and no further. 1,456 lines across 16
-files can be read end to end, and were — twice, since the first pass missed both
-defects above by treating an untested module as merely unproven rather than as
-unexamined. The same claim about a 30,000-line
+The completeness claim holds at this size and no further. The historical author
+audit read the prior bounded tree end to end twice; the 1.0.6 correction adds 11
+in-scope lines and is supported by targeted regressions and full clean/mutation
+gates, not a fresh independent human read. The same claim about a 30,000-line
 service would not be credible, which is why the fixture is bounded (spec §5.4).

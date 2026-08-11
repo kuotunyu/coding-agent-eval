@@ -13,8 +13,8 @@ failure-analysis claims，不能支持 model effectiveness、human-verified reca
 
 Adapter 0.3／prompt 0.2 attempt 4 在 TaskQ 1.0.5 正常 completion，但提交兩個 clean-control
 findings；兩者皆經 deterministic offline reproduction 證實為工程缺陷，因此 gate 仍失敗且 1.0.5
-失去 release eligibility。必須修復並 bump fixture／OCI identity，再以新批准的 paid clean／mutated
-smoke 驗證後，才決定是否建立 schema 1.1 registration。Source/tag、GitHub Release、Zenodo draft、
+失去 release eligibility。TaskQ 1.0.6 已修復兩者、bump fixture／OCI identity 並通過離線 contracts；
+再以新批准的 paid clean／mutated smoke 驗證後，才決定是否建立 schema 1.1 registration。Source/tag、GitHub Release、Zenodo draft、
 Zenodo publish 仍各需獨立批准。
 
 ## Claim-to-evidence matrix（2026-08-11）
@@ -25,9 +25,9 @@ Zenodo publish 仍各需獨立批准。
 | 公開 claim | Machine-checkable evidence | 可重算值／限制 |
 |---|---|---|
 | Corpus 規模 | `tasks/v0.1.json` 的 `tasks[*].snapshot` 與 `bug_id`；`fixtures/*/fixture.yaml` 的 `bugs` | 10 tasks＝2 clean controls＋8 single-mutation tasks，分布於 2 fixtures。 |
-| Fixture 規模 | `fixtures/*/fixture.yaml` 的 `fixture_version`、`scope.in_scope_loc`；`fixtures/*/witness/clean_suite.yaml` 的 `expected_clean.stdout_contains` | `fx-taskq-py` 1.0.5：1,456 LOC／220 tests；`fx-ledger-ts` 1.0.3：1,183 LOC／174 tests。 |
+| Fixture 規模 | `fixtures/*/fixture.yaml` 的 `fixture_version`、`scope.in_scope_loc`；`fixtures/*/witness/clean_suite.yaml` 的 `expected_clean.stdout_contains` | `fx-taskq-py` 1.0.6：1,467 LOC／222 tests；`fx-ledger-ts` 1.0.3：1,183 LOC／174 tests。 |
 | 舊 agent configuration | `runs/reference/registration.json` 與各 trace header | `openai`／`gpt-5.6-luna`／Responses API／`high`／adapter 0.1；只代表舊協定 retained outcomes。 |
-| Pre-registration identity | `runs/reference/registration.json` 的 `suite_id`、`ordered_task_ids`、`task_registry_sha256`；`runs/reference/task-registry.json` 的 exact bytes | `suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`；順序固定，TaskQ 1.0.4 snapshot 與 current 1.0.5 registry 分離。 |
+| Pre-registration identity | `runs/reference/registration.json` 的 `suite_id`、`ordered_task_ids`、`task_registry_sha256`；`runs/reference/task-registry.json` 的 exact bytes | `suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`；順序固定，TaskQ 1.0.4 snapshot 與 current 1.0.6 registry 分離。 |
 | Budget 與 retry | `runs/reference/registration.json` 的 `budgets`、`retry_policy` | 每 task：200,000 tokens／60 tool calls／900 s／USD 0.25；suite 上限 USD 2.50；`no_automatic_retry`。 |
 | Retained outcomes | `runs/reference/summary.json` 的 `task_count`、`counts`；各 `status.json` | 10/10 有 terminal outcome；10 個皆為 `budget_exhausted`。這不是 10/10 task success。 |
 | Failure classification | 各 `run.json` 的 `termination_reason`；各 `trace.jsonl` 最後一筆 `termination.payload.reason` | 10/10 為 `budget_exhausted_tokens`；provider error 與 harness error 皆為 0。 |

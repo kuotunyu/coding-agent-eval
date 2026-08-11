@@ -5,6 +5,31 @@ conversation adapters. It is deliberately smaller than the 10-task reference sui
 Passing it permits registration of a **new** suite ID; it never upgrades or overwrites
 the historical suite.
 
+## Proposed attempt 5 -- not authorized
+
+The next valid paid action is one clean task against corrected TaskQ 1.0.6. No API key
+may be read and no provider request may be made until the owner explicitly approves this
+new attempt after the 1.0.6 source, OCI, local gates, pushed `main`, and GitHub CI are green.
+
+| Dimension | Planned value |
+|---|---|
+| Provider / model | OpenAI / `gpt-5.6-luna` |
+| API / adapter / prompt | Responses API / `openai-responses@0.3.0` / `0.2.0` |
+| Conversation state | Manual history; replay complete `response.output` and linked `function_call_output` |
+| Provider storage | `store: false`; no `previous_response_id` |
+| Reasoning | `low` |
+| Task | `fx-taskq-py/clean` on fixture 1.0.6 |
+| Isolation | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3` |
+| Output | `runs/smoke/smoke-2026-08-11-attempt-5/clean` plus owner-only raw store |
+| Retry policy | One terminal outcome; no automatic or selective retry |
+
+The proposed limits remain 1,024 provider output tokens per request, 80,000 observed
+aggregate tokens, 12 tool calls, 300 seconds, and a USD 0.035 harness estimated-cost stop.
+Using `openai-gpt-5.6-luna@2026-08-11-r2`, expected cost is approximately USD
+0.004--0.015 and the requested maximum new provider-side exposure is USD 0.05. A clean
+finding or abnormal termination stops the gate without a retry. Only a passing clean task
+would make one separately approved B-001 mutated task eligible.
+
 ## Approved attempt 4
 
 Attempt 4 is one corrected **clean task only**. It gets a new output identity and does not
@@ -196,6 +221,6 @@ the duplicate column. This is machine evidence and an AI-assisted engineering as
 not an independent human ruling or a `verified_*` detection.
 
 Attempt 4's paid authorization is consumed. It did not authorize a mutated task, rerun,
-full suite, new reference registration, tag, GitHub Release, or Zenodo action. TaskQ 1.0.5
-must be corrected and assigned a new fixture/OCI identity before any separately approved
-paid clean attempt.
+full suite, new reference registration, tag, GitHub Release, or Zenodo action. TaskQ 1.0.6
+corrects both defects under a new fixture/OCI identity, but this retained outcome remains
+1.0.5 evidence and does not authorize or validate attempt 5.

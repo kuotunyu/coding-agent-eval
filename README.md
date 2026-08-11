@@ -46,7 +46,7 @@ release artifact audit clean (0 warning(s))
 
 - A versioned Python CLI for fixture validation, agent execution, sanitization, replay,
   evaluation, suite registration, and publication auditing.
-- Two first-party MIT fixtures—Python and TypeScript—with 2,639 in-scope LOC, 394 own
+- Two first-party MIT fixtures—Python and TypeScript—with 2,650 in-scope LOC, 396 own
   tests, eight single-defect mutations, and two clean controls.
 - Digest-qualified OCI environments and runtime checks for network isolation, read-only
   roots, dropped capabilities, resource limits, and host-path separation.
@@ -78,7 +78,9 @@ fixture defect; TaskQ 1.0.5 binds completion to a monotonic lease generation. At
 then exposed two further 1.0.5 clean-tree defects—non-atomic concurrent idempotent enqueue
 and a non-resumable migration window—and both conditions were reproduced offline. These
 are AI-assisted engineering findings, not independent human rulings or verified benchmark
-detections. No mutated smoke or new full suite was run. All four paid outcomes are retained;
+detections. TaskQ 1.0.6 corrects both conditions and passes the deterministic clean and
+mutation contracts; it has not yet been represented as new paid or human-verified evidence.
+No mutated smoke or new full suite was run. All four paid outcomes are retained;
 their recorded estimates total USD 0.079227 across their respective versioned price tables.
 
 ## Engineering contract and limitations

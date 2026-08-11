@@ -6,12 +6,12 @@
 # nearby, so clean fixtures are required to be genuinely clean instead.
 #
 # If a clean-control run surfaces something real, the procedure is not to add it
-# here. Scoring stops, the defect is confirmed by a person, the tree is fixed,
+# here. Scoring stops, the defect is deterministically confirmed, the tree is fixed,
 # the fixture version is bumped, and the witness, checksum, answer-leak, and
 # scoring steps all re-run (design spec §6.8).
 #
 # The audit behind the empty list is in defects.md.
 schema_version: "0.1"
 fixture_id: fx-taskq-py
-fixture_version: 1.0.5
+fixture_version: 1.0.6
 defects: []

@@ -20,13 +20,13 @@ agent defect-discovery evaluation vertical slice。
 
 | 欄位 | `fx-taskq-py` | `fx-ledger-ts` |
 |---|---|---|
-| Fixture version | 1.0.5 | 1.0.3 |
+| Fixture version | 1.0.6 | 1.0.3 |
 | Language／runtime | Python 3.12 | TypeScript／Node 22 |
 | Service shape | Background task queue、HTTP API、worker、SQLite | Double-entry ledger、HTTP API、locks、journal、batch settlement |
 | In-scope paths | `src/**` | `src/**` |
 | Out-of-scope paths | `tests/**` | `tests/**`、`node_modules/**`、`dist/**` |
-| In-scope LOC | 1,456 | 1,183 |
-| Own test suite | 220 tests | 174 tests |
+| In-scope LOC | 1,467 | 1,183 |
+| Own test suite | 222 tests | 174 tests |
 | Seeded bugs | 4 | 4 |
 | Runtime dependencies | 無 third-party runtime dependency | 無 third-party runtime dependency |
 | License | MIT | MIT |
@@ -75,9 +75,9 @@ eligibility。
 
 Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixture defects，修正後皆 bump version、
 重建 OCI 並重新 pin。Attempt 4 又在 TaskQ 1.0.5 clean tree 產生兩個經離線重現的工程缺陷，
-因此 1.0.5 已失去 release eligibility；Ledger 1.0.3 不受此 observation 影響。TaskQ 必須修復、
-bump version、重建／re-pin OCI 後才可重建 clean evidence，不得以 adjudication 把缺陷標成
-unsupported。
+因此 1.0.5 已失去 release eligibility；Ledger 1.0.3 不受此 observation 影響。TaskQ 1.0.6
+已修復、bump version 並重建／re-pin OCI，但尚未產生新的 paid clean evidence；不得以
+adjudication 把歷史缺陷標成 unsupported。
 
 ## OCI distribution
 
@@ -85,7 +85,7 @@ unsupported。
 
 | Fixture | Repository／tag | Manifest digest | Config digest |
 |---|---|---|---|
-| `fx-taskq-py` | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.5` | `sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966` | `sha256:7d2299a679f1a00d4e45d0901876e4894c2e5f4c5916bf97dbcfe1210277c09a` |
+| `fx-taskq-py` | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.6` | `sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3` | `sha256:301061b7b9ad08a26f2ba5eb280e25702d5afd8d960356dfe1948417734fca07` |
 | `fx-ledger-ts` | `ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts:1.0.3` | `sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312` | `sha256:c7d310f6a41a47132484bddc47969547c9e34cb7628456415696c59af223d583` |
 
 Image index／manifest 與 local image config 是不同 OCI objects，必須分開驗證。Current environment
@@ -122,7 +122,7 @@ model comparison，需建立 private／rotating holdout corpus，而不是只擴
 2026-08-10 reference suite 使用 OpenAI `gpt-5.6-luna`、Responses API、high reasoning，按固定順序
 執行 10 tasks 且 `no_automatic_retry`。所有 outcomes 都保留為 `budget_exhausted`，共提交 0 findings。
 該 suite 綁定的是 TaskQ 1.0.4；`runs/reference/task-registry.json` 保存 registration hash 所指的
-exact registry bytes。Current `tasks/v0.1.json` 與 TaskQ 1.0.5 不會回填到這份歷史 evidence。
+exact registry bytes。Current `tasks/v0.1.json` 與 TaskQ 1.0.6 不會回填到這份歷史 evidence。
 
 因此本次沒有 candidate pairs，也沒有 human rulings。這不是缺少應做的 annotation：review domain 是
 空集合；它也不能被描述為 independent adjudication evidence。未來任何產生 candidate 的 completed

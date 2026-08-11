@@ -23,7 +23,7 @@ mutated tasks。用途是產生可重播、可逐項追溯的 reference evidence
 Canonical registration：[`../runs/reference/registration.json`](../runs/reference/registration.json)；
 其 SHA-256 綁定的 exact historical registry 位於
 [`../runs/reference/task-registry.json`](../runs/reference/task-registry.json)。這份 snapshot 描述
-TaskQ 1.0.4，不會被 current `tasks/v0.1.json` 的 TaskQ 1.0.5 identity 取代。
+TaskQ 1.0.4，不會被 current `tasks/v0.1.json` 的 TaskQ 1.0.6 identity 取代。
 Task order、task registry SHA-256、model/config、budgets、OCI identities 與 environment fingerprints
 都在第一個 paid call 前凍結。
 

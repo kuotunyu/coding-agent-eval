@@ -14,7 +14,7 @@
 schema_version: "0.1"
 fixture_id: fx-taskq-py
 name: taskq — background task queue service
-fixture_version: 1.0.5
+fixture_version: 1.0.6
 provenance: first_party
 language: python
 license: MIT
@@ -37,11 +37,11 @@ scope:
   # Denominator of benchmark_unsupported_findings_per_kloc. Gate G3 re-counts
   # this and compares, so it is the in-repository counter's number, not an
   # external tool's.
-  in_scope_loc: 1456
+  in_scope_loc: 1467
   loc_tool: cae-loc 0.1.0
 
 clean_control:
-  tree_checksum: sha256:4a532b507f70555582b770a9311c00a48c707a19d844c097bb344fab61a830d1
+  tree_checksum: sha256:0d0b1c89cb24429051f79bae616bacf444e0c7b4db58a339d1b38ee4772ecef8
   witness_suite: witness/clean_suite.yaml
 
 known_residual_defects: known_residual_defects.yaml
@@ -49,14 +49,14 @@ known_residual_defects: known_residual_defects.yaml
 environment:
   base_image_digest: sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
   prepared_image_repository: ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py
-  prepared_image_tag: 1.0.5
-  prepared_image_manifest_digest: sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966
-  prepared_image_config_digest: sha256:7d2299a679f1a00d4e45d0901876e4894c2e5f4c5916bf97dbcfe1210277c09a
+  prepared_image_tag: 1.0.6
+  prepared_image_manifest_digest: sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3
+  prepared_image_config_digest: sha256:301061b7b9ad08a26f2ba5eb280e25702d5afd8d960356dfe1948417734fca07
   lock_manifest: env/env.lock.json
   rebuild_recipe: env/Dockerfile
   # Over: base/registry-manifest/config digests, debian 12, Python 3.12.13,
   # pip 25.0.1, the lock manifest's sha256, and linux/amd64.
-  fingerprint: sha256:af78b31c3152829c1177e4bccc6bb6c32a9724c63bb9090d27e1cafa731fcc6d
+  fingerprint: sha256:d8beb4db04503ae26493647d2d81895e81731daf67994f1cdae3653b09ebfc91
 
 bugs:
   - fx-taskq-py/B-001
