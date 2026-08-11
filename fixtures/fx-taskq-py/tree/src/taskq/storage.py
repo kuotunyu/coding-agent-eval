@@ -28,7 +28,7 @@ from typing import Any
 
 from taskq.models import Task, TaskState
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks (
@@ -64,6 +64,7 @@ def row_to_task(row: sqlite3.Row) -> Task:
         state=TaskState(row["state"]),
         priority=row["priority"],
         attempts=row["attempts"],
+        lease_generation=row["lease_generation"],
         max_attempts=row["max_attempts"],
         created_at=row["created_at"],
         available_at=row["available_at"],
@@ -99,7 +100,12 @@ class Storage:
     def _migrate(self) -> None:
         self._connection.executescript(_SCHEMA)
         current = self.schema_version()
-        if current != SCHEMA_VERSION:
+        if current < 2:
+            self._connection.execute(
+                "ALTER TABLE tasks ADD COLUMN "
+                "lease_generation INTEGER NOT NULL DEFAULT 0"
+            )
+        if self.schema_version() != SCHEMA_VERSION:
             self._connection.execute(
                 "INSERT INTO schema_meta (key, value) VALUES ('version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -137,8 +143,8 @@ class Storage:
     def insert(self, task: Task) -> None:
         self._connection.execute(
             "INSERT INTO tasks (id, queue, payload, state, priority, attempts, "
-            "max_attempts, created_at, available_at, leased_until, last_error) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "lease_generation, max_attempts, created_at, available_at, leased_until, "
+            "last_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 task.id,
                 task.queue,
@@ -146,6 +152,7 @@ class Storage:
                 task.state.value,
                 task.priority,
                 task.attempts,
+                task.lease_generation,
                 task.max_attempts,
                 task.created_at,
                 task.available_at,
@@ -183,10 +190,18 @@ class Storage:
         task_id: str,
         leased_until: float,
         attempts: int,
+        lease_generation: int,
     ) -> None:
         connection.execute(
-            "UPDATE tasks SET state = ?, leased_until = ?, attempts = ? WHERE id = ?",
-            (TaskState.LEASED.value, leased_until, attempts, task_id),
+            "UPDATE tasks SET state = ?, leased_until = ?, attempts = ?, "
+            "lease_generation = ? WHERE id = ?",
+            (
+                TaskState.LEASED.value,
+                leased_until,
+                attempts,
+                lease_generation,
+                task_id,
+            ),
         )
 
     def mark_state(

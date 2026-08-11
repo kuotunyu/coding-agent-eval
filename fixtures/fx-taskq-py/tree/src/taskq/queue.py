@@ -97,6 +97,7 @@ class TaskQueue:
             state=TaskState.PENDING,
             priority=priority,
             attempts=0,
+            lease_generation=0,
             max_attempts=attempts_limit,
             created_at=moment,
             available_at=moment + delay,
@@ -144,8 +145,15 @@ class TaskQueue:
                 return None
 
             attempts = candidate.attempts + 1
+            lease_generation = candidate.lease_generation + 1
             leased_until = moment + self.config.lease_seconds
-            self.storage.mark_leased(connection, candidate.id, leased_until, attempts)
+            self.storage.mark_leased(
+                connection,
+                candidate.id,
+                leased_until,
+                attempts,
+                lease_generation,
+            )
 
         leased = self.storage.get(candidate.id)
         assert leased is not None  # noqa: S101 - just written inside the transaction

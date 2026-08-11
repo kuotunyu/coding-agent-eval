@@ -47,6 +47,7 @@ class Task:
     state: TaskState
     priority: int
     attempts: int
+    lease_generation: int
     max_attempts: int
     created_at: float
     available_at: float
@@ -74,6 +75,7 @@ class Task:
             "state": self.state.value,
             "priority": self.priority,
             "attempts": self.attempts,
+            "lease_generation": self.lease_generation,
             "max_attempts": self.max_attempts,
             "attempts_remaining": self.attempts_remaining,
             "created_at": self.created_at,

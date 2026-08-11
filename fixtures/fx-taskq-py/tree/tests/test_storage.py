@@ -19,6 +19,7 @@ def make_task(task_id: str = "a" * 32, **overrides: object) -> Task:
         "state": TaskState.PENDING,
         "priority": 0,
         "attempts": 0,
+        "lease_generation": 0,
         "max_attempts": 3,
         "created_at": 1_000_000.0,
         "available_at": 1_000_000.0,
@@ -31,6 +32,47 @@ def make_task(task_id: str = "a" * 32, **overrides: object) -> Task:
 
 def test_the_schema_is_created_on_first_use(storage: Storage) -> None:
     assert storage.schema_version() == SCHEMA_VERSION
+
+
+def test_a_fresh_database_has_a_lease_generation_column(storage: Storage) -> None:
+    columns = {
+        row["name"]
+        for row in storage.connection.execute("PRAGMA table_info(tasks)").fetchall()
+    }
+    assert "lease_generation" in columns
+
+
+def test_a_schema_one_database_migrates_without_losing_tasks(tmp_path) -> None:
+    database = tmp_path / "schema-one.db"
+    connection = sqlite3.connect(database)
+    connection.executescript(
+        """
+        CREATE TABLE tasks (
+            id TEXT PRIMARY KEY, queue TEXT NOT NULL, payload TEXT NOT NULL,
+            state TEXT NOT NULL, priority INTEGER NOT NULL DEFAULT 0,
+            attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL,
+            created_at REAL NOT NULL, available_at REAL NOT NULL,
+            leased_until REAL, last_error TEXT
+        );
+        CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO schema_meta (key, value) VALUES ('version', '1');
+        INSERT INTO tasks VALUES (
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'emails', '{"durable": true}',
+            'pending', 0, 0, 3, 1000000, 1000000, NULL, NULL
+        );
+        """
+    )
+    connection.close()
+
+    migrated = Storage(str(database))
+    try:
+        task = migrated.get("a" * 32)
+        assert migrated.schema_version() == 2
+        assert task is not None
+        assert task.payload == {"durable": True}
+        assert task.lease_generation == 0
+    finally:
+        migrated.close()
 
 
 def test_reopening_does_not_reset_the_schema(config: Config, storage: Storage) -> None:
