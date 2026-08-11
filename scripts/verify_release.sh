@@ -15,31 +15,78 @@ echo "== offline publication audit =="
 uv run cae release audit --publication
 
 echo "== build =="
-rm -rf dist
-uv build
+BUILD="$WORK/dist"
+mkdir -p "$BUILD"
+uv build --out-dir "$BUILD"
 
-WHEEL="$(ls dist/*.whl)"
-SDIST="$(ls dist/*.tar.gz)"
+WHEEL="$(ls "$BUILD"/*.whl)"
+SDIST="$(ls "$BUILD"/*.tar.gz)"
 
 echo
 echo "== archive privacy audit =="
 uv run --quiet python - "$WHEEL" "$SDIST" <<'PY'
 import sys, tarfile, zipfile
+from email.parser import BytesParser
 
 FORBIDDEN = (".run-store", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".env")
 wheel, sdist = sys.argv[1], sys.argv[2]
 
-names = zipfile.ZipFile(wheel).namelist()
-names += tarfile.open(sdist).getnames()
+with zipfile.ZipFile(wheel) as wheel_archive:
+    wheel_names = wheel_archive.namelist()
+    metadata_names = [name for name in wheel_names if name.endswith(".dist-info/METADATA")]
+    if len(metadata_names) != 1:
+        raise SystemExit(f"wheel has {len(metadata_names)} METADATA files; expected one")
+    metadata = BytesParser().parsebytes(wheel_archive.read(metadata_names[0]))
+with tarfile.open(sdist) as sdist_archive:
+    sdist_names = sdist_archive.getnames()
+
+names = wheel_names + sdist_names
 
 bad = [n for n in names if any(f in n for f in FORBIDDEN)]
 if bad:
     raise SystemExit("forbidden entries in archives:\n  " + "\n  ".join(bad))
 
-if not any(n.endswith(".schema.json") for n in zipfile.ZipFile(wheel).namelist()):
+internal = [name for name in sdist_names if "/docs/superpowers/" in f"/{name}"]
+if internal:
+    raise SystemExit("internal design records in sdist:\n  " + "\n  ".join(internal))
+
+if not any(name.endswith(".schema.json") for name in wheel_names):
     raise SystemExit("wheel ships no schema documents; the installed package cannot validate")
 
-print(f"{len(names)} archive entries, no forbidden paths, schemas present")
+if metadata["Version"] != "0.1.1":
+    raise SystemExit(f"wheel version is {metadata['Version']!r}, expected '0.1.1'")
+
+required_urls = {"Repository", "Documentation", "Issues", "Releases"}
+url_labels = {
+    value.split(",", 1)[0].strip() for value in metadata.get_all("Project-URL", [])
+}
+missing_urls = sorted(required_urls - url_labels)
+if missing_urls:
+    raise SystemExit("wheel is missing Project-URL labels: " + ", ".join(missing_urls))
+
+keywords = {value.strip() for value in (metadata["Keywords"] or "").split(",")}
+required_keywords = {
+    "benchmark", "coding-agents", "developer-tools", "llm-evaluation", "reproducibility"
+}
+missing_keywords = sorted(required_keywords - keywords)
+if missing_keywords:
+    raise SystemExit("wheel is missing keywords: " + ", ".join(missing_keywords))
+
+required_classifiers = {
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+}
+missing_classifiers = sorted(required_classifiers - set(metadata.get_all("Classifier", [])))
+if missing_classifiers:
+    raise SystemExit("wheel is missing classifiers: " + ", ".join(missing_classifiers))
+
+print(
+    f"{len(names)} archive entries, no forbidden/internal paths, schemas present; "
+    f"wheel metadata has {len(url_labels)} project URLs"
+)
 PY
 
 echo

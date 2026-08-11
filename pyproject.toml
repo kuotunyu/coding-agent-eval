@@ -1,16 +1,36 @@
 [project]
 name = "coding-agent-eval"
-version = "0.1.0"
+version = "0.1.1"
 description = "A ground-truth benchmark for measuring whether coding agents discover known defects"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "kuotunyu" }]
+keywords = [
+    "benchmark",
+    "coding-agents",
+    "developer-tools",
+    "llm-evaluation",
+    "reproducibility",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "jsonschema>=4.21",
     "pyyaml>=6.0",
     "httpx>=0.28",
 ]
+
+[project.urls]
+Repository = "https://github.com/kuotunyu/coding-agent-eval"
+Documentation = "https://github.com/kuotunyu/coding-agent-eval#readme"
+Issues = "https://github.com/kuotunyu/coding-agent-eval/issues"
+Releases = "https://github.com/kuotunyu/coding-agent-eval/releases"
 
 [project.scripts]
 cae = "coding_agent_eval.cli:run"
@@ -60,6 +80,7 @@ include = [
 exclude = [
     ".run-store",
     "runs/**/.run-store",
+    "docs/superpowers/**",
     "**/__pycache__",
     "**/.pytest_cache",
     "**/.ruff_cache",
