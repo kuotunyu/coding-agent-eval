@@ -17,19 +17,19 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 5926,
+      "bytes": 6310,
       "path": "README.md",
-      "sha256": "c5f3d1553517516e3c880512f1ab8e1861ab89bf84961e77a1f5ab1c97257afc"
+      "sha256": "988873094157d1becc6be1dd945796d0b29c198c2ed68a8e452dd932e05cebcc"
     },
     {
-      "bytes": 11328,
+      "bytes": 11440,
       "path": "docs/BENCHMARK_CARD.md",
-      "sha256": "2ea0dc6b1aada9d3c22d6f404b7f8ec2eaf03e9f47730471580811f8a6671145"
+      "sha256": "6731364465e8b4fe54a132813c1093e3246e9a7cc4bbbec205d273c5b53d8bcb"
     },
     {
-      "bytes": 9418,
+      "bytes": 9538,
       "path": "docs/DATA_CARD.md",
-      "sha256": "8d975d6b61092806493632c3beaa62bde97d6b70024bf14d73f90c13864ef23e"
+      "sha256": "976e56e321c7632c5a90f0286a685b463967d9a9660a946097e944b0af0c1d6d"
     },
     {
       "bytes": 8846,
@@ -42,9 +42,9 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 9312,
+      "bytes": 10590,
       "path": "docs/PAID_SMOKE_PLAN.md",
-      "sha256": "95f2ff96a89d9ddb075dbc12d68a6c1b651902d0cbf5c8a45bbb1698706ccd0a"
+      "sha256": "44775e38e779beaa180fda027e1532ffd683f57bfbc5413d642b41f51bed69de"
     },
     {
       "bytes": 7607,
@@ -52,9 +52,9 @@
       "sha256": "6699708afdcbc74a90339f38dea5cb04597d8d51133c20d40c98894043f17fee"
     },
     {
-      "bytes": 12034,
+      "bytes": 12169,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "721ace74e66d6920194752931c0d63722c40fa96e07c38f3c32309eebfa43ea9"
+      "sha256": "80ab16328def4945310e1c561dbfd26c57219b822ce767e7405ee8aacdeb109c"
     },
     {
       "bytes": 5276,
@@ -835,6 +835,21 @@
       "bytes": 21161,
       "path": "runs/smoke/smoke-2026-08-11-attempt-3/clean/trace.jsonl",
       "sha256": "edc81bcf0869615173ca8bfb1bb45efdd72df8de74561f4317b95ebeadb10be1"
+    },
+    {
+      "bytes": 2059,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/findings.json",
+      "sha256": "d79e95b4b5562ec8cdcfe7e65a88901ac2d804fc528c5d2cf4c8da4b9e5e1ed0"
+    },
+    {
+      "bytes": 1913,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/run.json",
+      "sha256": "8ce085ce1e9b1bd12318e0be5f1af3cc6784cdfba0bb620152a0849172a1c9cc"
+    },
+    {
+      "bytes": 22139,
+      "path": "runs/smoke/smoke-2026-08-11-attempt-4/clean/trace.jsonl",
+      "sha256": "c32ede8e2360542d041e1610a11c8f0fff1537d18d896b45c9594e011b78b692"
     },
     {
       "bytes": 21,

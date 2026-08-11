@@ -74,8 +74,10 @@ clean-tree audit 與後續發現；`known_residual_defects.yaml` 必須為空，
 eligibility。
 
 Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixture defects，修正後皆 bump version、
-重建 OCI 並重新 pin；目前版本為 1.0.5／1.0.3。若未來 clean control 證實 fixture 或 harness defect，
-必須停止 suite、修復並建立新 registration，不得以 adjudication 把它標成 unsupported。
+重建 OCI 並重新 pin。Attempt 4 又在 TaskQ 1.0.5 clean tree 產生兩個經離線重現的工程缺陷，
+因此 1.0.5 已失去 release eligibility；Ledger 1.0.3 不受此 observation 影響。TaskQ 必須修復、
+bump version、重建／re-pin OCI 後才可重建 clean evidence，不得以 adjudication 把缺陷標成
+unsupported。
 
 ## OCI distribution
 

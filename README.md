@@ -70,13 +70,16 @@ selecting a better outcome.
 | 2026-08-10 reference suite | 10/10 retained terminal outcomes; all exhausted the token budget; zero findings | A legacy adapter/configuration failure analysis—not task success or a ranking |
 | Paid smoke attempts 1–2 | Corrected conversation linkage; both clean runs exhausted their budgets | Adapter-0.2 trace, privacy, and budget evidence only |
 | Paid smoke attempt 3 | Adapter 0.3/prompt 0.2 completed; one clean-control finding; USD 0.031539 | Normal completion and valid trace linkage; smoke gate still failed |
+| Paid smoke attempt 4 | TaskQ 1.0.5 clean completed; two machine-reproduced candidates; USD 0.006662 | Current pricing/linkage/privacy evidence; clean gate still failed |
 | Human-verified evidence | None yet | No `verified_bug_recall`, `verified_finding_precision`, or release headline metric |
 
 Attempt 3's finding was mechanically reproduced and conservatively treated as a real
-fixture defect; TaskQ 1.0.5 now binds completion to a monotonic lease generation. This is
-an AI-assisted engineering correction, not an independent human ruling or a verified
-benchmark detection. The mutated smoke task and full new suite were not run. All three
-paid outcomes are retained; cumulative estimated cost was USD 0.072565.
+fixture defect; TaskQ 1.0.5 binds completion to a monotonic lease generation. Attempt 4
+then exposed two further 1.0.5 clean-tree defects—non-atomic concurrent idempotent enqueue
+and a non-resumable migration window—and both conditions were reproduced offline. These
+are AI-assisted engineering findings, not independent human rulings or verified benchmark
+detections. No mutated smoke or new full suite was run. All four paid outcomes are retained;
+their recorded estimates total USD 0.079227 across their respective versioned price tables.
 
 ## Engineering contract and limitations
 

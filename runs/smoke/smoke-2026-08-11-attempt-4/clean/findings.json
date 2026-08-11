@@ -1,0 +1,28 @@
+{
+  "findings": [
+    {
+      "category": "concurrency",
+      "claim": "Concurrent enqueue requests using the same idempotency key can create duplicate tasks.",
+      "evidence": "`enqueue` performs `lookup` at lines 87-91, inserts the task at line 107, and only then calls `remember` at lines 108-111; the idempotency table's conflict handler replaces the row rather than recovering the already-created task.",
+      "file": "src/taskq/queue.py",
+      "id": "TQ-001",
+      "line_end": 111,
+      "line_start": 84,
+      "root_cause": "The lookup, task insertion, and idempotency-key recording are not enclosed in one transaction or protected by a shared lock. Two callers can both observe no key, insert separate tasks, and then overwrite the same key row.",
+      "severity": "high",
+      "suggested_verification": "Run two threads/barrier-synchronize calls to `enqueue(..., idempotency_key='same')`; assert both returned IDs match and that only one task exists."
+    },
+    {
+      "category": "correctness",
+      "claim": "A restart after adding the lease_generation column but before recording schema version can make the database permanently fail migration.",
+      "evidence": "`_migrate` checks only `current < 2` (lines 102-103) and then unconditionally adds `lease_generation` (lines 104-107), while schema version is written afterward (lines 108-113). A process interruption between those operations leaves exactly that inconsistent state.",
+      "file": "src/taskq/storage.py",
+      "id": "TQ-002",
+      "line_end": 113,
+      "line_start": 100,
+      "root_cause": "Migration decides whether to ALTER solely from schema_meta. If schema_meta is absent or still reports version 0/1 while the column already exists, the unconditional ALTER TABLE raises a duplicate-column error.",
+      "severity": "medium",
+      "suggested_verification": "Create a database with the v2 `tasks` table including `lease_generation` but no version row, then instantiate `Storage`; confirm SQLite raises `duplicate column name: lease_generation`."
+    }
+  ]
+}

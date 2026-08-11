@@ -169,7 +169,33 @@ validate the correction. Cumulative observed cost across all three attempts is U
 0.072565, below the approved USD 1.00 maximum exposure. No mutated task, 10-task suite,
 verified metric, or selective rerun was produced.
 
-Attempt 4 now has separate authorization for one TaskQ 1.0.5 clean smoke with maximum new
-provider-side exposure USD 0.05 and a new output identity. It does not authorize a mutated
-task, full suite, new reference registration, tag, GitHub Release, or Zenodo action; only a
-passing clean gate may justify requesting the next approval.
+## Retained outcome -- attempt 4
+
+The separately approved TaskQ 1.0.5 clean task ran exactly once. It terminated normally but
+submitted two candidate clean-control findings, so the gate failed and B-001 was not run.
+
+| Field | Observed value |
+|---|---:|
+| Terminal outcome | `completed` |
+| Findings | 2 (unverified clean-control reports) |
+| LLM calls / tool calls | 12 / 11 |
+| Input / cached input / output | 89,553 / 70,234 / 1,161 tokens |
+| Reasoning tokens | 414 |
+| Estimated cost | USD 0.006662 (`openai-gpt-5.6-luna@2026-08-11-r2`) |
+
+All 11 assistant function calls were replayed and linked to a
+`function_call_output` with the same `call_id`; every request used `store: false` and no
+`previous_response_id`. Re-sanitizing the owner-only raw events reproduced the committed
+public trace byte for byte. Public evidence contains no API key, raw request/response body,
+or encrypted reasoning.
+
+Deterministic offline reproducers confirmed both reported conditions: concurrent enqueues
+with one idempotency key can create two tasks, and a simulated interruption after adding
+`lease_generation` but before recording schema version causes the next startup to fail on
+the duplicate column. This is machine evidence and an AI-assisted engineering assessment,
+not an independent human ruling or a `verified_*` detection.
+
+Attempt 4's paid authorization is consumed. It did not authorize a mutated task, rerun,
+full suite, new reference registration, tag, GitHub Release, or Zenodo action. TaskQ 1.0.5
+must be corrected and assigned a new fixture/OCI identity before any separately approved
+paid clean attempt.

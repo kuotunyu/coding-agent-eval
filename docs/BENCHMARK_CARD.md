@@ -160,10 +160,11 @@ usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
 兩個 adapter 0.2 clean smoke attempts 也因 token/tool budget exhaustion 而未通過。新的 paid
 execution 必須先通過 smoke gate，再以 registration schema 1.1 建立不同 suite ID。
 
-Adapter 0.3／prompt 0.2 的第三次 clean smoke 正常完成並提交一個 finding；deterministic
-reproduction 證實 1.0.4 的 lease ownership 行為，因此該 clean gate 仍失敗。Fixture 1.0.5 已修正
-並重新 pin OCI identity，但尚未取得新的 paid clean observation。這是 AI-assisted engineering
-assessment，不是 formal human adjudication，也不產生 verified detection。
+Adapter 0.3／prompt 0.2 attempt 3 正常完成並揭露 TaskQ 1.0.4 的 lease ownership defect。
+Attempt 4 接著在 TaskQ 1.0.5 正常完成並提交兩個 clean-control findings；deterministic offline
+reproducers 證實 concurrent idempotency duplication 與 non-resumable schema-migration window。
+兩次 gate 都失敗，沒有執行 mutated task，且 1.0.5 不是 clean release fixture。這些是
+AI-assisted engineering assessments，不是 formal human adjudication，也不產生 verified detection。
 
 ## Sandbox boundary
 
