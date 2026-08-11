@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from taskq.errors import Conflict
 from taskq.models import Task
 from taskq.queue import TaskQueue
 
@@ -62,13 +63,22 @@ class Worker:
         try:
             self.handler(task)
         except Exception as exc:  # noqa: BLE001 - the whole point is not to escape
+            message = f"{type(exc).__name__}: {exc}"
+            try:
+                self.queue.fail(task.id, task.lease_generation, message)
+            except Conflict as conflict:
+                self.stats.errors.append(f"Conflict: {conflict}")
+                return task
             self.stats.failed += 1
-            self.stats.errors.append(f"{type(exc).__name__}: {exc}")
-            self.queue.fail(task.id, f"{type(exc).__name__}: {exc}")
+            self.stats.errors.append(message)
             return task
 
+        try:
+            self.queue.acknowledge(task.id, task.lease_generation)
+        except Conflict as conflict:
+            self.stats.errors.append(f"Conflict: {conflict}")
+            return task
         self.stats.acknowledged += 1
-        self.queue.acknowledge(task.id)
         return task
 
     def run(self, queue_name: str, *, max_iterations: int | None = None) -> WorkerStats:

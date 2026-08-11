@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from taskq.client import TaskqClient
 from taskq.config import Config
 from taskq.server import build_server
 
@@ -105,6 +106,16 @@ def test_a_request_that_touches_storage_works(server: tuple[str, int]) -> None:
     with socket.create_connection(server, timeout=5) as sock:
         response = send(sock, post("/queues/emails/tasks", {"payload": {"n": 1}}))
         assert status_of(response) == 201
+
+
+def test_the_real_client_carries_the_leased_generation(server: tuple[str, int]) -> None:
+    client = TaskqClient(f"http://{server[0]}:{server[1]}")
+    created = client.enqueue("emails", {})
+    leased = client.lease("emails")
+    assert leased is not None
+
+    acknowledged = client.acknowledge(created["id"], leased["lease_generation"])
+    assert acknowledged["state"] == "done"
 
 
 def test_every_storage_route_survives_being_served(server: tuple[str, int]) -> None:

@@ -40,6 +40,25 @@ def test_a_successful_handler_acknowledges_the_task(queue: TaskQueue) -> None:
     assert worker.stats.acknowledged == 1
 
 
+def test_a_worker_cannot_acknowledge_a_replacement_lease(
+    queue: TaskQueue, clock: FakeClock
+) -> None:
+    task = queue.enqueue("emails", {})
+
+    def replace_lease(_: Task) -> None:
+        clock.advance(30)
+        assert queue.lease("emails") is not None
+
+    worker = Worker(queue, replace_lease, sleep=lambda _: None)
+    worker.run_once("emails")
+
+    current = queue.get(task.id)
+    assert current.state is TaskState.LEASED
+    assert current.lease_generation == 2
+    assert worker.stats.acknowledged == 0
+    assert any("lease generation is no longer active" in error for error in worker.stats.errors)
+
+
 def test_a_raising_handler_fails_the_task_rather_than_escaping(queue: TaskQueue) -> None:
     """An escaping exception would leave the task leased until the lease expired."""
     task = queue.enqueue("emails", {})

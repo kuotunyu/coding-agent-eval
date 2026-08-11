@@ -111,11 +111,21 @@ class TaskqClient:
         response = self._request("POST", f"/queues/{queue}/lease")
         return None if response.status == 204 else response.body
 
-    def acknowledge(self, task_id: str) -> dict[str, Any]:
-        return self._request("POST", f"/tasks/{task_id}/ack").body
+    def acknowledge(self, task_id: str, lease_generation: int) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/tasks/{task_id}/ack",
+            {"lease_generation": lease_generation},
+        ).body
 
-    def fail(self, task_id: str, error: str) -> dict[str, Any]:
-        return self._request("POST", f"/tasks/{task_id}/fail", {"error": error}).body
+    def fail(
+        self, task_id: str, lease_generation: int, error: str
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/tasks/{task_id}/fail",
+            {"lease_generation": lease_generation, "error": error},
+        ).body
 
     def status(self, task_id: str) -> dict[str, Any]:
         return self._request("GET", f"/tasks/{task_id}").body

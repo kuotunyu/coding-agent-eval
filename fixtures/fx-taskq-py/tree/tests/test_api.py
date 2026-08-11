@@ -9,6 +9,8 @@ import pytest
 
 from taskq.api import Api, Request
 
+from .conftest import FakeClock
+
 TOKEN = "s3cret-admin-token"
 
 
@@ -141,26 +143,94 @@ def test_the_full_lease_and_ack_cycle(api: Api) -> None:
     assert leased.status == 200
     assert leased.body["id"] == created["id"]
 
-    acked = call(api, "POST", f"/tasks/{created['id']}/ack")
+    acked = call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/ack",
+        {"lease_generation": leased.body["lease_generation"]},
+    )
     assert acked.status == 200
     assert acked.body["state"] == "done"
 
 
 def test_failing_a_task_reports_the_error(api: Api) -> None:
     created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
-    call(api, "POST", "/queues/emails/lease")
-    failed = call(api, "POST", f"/tasks/{created['id']}/fail", {"error": "boom"})
+    leased = call(api, "POST", "/queues/emails/lease")
+    failed = call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/fail",
+        {"lease_generation": leased.body["lease_generation"], "error": "boom"},
+    )
     assert failed.status == 200
     assert failed.body["last_error"] == "boom"
 
 
 def test_acknowledging_an_unknown_task_is_404(api: Api) -> None:
-    assert call(api, "POST", f"/tasks/{'0' * 32}/ack").status == 404
+    assert (
+        call(
+            api,
+            "POST",
+            f"/tasks/{'0' * 32}/ack",
+            {"lease_generation": 1},
+        ).status
+        == 404
+    )
 
 
 def test_acknowledging_an_unleased_task_is_409(api: Api) -> None:
     created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
-    assert call(api, "POST", f"/tasks/{created['id']}/ack").status == 409
+    response = call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/ack",
+        {"lease_generation": 1},
+    )
+    assert response.status == 409
+
+
+@pytest.mark.parametrize("generation", [None, True, 0, -1, "1"])
+def test_ack_requires_a_positive_integer_lease_generation(
+    api: Api, generation: Any
+) -> None:
+    created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
+    body = {} if generation is None else {"lease_generation": generation}
+    assert call(api, "POST", f"/tasks/{created['id']}/ack", body).status == 400
+
+
+def test_a_stale_http_generation_cannot_acknowledge_a_new_lease(
+    api: Api, clock: FakeClock
+) -> None:
+    created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
+    first = call(api, "POST", "/queues/emails/lease").body
+    clock.advance(30)
+    second = call(api, "POST", "/queues/emails/lease").body
+
+    response = call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/ack",
+        {"lease_generation": first["lease_generation"]},
+    )
+    assert response.status == 409
+    current = call(api, "GET", f"/tasks/{created['id']}").body
+    assert current["lease_generation"] == second["lease_generation"]
+
+
+def test_an_expired_http_lease_cannot_be_acknowledged(
+    api: Api, clock: FakeClock
+) -> None:
+    created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
+    leased = call(api, "POST", "/queues/emails/lease").body
+    clock.advance(30)
+
+    response = call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/ack",
+        {"lease_generation": leased["lease_generation"]},
+    )
+    assert response.status == 409
 
 
 def test_status_returns_the_task(api: Api) -> None:
@@ -193,8 +263,13 @@ def test_admin_purge_requires_a_token(api: Api) -> None:
 
 def test_admin_purge_removes_terminal_tasks(api: Api) -> None:
     created = call(api, "POST", "/queues/emails/tasks", {"payload": {}}).body
-    call(api, "POST", "/queues/emails/lease")
-    call(api, "POST", f"/tasks/{created['id']}/ack")
+    leased = call(api, "POST", "/queues/emails/lease").body
+    call(
+        api,
+        "POST",
+        f"/tasks/{created['id']}/ack",
+        {"lease_generation": leased["lease_generation"]},
+    )
 
     response = call(api, "POST", "/admin/purge", headers=admin())
     assert response.status == 200

@@ -126,12 +126,36 @@ class Api:
         return Response(200, task.as_dict())
 
     def _ack(self, request: Request, params: dict[str, str]) -> Response:
-        return Response(200, self.queue.acknowledge(params["task_id"]).as_dict())
+        body = self._completion_body(request)
+        return Response(
+            200,
+            self.queue.acknowledge(
+                params["task_id"], body["lease_generation"]
+            ).as_dict(),
+        )
 
     def _fail(self, request: Request, params: dict[str, str]) -> Response:
+        body = self._completion_body(request)
+        error = body.get("error")
+        return Response(
+            200,
+            self.queue.fail(
+                params["task_id"], body["lease_generation"], error
+            ).as_dict(),
+        )
+
+    def _completion_body(self, request: Request) -> dict[str, Any]:
         body = request.json(self.config.max_payload_bytes)
-        error = body.get("error") if isinstance(body, dict) else None
-        return Response(200, self.queue.fail(params["task_id"], error).as_dict())
+        if not isinstance(body, dict):
+            raise ValidationError("request body must be a JSON object")
+        generation = body.get("lease_generation")
+        if (
+            isinstance(generation, bool)
+            or not isinstance(generation, int)
+            or generation < 1
+        ):
+            raise ValidationError("lease_generation must be a positive integer")
+        return body
 
     def _status(self, request: Request, params: dict[str, str]) -> Response:
         return Response(200, self.queue.get(params["task_id"]).as_dict())

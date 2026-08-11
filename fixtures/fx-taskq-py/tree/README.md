@@ -55,11 +55,15 @@ precisely because they are what the tests check.
 |---|---|---|---|
 | `POST` | `/queues/{queue}/tasks` | no | Enqueue a task |
 | `POST` | `/queues/{queue}/lease` | no | Lease the next runnable task |
-| `POST` | `/tasks/{id}/ack` | no | Mark a leased task complete |
-| `POST` | `/tasks/{id}/fail` | no | Report failure; schedules a retry or dead-letters |
+| `POST` | `/tasks/{id}/ack` | no | Mark the matching lease generation complete |
+| `POST` | `/tasks/{id}/fail` | no | Fail the matching lease generation; retry or dead-letter |
 | `GET` | `/tasks/{id}` | no | Task status |
 | `GET` | `/admin/stats` | yes | Counts by state |
 | `POST` | `/admin/purge` | yes | Delete terminal tasks |
+
+Lease responses include a monotonically increasing `lease_generation`. Ack and
+fail requests must return it in their JSON body; an expired or superseded
+generation receives 409 and cannot mutate the current lease.
 
 ## Running
 
