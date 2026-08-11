@@ -8,7 +8,9 @@ success is worse than no stub at all, because CI would go green on nothing.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -31,6 +33,18 @@ _SUBCOMMANDS: dict[str, str] = {
 def subcommand_names() -> tuple[str, ...]:
     """Registered subcommands, so callers need not reach into argparse internals."""
     return tuple(_SUBCOMMANDS)
+
+
+def manual_run_id(output: Path) -> str:
+    """Derive a stable private-store identity without disclosing the output path.
+
+    The leaf remains human-readable, while a digest of the entire CLI path keeps
+    separate attempts such as ``attempt-1/clean`` and ``attempt-2/clean`` from
+    colliding in the append-only raw store.
+    """
+    leaf = re.sub(r"[^a-z0-9]+", "-", output.name.lower()).strip("-") or "run"
+    digest = hashlib.sha256(output.as_posix().encode("utf-8")).hexdigest()[:12]
+    return f"manual-{leaf}-{digest}"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -757,7 +771,7 @@ def _run_run(args: argparse.Namespace) -> int:
         snapshot=args.snapshot,
         bug_index=args.bug_index,
         isolate_image=args.isolate,
-        run_id=args.out.name,
+        run_id=manual_run_id(args.out),
         raw_store_root=Path(".run-store"),
     )
     directory = write_evidence(run, args.out)
@@ -804,6 +818,7 @@ def _run_suite(args: argparse.Namespace) -> int:
         load_configuration,
     )
     from coding_agent_eval.suite import (
+        CONVERSATION_STATE,
         SuiteError,
         build_registration,
         load_registration,
@@ -863,6 +878,14 @@ def _run_suite(args: argparse.Namespace) -> int:
             task_registry_path=registry,
             fixture_root=args.fixtures,
         )
+        if registration.agent_adapter is None or registration.agent_adapter_version is None:
+            raise SuiteError(
+                "registration predates adapter identity binding; retain its evidence as "
+                "history and create a new registration before execution"
+            )
+        from coding_agent_eval.live import build_adapter
+
+        runtime_adapter = build_adapter(configuration, client=None)
         expected_budget = dict(registration.budgets["per_task"])
         if (
             configuration.model != registration.model
@@ -870,6 +893,12 @@ def _run_suite(args: argparse.Namespace) -> int:
             or configuration.api != registration.api
             or configuration.reasoning_effort != registration.reasoning_effort
             or configuration.budget.as_dict() != expected_budget
+            or runtime_adapter.name != registration.agent_adapter
+            or runtime_adapter.version != registration.agent_adapter_version
+            or registration.conversation_state != CONVERSATION_STATE
+            or registration.store != (False if configuration.api == "responses" else None)
+            or configuration.max_output_tokens_per_request
+            != registration.max_output_tokens_per_request
         ):
             raise SuiteError("runtime provider/model/config differs from the registration")
 

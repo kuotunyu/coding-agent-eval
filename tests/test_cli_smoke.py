@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from coding_agent_eval import BENCHMARK_VERSION
-from coding_agent_eval.cli import build_parser, main, subcommand_names
+from coding_agent_eval.cli import build_parser, main, manual_run_id, subcommand_names
 from tests.conftest import REPO_ROOT, requires_checkout
 
 EXPECTED_SUBCOMMANDS = {
@@ -28,6 +28,22 @@ EXPECTED_SUBCOMMANDS = {
     "release",
     "suite",
 }
+
+
+def test_manual_run_ids_do_not_collide_when_output_parents_differ() -> None:
+    first = manual_run_id(Path("runs/smoke/attempt-1/clean"))
+    second = manual_run_id(Path("runs/smoke/attempt-2/clean"))
+
+    assert first != second
+    assert first == manual_run_id(Path("runs/smoke/attempt-1/clean"))
+    assert first.startswith("manual-clean-")
+
+
+def test_manual_run_id_does_not_disclose_an_absolute_output_path() -> None:
+    run_id = manual_run_id(Path("C:/Users/private-name/evidence/clean"))
+
+    assert "users" not in run_id
+    assert "private" not in run_id
 
 
 def test_benchmark_version_is_semver() -> None:
