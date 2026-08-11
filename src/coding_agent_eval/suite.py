@@ -441,9 +441,7 @@ def load_registration(
     return _registration_from_document(document, fixture_root)
 
 
-def load_registration_snapshot(
-    path: Path, *, task_registry_path: Path
-) -> SuiteRegistration:
+def load_registration_snapshot(path: Path, *, task_registry_path: Path) -> SuiteRegistration:
     """Load immutable suite evidence without resolving it against current fixtures.
 
     This is intentionally separate from :func:`load_registration`: archived
@@ -461,8 +459,7 @@ def load_registration_snapshot(
     problems = validate_document("suite-registration", document)
     if problems:
         raise SuiteError(
-            "registration schema is invalid: "
-            + "; ".join(problem.render() for problem in problems)
+            "registration schema is invalid: " + "; ".join(problem.render() for problem in problems)
         )
     _require_iso_date(str(document["created_date"]))
     if document["suite_id"] != _suite_id(document):
@@ -478,8 +475,7 @@ def load_registration_snapshot(
     tasks: list[dict[str, Any]] = registry["tasks"]
     if len(tasks) != EXPECTED_TASK_COUNT:
         raise SuiteError(
-            f"reference suite must contain exactly {EXPECTED_TASK_COUNT} tasks, "
-            f"found {len(tasks)}"
+            f"reference suite must contain exactly {EXPECTED_TASK_COUNT} tasks, found {len(tasks)}"
         )
     task_ids = [str(task["task_id"]) for task in tasks]
     if len(set(task_ids)) != len(task_ids):

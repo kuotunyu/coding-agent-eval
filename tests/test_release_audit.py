@@ -57,9 +57,7 @@ def test_offline_publication_audit_never_uses_the_online_probe(repo_root: Path) 
 
 
 def test_publication_registration_uses_the_adjacent_frozen_registry(repo_root: Path) -> None:
-    registration_path, registry_path, registration, findings = _publication_registration(
-        repo_root
-    )
+    registration_path, registry_path, registration, findings = _publication_registration(repo_root)
 
     assert findings == []
     assert registration_path == repo_root / "runs" / "reference" / "registration.json"
@@ -76,9 +74,7 @@ def test_publication_registration_rejects_a_drifted_frozen_registry(
     source = repo_root / "runs" / "reference"
     (reference / "registration.json").write_bytes((source / "registration.json").read_bytes())
     registry = (source / "task-registry.json").read_bytes()
-    (reference / "task-registry.json").write_bytes(
-        registry.replace(b'"1.0.4"', b'"1.0.5"', 1)
-    )
+    (reference / "task-registry.json").write_bytes(registry.replace(b'"1.0.4"', b'"1.0.5"', 1))
 
     _, _, registration, findings = _publication_registration(tmp_path)
 
