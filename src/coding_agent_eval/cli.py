@@ -15,7 +15,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from coding_agent_eval import BENCHMARK_VERSION
+from coding_agent_eval import BENCHMARK_VERSION, __version__
 
 _SUBCOMMANDS: dict[str, str] = {
     "validate": "Validate fixture, bug, and artifact manifests against their schemas",
@@ -56,7 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
             "resources they consume under reproducible sandbox conditions."
         ),
     )
-    parser.add_argument("--version", action="version", version=BENCHMARK_VERSION)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"cae {__version__} (benchmark {BENCHMARK_VERSION})",
+    )
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
 
     for name, help_text in _SUBCOMMANDS.items():

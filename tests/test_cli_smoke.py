@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_agent_eval import BENCHMARK_VERSION
+from coding_agent_eval import BENCHMARK_VERSION, __version__
 from coding_agent_eval.cli import build_parser, main, manual_run_id, subcommand_names
 from coding_agent_eval.trace.raw_store import RawStore
 from coding_agent_eval.trace.sanitizer import sanitize_events
@@ -55,6 +55,11 @@ def test_benchmark_version_is_semver() -> None:
     assert all(p.isdigit() for p in parts), BENCHMARK_VERSION
 
 
+def test_software_and_benchmark_versions_are_distinct() -> None:
+    assert __version__ == "0.1.1"
+    assert BENCHMARK_VERSION == "0.1.0"
+
+
 def test_parser_exposes_every_planned_subcommand() -> None:
     assert set(subcommand_names()) == EXPECTED_SUBCOMMANDS
 
@@ -65,11 +70,11 @@ def test_help_exits_zero() -> None:
     assert exc.value.code == 0
 
 
-def test_version_prints_benchmark_version(capsys: pytest.CaptureFixture[str]) -> None:
+def test_version_prints_both_identities(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert BENCHMARK_VERSION in capsys.readouterr().out
+    assert capsys.readouterr().out == "cae 0.1.1 (benchmark 0.1.0)\n"
 
 
 def test_sanitize_projects_an_existing_raw_run(

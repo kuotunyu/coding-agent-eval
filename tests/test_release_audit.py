@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from coding_agent_eval import BENCHMARK_VERSION, __version__
 from coding_agent_eval.fixtures.image_identity import PreparedImageIdentity
 from coding_agent_eval.release_audit import (
     _publication_registration,
@@ -191,6 +192,7 @@ def test_release_manifest_is_deterministic_and_covers_core_artifacts(repo_root: 
 
     assert first == second
     assert first["schema_version"] == "0.1.0"
+    assert first["benchmark_version"] == BENCHMARK_VERSION == "0.1.0"
     assert first["artifact_scope"] == "benchmark_contracts_and_evidence"
     artifacts = first["artifacts"]
     paths = [artifact["path"] for artifact in artifacts]
@@ -232,6 +234,34 @@ def prepare_minimal_release(root: Path, repo_root: Path) -> None:
     (root / "release-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+def test_metadata_audit_accepts_the_software_version_independently(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    prepare_minimal_release(tmp_path, repo_root)
+    citation_path = tmp_path / "CITATION.cff"
+    citation = yaml.safe_load(citation_path.read_text(encoding="utf-8"))
+    citation["version"] = __version__
+    citation_path.write_text(
+        yaml.safe_dump(citation, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    zenodo_path = tmp_path / ".zenodo.json"
+    zenodo = json.loads(zenodo_path.read_text(encoding="utf-8"))
+    zenodo["version"] = __version__
+    zenodo_path.write_text(
+        json.dumps(zenodo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    manifest = build_release_manifest(tmp_path)
+    (tmp_path / "release-manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    findings = audit_release_metadata(tmp_path)
+
+    assert [finding for finding in findings if finding.code == "release.metadata"] == []
+    assert __version__ == "0.1.1"
+    assert BENCHMARK_VERSION == "0.1.0"
 
 
 def test_metadata_audit_rejects_an_incomplete_artifact_manifest(

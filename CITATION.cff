@@ -3,7 +3,7 @@ message: >-
   若使用本 benchmark software 或 BugSeed v0.1 corpus，請引用下列 metadata，並註明
   v0.1 僅包含一個 10-task reference suite，不適合用於 model ranking。
 title: "coding-agent-eval：BugSeed v0.1 可重現 defect-discovery benchmark"
-version: 0.1.0
+version: 0.1.1
 date-released: 2026-08-11
 type: software
 license: MIT

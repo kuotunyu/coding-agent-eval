@@ -15,7 +15,7 @@ from urllib.parse import unquote
 import yaml
 from jsonschema import Draft202012Validator
 
-from coding_agent_eval import PUBLICATION_TRACE_SCHEMA_VERSION
+from coding_agent_eval import PUBLICATION_TRACE_SCHEMA_VERSION, __version__
 from coding_agent_eval.evaluator.ledger import LedgerKind, load_ledger
 from coding_agent_eval.evaluator.metrics import EvaluationError
 from coding_agent_eval.evaluator.replay import replay_run
@@ -230,7 +230,7 @@ def audit_release_metadata(root: Path) -> list[AuditFinding]:
         "cff-version": "1.2.0",
         "license": "MIT",
         "type": "software",
-        "version": "0.1.0",
+        "version": __version__,
     }
     for field, expected in expected_citation.items():
         if citation.get(field) != expected:
@@ -261,7 +261,7 @@ def audit_release_metadata(root: Path) -> list[AuditFinding]:
         "access_right": "open",
         "license": "mit",
         "upload_type": "software",
-        "version": "0.1.0",
+        "version": __version__,
     }
     for field, expected in expected_zenodo.items():
         if zenodo.get(field) != expected:

@@ -20,5 +20,5 @@
   "notes": "Prepared metadata only. 尚未建立或發布 Zenodo record，沒有預先宣稱 DOI。Source/tag、GitHub Release、Zenodo draft 與 Zenodo publish 都需要各自的 owner 明確批准。",
   "title": "coding-agent-eval：BugSeed v0.1 可重現 defect-discovery benchmark",
   "upload_type": "software",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

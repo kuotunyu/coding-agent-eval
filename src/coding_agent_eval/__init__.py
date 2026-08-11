@@ -7,6 +7,9 @@ only comparable to another result when the relevant versions match, so every
 
 from __future__ import annotations
 
+#: Installed software/tooling release. This may advance without changing evidence.
+__version__ = "0.1.1"
+
 #: The dataset + protocol as a whole. Minor bump on new fixtures/bugs;
 #: major bump on any change to matching or metric definitions.
 BENCHMARK_VERSION = "0.1.0"
@@ -37,4 +40,5 @@ __all__ = [
     "READABLE_TRACE_SCHEMA_VERSIONS",
     "REDACTION_MANIFEST_VERSION",
     "TRACE_SCHEMA_VERSION",
+    "__version__",
 ]
