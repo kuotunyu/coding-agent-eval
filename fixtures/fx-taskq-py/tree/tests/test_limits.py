@@ -37,7 +37,7 @@ def test_capacity_returns_when_a_task_completes(
     assert leased is not None
     assert leased.id == first.id
 
-    queue.acknowledge(first.id)
+    queue.acknowledge(first.id, leased.lease_generation)
     assert queue.lease("emails") is not None
 
 

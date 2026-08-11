@@ -34,7 +34,8 @@ def test_counts_reflect_each_state(
     done = queue.enqueue("emails", {})
     queue.lease("emails")
     queue.lease("emails")
-    queue.acknowledge(done.id)
+    leased_done = queue.get(done.id)
+    queue.acknowledge(done.id, leased_done.lease_generation)
 
     snapshot = metrics.for_queue("emails", clock.value)
     assert snapshot.done == 1

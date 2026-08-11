@@ -18,7 +18,7 @@ from taskq.idempotency import (
     validate_idempotency_key,
 )
 from taskq.limits import LimitStore
-from taskq.models import Task, TaskState, can_transition
+from taskq.models import Task, TaskState
 from taskq.storage import Storage
 from taskq.util import (
     new_task_id,
@@ -161,44 +161,44 @@ class TaskQueue:
 
     # --------------------------------------------------- completion paths
 
-    def acknowledge(self, task_id: str) -> Task:
+    def acknowledge(self, task_id: str, lease_generation: int) -> Task:
         """Mark a leased task done."""
-        task = self._require(task_id)
-        if not can_transition(task.state, TaskState.DONE):
-            raise Conflict(f"task in state {task.state.value} cannot be acknowledged")
-
-        self.storage.mark_state(task.id, TaskState.DONE, leased_until=None)
+        moment = self._clock()
+        with self.storage.write_transaction():
+            task = self._require_active_lease(task_id, lease_generation, moment)
+            self.storage.mark_state(task.id, TaskState.DONE, leased_until=None)
         return self._require(task_id)
 
-    def fail(self, task_id: str, error: str | None = None) -> Task:
+    def fail(
+        self, task_id: str, lease_generation: int, error: str | None = None
+    ) -> Task:
         """Report a failed attempt: retry if attempts remain, otherwise dead-letter.
 
         `max_attempts` counts attempts rather than retries, so a task with three
         runs three times in total. The attempt being reported has already been
         counted by `lease`.
         """
-        task = self._require(task_id)
-        if task.state is not TaskState.LEASED:
-            raise Conflict(f"task in state {task.state.value} is not leased")
-
+        moment = self._clock()
         message = (error or "").strip() or None
-
-        if task.attempts >= task.max_attempts:
-            self.storage.mark_state(
-                task.id, TaskState.DEAD, leased_until=None, last_error=message
-            )
-            return self._require(task_id)
-
-        delay = retry_delay(
-            task.attempts, self.config.base_retry_delay, self.config.max_retry_delay
-        )
-        self.storage.mark_state(
-            task.id,
-            TaskState.PENDING,
-            available_at=self._clock() + delay,
-            leased_until=None,
-            last_error=message,
-        )
+        with self.storage.write_transaction():
+            task = self._require_active_lease(task_id, lease_generation, moment)
+            if task.attempts >= task.max_attempts:
+                self.storage.mark_state(
+                    task.id, TaskState.DEAD, leased_until=None, last_error=message
+                )
+            else:
+                delay = retry_delay(
+                    task.attempts,
+                    self.config.base_retry_delay,
+                    self.config.max_retry_delay,
+                )
+                self.storage.mark_state(
+                    task.id,
+                    TaskState.PENDING,
+                    available_at=moment + delay,
+                    leased_until=None,
+                    last_error=message,
+                )
         return self._require(task_id)
 
     # ------------------------------------------------------------ queries
@@ -218,4 +218,22 @@ class TaskQueue:
         task = self.storage.get(task_id)
         if task is None:
             raise NotFound(f"no task with id {task_id}")
+        return task
+
+    def _require_active_lease(
+        self, task_id: str, lease_generation: int, moment: float
+    ) -> Task:
+        if (
+            isinstance(lease_generation, bool)
+            or not isinstance(lease_generation, int)
+            or lease_generation < 1
+        ):
+            raise ValidationError("lease generation must be a positive integer")
+        task = self._require(task_id)
+        if task.state is not TaskState.LEASED:
+            raise Conflict(f"task in state {task.state.value} is not leased")
+        if task.lease_generation != lease_generation:
+            raise Conflict("lease generation is no longer active")
+        if task.leased_until is None or task.leased_until <= moment:
+            raise Conflict("lease has expired")
         return task

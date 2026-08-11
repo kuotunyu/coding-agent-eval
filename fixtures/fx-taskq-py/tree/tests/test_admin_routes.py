@@ -65,8 +65,9 @@ def test_every_admin_route_rejects_a_wrong_token(api: Api, method: str, path: st
 
 def test_dead_letters_are_listed(api: Api, queue: TaskQueue, clock: FakeClock) -> None:
     task = queue.enqueue("emails", {}, max_attempts=1)
-    queue.lease("emails")
-    queue.fail(task.id, "boom")
+    leased = queue.lease("emails")
+    assert leased is not None
+    queue.fail(task.id, leased.lease_generation, "boom")
 
     response = call(api, "GET", "/admin/dead", headers=admin())
     assert response.status == 200
@@ -75,8 +76,9 @@ def test_dead_letters_are_listed(api: Api, queue: TaskQueue, clock: FakeClock) -
 
 def test_a_dead_task_can_be_requeued(api: Api, queue: TaskQueue) -> None:
     task = queue.enqueue("emails", {}, max_attempts=1)
-    queue.lease("emails")
-    queue.fail(task.id, "boom")
+    leased = queue.lease("emails")
+    assert leased is not None
+    queue.fail(task.id, leased.lease_generation, "boom")
 
     response = call(api, "POST", f"/admin/dead/{task.id}/requeue", headers=admin())
     assert response.status == 200

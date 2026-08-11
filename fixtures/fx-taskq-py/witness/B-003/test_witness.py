@@ -43,8 +43,9 @@ def parts(tmp_path: Path):
 
 def kill(queue: TaskQueue, clock: Clock) -> str:
     task = queue.enqueue("emails", {}, max_attempts=1)
-    queue.lease("emails")
-    queue.fail(task.id, "boom")
+    leased = queue.lease("emails")
+    assert leased is not None
+    queue.fail(task.id, leased.lease_generation, "boom")
     clock.value += 1
     return task.id
 

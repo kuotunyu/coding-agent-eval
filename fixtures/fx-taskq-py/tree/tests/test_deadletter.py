@@ -21,8 +21,9 @@ def dead_letters(storage: Storage) -> DeadLetterQueue:
 def kill(queue: TaskQueue, clock: FakeClock, name: str = "emails") -> str:
     """Drive one task all the way to dead and return its id."""
     task = queue.enqueue(name, {}, max_attempts=1)
-    queue.lease(name)
-    queue.fail(task.id, "boom")
+    leased = queue.lease(name)
+    assert leased is not None
+    queue.fail(task.id, leased.lease_generation, "boom")
     assert queue.get(task.id).state is TaskState.DEAD
     return task.id
 
@@ -108,7 +109,9 @@ def test_a_requeued_task_can_actually_run_again(
     leased = queue.lease("emails")
     assert leased is not None
     assert leased.id == task_id
-    assert queue.acknowledge(task_id).state is TaskState.DONE
+    assert (
+        queue.acknowledge(task_id, leased.lease_generation).state is TaskState.DONE
+    )
 
 
 def test_requeue_keeps_the_recorded_error(
