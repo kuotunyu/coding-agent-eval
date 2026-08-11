@@ -14,7 +14,7 @@
 schema_version: "0.1"
 fixture_id: fx-taskq-py
 name: taskq — background task queue service
-fixture_version: 1.0.4
+fixture_version: 1.0.5
 provenance: first_party
 language: python
 license: MIT
@@ -37,11 +37,11 @@ scope:
   # Denominator of benchmark_unsupported_findings_per_kloc. Gate G3 re-counts
   # this and compares, so it is the in-repository counter's number, not an
   # external tool's.
-  in_scope_loc: 1367
+  in_scope_loc: 1456
   loc_tool: cae-loc 0.1.0
 
 clean_control:
-  tree_checksum: sha256:58a2399c1b9857456a23085be4fd937789bc0c701ca30304cf1eb9ccaa345154
+  tree_checksum: sha256:4a532b507f70555582b770a9311c00a48c707a19d844c097bb344fab61a830d1
   witness_suite: witness/clean_suite.yaml
 
 known_residual_defects: known_residual_defects.yaml
@@ -49,7 +49,7 @@ known_residual_defects: known_residual_defects.yaml
 environment:
   base_image_digest: sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
   prepared_image_repository: ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py
-  prepared_image_tag: 1.0.4
+  prepared_image_tag: 1.0.5
   prepared_image_manifest_digest: sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
   prepared_image_config_digest: sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1
   lock_manifest: env/env.lock.json

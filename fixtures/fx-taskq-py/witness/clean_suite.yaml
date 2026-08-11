@@ -18,7 +18,7 @@ environment:
 expected_clean:
   exit_code: 0
   stdout_contains:
-    - "205 passed"
+    - "220 passed"
   stdout_not_contains:
     - "failed"
     - "error"

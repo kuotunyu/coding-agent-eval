@@ -5,7 +5,7 @@
 schema_version: "0.1"
 bug_id: fx-taskq-py/B-003
 fixture_id: fx-taskq-py
-fixture_version: 1.0.4
+fixture_version: 1.0.5
 
 category: correctness
 subcategory: pagination
