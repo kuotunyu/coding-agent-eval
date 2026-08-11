@@ -78,7 +78,9 @@ Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixtu
 因此 1.0.5 已失去 release eligibility；Ledger 1.0.3 不受此 observation 影響。TaskQ 1.0.6
 已修復、bump version 並重建／re-pin OCI。Attempt 5 使用 1.0.6，但在 final provider turn 前
 `budget_exhausted_tokens`，因此不是通過的 paid clean evidence；不得以 adjudication 把歷史缺陷標成
-unsupported，也不得把 budget exhaustion 改寫成 clean validation。
+unsupported，也不得把 budget exhaustion 改寫成 clean validation。Attempt 6 亦使用相同 1.0.6
+identity，但在用完 12 個工具後要求第 13 個工具而以 `step_exhausted` 終止；這同樣不是 clean
+validation，且沒有 mutated evidence。
 
 ## OCI distribution
 

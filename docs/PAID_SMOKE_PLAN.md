@@ -5,12 +5,11 @@ conversation adapters. It is deliberately smaller than the 10-task reference sui
 Passing it permits registration of a **new** suite ID; it never upgrades or overwrites
 the historical suite.
 
-## Proposed attempt 6 -- not authorized
+## Approved attempt 6 -- consumed
 
-The next valid paid action is one clean task against corrected TaskQ 1.0.6 with adapter
-0.4.0. No API key may be read and no provider request may be made until the owner explicitly
-approves this new attempt after the source, OCI, local gates, pushed `main`, and GitHub CI
-are green.
+The owner explicitly approved one clean task against corrected TaskQ 1.0.6 with adapter
+0.4.0, with a conditional B-001 task only if clean passed. Source, OCI, local gates, pushed
+`main`, and GitHub CI were green before the clean request.
 
 | Dimension | Planned value |
 |---|---|
@@ -24,14 +23,13 @@ are green.
 | Output | `runs/smoke/smoke-2026-08-11-attempt-6/clean` plus owner-only raw store |
 | Retry policy | One terminal outcome; no automatic or selective retry |
 
-The proposed limits are 1,024 provider output tokens per request, 120,000 observed
+The approved limits were 1,024 provider output tokens per request, 120,000 observed
 aggregate tokens, 12 tool calls, 300 seconds, and a USD 0.035 harness estimated-cost stop.
 Using `openai-gpt-5.6-luna@2026-08-11-r2`, expected cost is approximately USD
-0.006--0.015 and the requested maximum new provider-side exposure is USD 0.05 for clean.
-A clean finding or abnormal termination stops the gate without a retry. Only a passing
-clean task would make one B-001 mutated task eligible, under a separate additional maximum
-provider-side exposure of USD 0.05 and a distinct output identity. Neither task is
-authorized by this proposal.
+0.006--0.015. Maximum new provider-side exposure was USD 0.05 for clean. A clean finding or
+abnormal termination stops the gate without a retry. Only a passing clean task would make
+one B-001 mutated task eligible, under a separate additional maximum provider-side exposure
+of USD 0.05 and a distinct output identity.
 
 ## Approved attempt 4
 
@@ -138,10 +136,10 @@ cost across both attempts is USD 0.041026. Raising budgets alone did not close t
 gate: prompt 0.1.0 did not tell a clean-review agent how to stop or disclose its finite
 tool budget.
 
-Adapter 0.3.0 now renders prompt 0.2.0 from the registered tool-call budget and binds
-the rendered prompt version/hash into schema-1.1 suite identity. This corrected method
-has offline mocked evidence only. Neither attempt above can be relabeled as adapter
-0.3.0 evidence.
+Adapter 0.3.0 renders prompt 0.2.0 from the registered tool-call budget and binds the
+rendered prompt version/hash into schema-1.1 suite identity. At this point in the historical
+sequence it had offline mocked evidence only; the later attempts below keep their own
+identities. Neither attempt above can be relabeled as adapter 0.3.0 evidence.
 
 ## Gate sequence
 
@@ -261,3 +259,36 @@ Attempt 5's paid authorization is consumed. The clean gate failed abnormally, th
 conditional mutated task was not eligible, and no new provider request is authorized.
 Recorded estimates across all five retained paid attempts total USD 0.084653 across their
 respective versioned price tables.
+
+## Retained outcome -- attempt 6
+
+The approved TaskQ 1.0.6 clean task ran exactly once with adapter 0.4.0/prompt 0.2.0. It
+used all 12 executable tool calls and then returned a thirteenth `read_file` function call.
+The harness correctly refused to execute a tool beyond the registered limit and retained
+`step_exhausted`. Because clean did not complete normally, the conditional B-001 task was
+not eligible and was not run.
+
+| Field | Observed value |
+|---|---:|
+| Terminal outcome | `step_exhausted` |
+| Findings | 0 |
+| LLM calls / tool calls | 13 / 12 |
+| Input / cached input / output | 112,015 / 89,204 / 776 tokens |
+| Reasoning tokens | 463 |
+| Estimated cost | USD 0.007277 (`openai-gpt-5.6-luna@2026-08-11-r2`) |
+
+All 13 responses contained one unique function-call ID. The first 12 were replayed in the
+next request with an exact linked `function_call_output`; the final call was deliberately
+not executed because no tool budget remained. There were no tool errors. Every request used
+`store: false` and no `previous_response_id`; re-sanitizing the owner-only raw events
+reproduced the public trace byte for byte. The public trace SHA-256 is
+`8b25a1b3734a8b866ee8f7c06bf2f18b3d7b50ab29e0dca58a2b3a919c798329`.
+
+Attempt 6 supplies live adapter-0.4 conversation, usage, privacy, and budget evidence. It
+does **not** exercise the final-message clean-completion branch and therefore does not pass
+the smoke gate. Raising or selectively retrying the tool budget would not change this
+terminal outcome and is not authorized. No mutated smoke, full suite, candidate pair,
+worksheet, human ruling, or `verified_*` metric was produced.
+
+Attempt 6's paid authorization is consumed. Recorded estimates across all six retained paid
+attempts total USD 0.091930 across their respective versioned price tables.

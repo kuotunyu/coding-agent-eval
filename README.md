@@ -72,6 +72,7 @@ selecting a better outcome.
 | Paid smoke attempt 3 | Adapter 0.3/prompt 0.2 completed; one clean-control finding; USD 0.031539 | Normal completion and valid trace linkage; smoke gate still failed |
 | Paid smoke attempt 4 | TaskQ 1.0.5 clean completed; two machine-reproduced candidates; USD 0.006662 | Current pricing/linkage/privacy evidence; clean gate still failed |
 | Paid smoke attempt 5 | TaskQ 1.0.6 clean exhausted its token budget after 12 tools; USD 0.005426 | Retained adapter-0.3 linkage/privacy/budget evidence; smoke gate still failed |
+| Paid smoke attempt 6 | Adapter 0.4 clean reached `step_exhausted` after 12 tools; USD 0.007277 | Live adapter-0.4 linkage/privacy/budget evidence; clean gate still failed |
 | Human-verified evidence | None yet | No `verified_bug_recall`, `verified_finding_precision`, or release headline metric |
 
 Attempt 3's finding was mechanically reproduced and conservatively treated as a real
@@ -82,10 +83,11 @@ are AI-assisted engineering findings, not independent human rulings or verified 
 detections. TaskQ 1.0.6 corrects both conditions and passes the deterministic clean and
 mutation contracts. Attempt 5 exercised that fixture but exhausted its token budget before
 a final provider turn, so it did not validate the clean gate. Adapter 0.4 now distinguishes
-a clean final message with zero findings from absent output; that correction has offline
-mocked evidence only. No mutated smoke or new full suite was run. All five paid outcomes are
-retained; their recorded estimates total USD 0.084653 across their respective versioned
-price tables.
+a clean final message with zero findings from absent output. Attempt 6 validates its live
+multi-turn linkage and privacy boundary, but exhausted the tool-call budget before a final
+message, so the terminal-classification branch still has mocked evidence only. No mutated
+smoke or new full suite was run. All six paid outcomes are retained; their recorded estimates
+total USD 0.091930 across their respective versioned price tables.
 
 ## Engineering contract and limitations
 

@@ -172,6 +172,12 @@ clean gate，也沒有執行 mutated task。事後修正的 adapter 0.4 明確�
 且零 findings」與「缺少／malformed final output」；目前只有 deterministic mocked evidence，不能回填
 或重新標記 attempts 1--5。
 
+Attempt 6 使用 adapter 0.4／prompt 0.2，13 個唯一 function calls 中前 12 個都具 exact
+`function_call_output` linkage，且每次 `store:false`、無 `previous_response_id`。模型用完 12 個工具後
+仍要求第 13 個 `read_file`，因此 outcome 是 `step_exhausted`，USD 0.007277，沒有執行 mutated task。
+這是 live conversation／privacy／budget evidence，不是 clean completion evidence，也不能產生
+verified detection。
+
 ## Sandbox boundary
 
 Agent 的 measure tool surface 只有 read file、list directory、search tree、submit findings。
