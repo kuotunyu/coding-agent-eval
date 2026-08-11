@@ -330,9 +330,17 @@ def write_registration(registration: SuiteRegistration, path: Path) -> Path:
     return path
 
 
-def _registration_from_document(document: dict[str, Any], fixture_root: Path) -> SuiteRegistration:
-    fixture_ids = set(document["image_identities"])
-    identities, _ = _fixture_contracts(fixture_ids, fixture_root)
+def _registration_from_document(
+    document: dict[str, Any],
+    fixture_root: Path | None = None,
+    *,
+    identities: Mapping[str, PreparedImageIdentity] | None = None,
+) -> SuiteRegistration:
+    if identities is None:
+        if fixture_root is None:
+            raise SuiteError("fixture_root is required for a current registration")
+        fixture_ids = set(document["image_identities"])
+        identities, _ = _fixture_contracts(fixture_ids, fixture_root)
     return SuiteRegistration(
         schema_version=str(document["schema_version"]),
         suite_id=str(document["suite_id"]),
@@ -431,6 +439,89 @@ def load_registration(
     if document["environment_fingerprints"] != dict(sorted(fingerprints.items())):
         raise SuiteError("fixture environment fingerprint drifted after registration")
     return _registration_from_document(document, fixture_root)
+
+
+def load_registration_snapshot(
+    path: Path, *, task_registry_path: Path
+) -> SuiteRegistration:
+    """Load immutable suite evidence without resolving it against current fixtures.
+
+    This is intentionally separate from :func:`load_registration`: archived
+    evidence is validated against the exact registry bytes bound by its
+    registration, while executable registrations must still match the current
+    fixture tree.
+    """
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SuiteError(f"cannot read registration: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise SuiteError("registration must be a JSON object")
+    document: dict[str, Any] = loaded
+    problems = validate_document("suite-registration", document)
+    if problems:
+        raise SuiteError(
+            "registration schema is invalid: "
+            + "; ".join(problem.render() for problem in problems)
+        )
+    _require_iso_date(str(document["created_date"]))
+    if document["suite_id"] != _suite_id(document):
+        raise SuiteError("suite_id does not match canonical registration content")
+
+    registry = _read_registry(task_registry_path)
+    registry_problems = validate_document("task", registry)
+    if registry_problems:
+        raise SuiteError(
+            "task registry schema is invalid: "
+            + "; ".join(problem.render() for problem in registry_problems)
+        )
+    tasks: list[dict[str, Any]] = registry["tasks"]
+    if len(tasks) != EXPECTED_TASK_COUNT:
+        raise SuiteError(
+            f"reference suite must contain exactly {EXPECTED_TASK_COUNT} tasks, "
+            f"found {len(tasks)}"
+        )
+    task_ids = [str(task["task_id"]) for task in tasks]
+    if len(set(task_ids)) != len(task_ids):
+        raise SuiteError("task registry contains duplicate task IDs")
+    if document["task_registry_sha256"] != _sha256(task_registry_path.read_bytes()):
+        raise SuiteError("task registry hash drifted after registration")
+    if document["ordered_task_ids"] != task_ids:
+        raise SuiteError("registered task order or coverage differs from the task registry")
+
+    per_task = document["budgets"]["per_task"]
+    suite_total = document["budgets"]["suite_total"]
+    if any(suite_total[field] != per_task[field] * EXPECTED_TASK_COUNT for field in per_task):
+        raise SuiteError("suite aggregate budgets do not equal ten per-task budgets")
+
+    fixture_versions: dict[str, str] = {}
+    for task in tasks:
+        fixture_id = str(task["fixture_id"])
+        version = str(task["fixture_version"])
+        previous = fixture_versions.setdefault(fixture_id, version)
+        if previous != version:
+            raise SuiteError(
+                f"archived task registry has multiple versions for fixture {fixture_id}"
+            )
+    fixture_ids = set(fixture_versions)
+    if set(document["image_identities"]) != fixture_ids:
+        raise SuiteError("registered image identity coverage differs from the task registry")
+    if set(document["environment_fingerprints"]) != fixture_ids:
+        raise SuiteError("registered environment coverage differs from the task registry")
+
+    identities: dict[str, PreparedImageIdentity] = {}
+    try:
+        for fixture_id, version in sorted(fixture_versions.items()):
+            recorded = document["image_identities"][fixture_id]
+            identities[fixture_id] = PreparedImageIdentity(
+                repository=str(recorded["repository"]),
+                tag=version,
+                manifest_digest=str(recorded["manifest_digest"]),
+                config_digest=str(recorded["config_digest"]),
+            )
+    except (KeyError, TypeError, ImageIdentityError) as exc:
+        raise SuiteError(f"registered image identity is invalid: {exc}") from exc
+    return _registration_from_document(document, identities=identities)
 
 
 TaskExecutor = Callable[[dict[str, Any], Path], str]

@@ -21,6 +21,7 @@ from coding_agent_eval.suite import (
     SuiteError,
     build_registration,
     load_registration,
+    load_registration_snapshot,
     run_suite,
     write_registration,
 )
@@ -163,20 +164,41 @@ def test_system_prompt_hash_is_part_of_the_canonical_suite_identity(
         load_registration(path, task_registry_path=TASKS, fixture_root=current_fixtures)
 
 
-def test_legacy_registration_remains_readable_but_has_no_bound_adapter_identity() -> None:
-    registration = load_registration(
+def test_legacy_registration_snapshot_remains_readable_without_current_fixture_resolution() -> None:
+    registration = load_registration_snapshot(
         REPO_ROOT / "runs" / "reference" / "registration.json",
-        task_registry_path=TASKS,
-        fixture_root=REPO_ROOT / "fixtures",
+        task_registry_path=REPO_ROOT / "runs" / "reference" / "task-registry.json",
     )
     assert registration.schema_version == "1.0.0"
     assert registration.agent_adapter is None
     assert registration.agent_adapter_version is None
     assert registration.system_prompt_version is None
     assert registration.system_prompt_sha256 is None
+    assert registration.image_identities["fx-taskq-py"].tag == "1.0.4"
 
 
-def test_cli_refuses_to_execute_a_legacy_registration_before_provider_attempt(
+def test_legacy_registration_snapshot_rejects_registry_hash_drift(tmp_path: Path) -> None:
+    source = REPO_ROOT / "runs" / "reference" / "task-registry.json"
+    drifted = tmp_path / "task-registry.json"
+    drifted.write_bytes(source.read_bytes().replace(b'"1.0.4"', b'"1.0.5"', 1))
+
+    with pytest.raises(SuiteError, match="task registry hash drifted"):
+        load_registration_snapshot(
+            REPO_ROOT / "runs" / "reference" / "registration.json",
+            task_registry_path=drifted,
+        )
+
+
+def test_current_registration_loader_rejects_legacy_fixture_identity() -> None:
+    with pytest.raises(SuiteError, match="task registry hash drifted"):
+        load_registration(
+            REPO_ROOT / "runs" / "reference" / "registration.json",
+            task_registry_path=TASKS,
+            fixture_root=REPO_ROOT / "fixtures",
+        )
+
+
+def test_cli_refuses_a_legacy_registration_with_the_current_registry_before_provider_attempt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -226,7 +248,7 @@ def test_cli_refuses_to_execute_a_legacy_registration_before_provider_attempt(
 
     assert result == 1
     assert attempts == []
-    assert "predates adapter identity binding" in capsys.readouterr().err
+    assert "task registry hash drifted after registration" in capsys.readouterr().err
 
 
 def test_registration_rejects_duplicate_tasks_and_fixture_version_drift(
