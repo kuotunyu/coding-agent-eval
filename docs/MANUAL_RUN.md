@@ -108,13 +108,13 @@ harness defect，整個 registration 不得成為 publication evidence；修復�
 Completions 的 `max_completion_tokens`，限制單次 output overshoot；provider account spending limit
 仍是不依賴本程式的最後 backstop。新 suite registration 會綁定這個 request limit，避免執行時漂移。
 
-Current `gpt-5.6-luna` table（`openai-gpt-5.6-luna@2026-08-11`）是每 1M tokens：
+Current `gpt-5.6-luna` table（`openai-gpt-5.6-luna@2026-08-11-r2`）是每 1M tokens：
 
 | Component | Rate |
 |---|---:|
-| Input | USD 1.00 |
-| Cached input | USD 0.10 |
-| Output（含 reasoning tokens，不能重複計價） | USD 6.00 |
+| Input | USD 0.20 |
+| Cached input | USD 0.02 |
+| Output（含 reasoning tokens，不能重複計價） | USD 1.20 |
 
 所有報表使用 `estimated_cost_usd`，不使用 `cost_usd`。Pricing source、effective date、table version、
 usage completeness 與 unknown fields 都隨 trace 保存。跨 providers 的 cache、reasoning 與 tier rules
@@ -124,7 +124,8 @@ usage completeness 與 unknown fields 都隨 trace 保存。跨 providers 的 ca
 USD 0.25，suite 上限 2,000,000 tokens／600 tool calls／9,000 s／USD 2.50。該 suite 的
 `estimated_cost_usd = 0.097166` 是用 artifact 內封存的
 `openai-gpt-5.6-luna@2026-08-06` pricing table 計算；不得以目前費率回算或覆寫。10 個 tasks
-都是 token budget 先觸發。新 run 才使用上表的 2026-08-11 費率。
+都是 token budget 先觸發。新 run 才使用上表的 2026-08-11 `r2` 費率；同日 revision
+用 suffix 區分兩次觀測，不能拿新表回算或覆寫舊 artifact。
 
 ## 7. Private raw events 與 public trace
 

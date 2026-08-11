@@ -5,7 +5,7 @@ conversation adapters. It is deliberately smaller than the 10-task reference sui
 Passing it permits registration of a **new** suite ID; it never upgrades or overwrites
 the historical suite.
 
-## Proposed attempt 4（approval required）
+## Approved attempt 4
 
 Attempt 4 is one corrected **clean task only**. It gets a new output identity and does not
 reuse or replace attempts 1–3.
@@ -24,14 +24,19 @@ reuse or replace attempts 1–3.
 
 Limits for this one task are 1,024 provider output tokens per request, 80,000 observed
 aggregate tokens, 12 tool calls, 300 seconds, and a USD 0.035 harness estimated-cost stop.
-Based on attempt 3, expected cost is about USD 0.02–0.04. Because aggregate limits are
-checked after a response arrives, the requested maximum new provider-side exposure is USD
-0.05; this is a risk ceiling, not a spending target or guaranteed hard billing cap.
+The official table observed immediately before execution is
+`openai-gpt-5.6-luna@2026-08-11-r2`: USD 0.20/M input, USD 0.02/M cached input, and USD
+1.20/M output. Attempt 3's literal usage would estimate to USD 0.00630772 under this
+current table, so attempt 4 is expected to cost approximately USD 0.004–0.015. Because
+aggregate limits are checked after a response arrives, the approved maximum new
+provider-side exposure is USD 0.05; this is a risk authorization boundary, not a spending
+target or guaranteed hard billing cap.
 
-No API key may be read and no request may be sent until this exact attempt is approved. A
-passing clean outcome would only unlock preparation of one B-001 mutated smoke, which needs
-its own paid approval. A finding on the clean task or any abnormal termination stops the
-gate without a rerun.
+The owner approved this exact clean attempt with maximum new provider-side exposure USD
+0.05. The API key may be read only after the refreshed pricing tests, offline release gates,
+pushed `main`, and GitHub CI are all green. A passing clean outcome would only unlock
+preparation of one B-001 mutated smoke, which needs its own paid approval. A finding on the
+clean task or any abnormal termination stops the gate without a rerun.
 
 ## Historical attempts 1–2 configuration
 
@@ -148,7 +153,7 @@ control must produce no findings for this smoke gate to pass.
 | LLM calls / tool calls | 12 / 11 |
 | Input / cached input / output | 88,934 / 70,786 / 1,052 tokens |
 | Reasoning tokens | 446 |
-| Estimated cost | USD 0.031539 |
+| Estimated cost | USD 0.031539 (retained prior table) |
 
 All 11 function calls have an exact linked `function_call_output`. Public artifacts
 contain no API key, raw request/response body, or encrypted reasoning. A deterministic
@@ -164,7 +169,7 @@ validate the correction. Cumulative observed cost across all three attempts is U
 0.072565, below the approved USD 1.00 maximum exposure. No mutated task, 10-task suite,
 verified metric, or selective rerun was produced.
 
-No further paid request is authorized by the attempt-3 approval. The next paid action must
-be a newly approved 1.0.5 clean smoke with a new output identity; only a passing clean gate
-may unlock one mutated task. No new reference registration, tag, GitHub Release, or Zenodo
-action is authorized.
+Attempt 4 now has separate authorization for one TaskQ 1.0.5 clean smoke with maximum new
+provider-side exposure USD 0.05 and a new output identity. It does not authorize a mutated
+task, full suite, new reference registration, tag, GitHub Release, or Zenodo action; only a
+passing clean gate may justify requesting the next approval.
