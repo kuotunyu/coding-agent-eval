@@ -87,8 +87,7 @@ def test_the_luna_rates_are_the_ones_that_were_read_from_the_model_page() -> Non
     assert GPT_5_6_LUNA_PRICING.cached_input_per_mtok_usd == 0.02
     assert GPT_5_6_LUNA_PRICING.effective_date == "2026-08-11"
     assert (
-        GPT_5_6_LUNA_PRICING.source
-        == "https://developers.openai.com/api/docs/models/gpt-5.6-luna"
+        GPT_5_6_LUNA_PRICING.source == "https://developers.openai.com/api/docs/models/gpt-5.6-luna"
     )
 
 
