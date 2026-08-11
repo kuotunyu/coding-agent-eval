@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -10,8 +11,10 @@ import pytest
 import yaml
 
 from coding_agent_eval.agent.protocol import Budget
-from coding_agent_eval.agent.provider import PricingTable
+from coding_agent_eval.agent.provider import SYSTEM_PROMPT_VERSION, PricingTable
+from coding_agent_eval.agent.responses_provider import ADAPTER_VERSION as RESPONSES_ADAPTER_VERSION
 from coding_agent_eval.cli import main
+from coding_agent_eval.live import build_adapter
 from coding_agent_eval.runconfig import RunConfiguration
 from coding_agent_eval.suite import (
     ProviderFailure,
@@ -33,6 +36,7 @@ def configuration() -> RunConfiguration:
         model="gpt-5.6-luna",
         reasoning_effort="high",
         api="responses",
+        max_output_tokens_per_request=2048,
         budget=Budget(
             max_tokens=200_000,
             max_tool_calls=60,
@@ -102,12 +106,127 @@ def test_registration_is_complete_deterministic_and_secret_free(
     assert len(set(first.ordered_task_ids)) == 10
     assert first.suite_id == second.suite_id
     assert first.retry_policy == "no_automatic_retry"
+    assert document["schema_version"] == "1.1.0"
+    assert document["agent_adapter"] == "openai-responses"
+    assert document["agent_adapter_version"] == RESPONSES_ADAPTER_VERSION
+    assert document["conversation_state"] == "manual_history"
+    assert document["store"] is False
+    assert document["max_output_tokens_per_request"] == 2048
+    adapter = build_adapter(configuration(), client=None)
+    assert document["system_prompt_version"] == SYSTEM_PROMPT_VERSION
+    assert document["system_prompt_sha256"] == (
+        "sha256:" + hashlib.sha256(adapter.system_prompt.encode("utf-8")).hexdigest()
+    )
     assert first.budgets["suite_total"]["max_estimated_cost_usd"] == 25.0
     assert set(first.image_identities) == {"fx-taskq-py", "fx-ledger-ts"}
     assert all("tag" not in identity for identity in document["image_identities"].values())
     assert "api_key" not in rendered
     assert configuration().api_key not in rendered
     assert str(current_fixtures) not in rendered
+
+
+def test_adapter_version_is_part_of_the_canonical_suite_identity(
+    current_fixtures: Path, tmp_path: Path
+) -> None:
+    registration = build_registration(
+        task_registry_path=TASKS,
+        fixture_root=current_fixtures,
+        configuration=configuration(),
+        provider="openai",
+        created_date="2026-08-11",
+    )
+    document = registration.as_dict()
+    document["agent_adapter_version"] = "999.0.0"
+    path = tmp_path / "tampered-adapter-version.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(SuiteError, match="suite_id does not match"):
+        load_registration(path, task_registry_path=TASKS, fixture_root=current_fixtures)
+
+
+def test_system_prompt_hash_is_part_of_the_canonical_suite_identity(
+    current_fixtures: Path, tmp_path: Path
+) -> None:
+    registration = build_registration(
+        task_registry_path=TASKS,
+        fixture_root=current_fixtures,
+        configuration=configuration(),
+        provider="openai",
+        created_date="2026-08-11",
+    )
+    document = registration.as_dict()
+    document["system_prompt_sha256"] = "sha256:" + "0" * 64
+    path = tmp_path / "tampered-system-prompt.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(SuiteError, match="suite_id does not match"):
+        load_registration(path, task_registry_path=TASKS, fixture_root=current_fixtures)
+
+
+def test_legacy_registration_remains_readable_but_has_no_bound_adapter_identity() -> None:
+    registration = load_registration(
+        REPO_ROOT / "runs" / "reference" / "registration.json",
+        task_registry_path=TASKS,
+        fixture_root=REPO_ROOT / "fixtures",
+    )
+    assert registration.schema_version == "1.0.0"
+    assert registration.agent_adapter is None
+    assert registration.agent_adapter_version is None
+    assert registration.system_prompt_version is None
+    assert registration.system_prompt_sha256 is None
+
+
+def test_cli_refuses_to_execute_a_legacy_registration_before_provider_attempt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "CAE_PROVIDER_API_KEY=offline-placeholder",
+                "CAE_PROVIDER_MODEL=gpt-5.6-luna",
+                "CAE_PROVIDER_API=responses",
+                "CAE_PROVIDER_REASONING_EFFORT=high",
+                "CAE_MAX_OUTPUT_TOKENS_PER_REQUEST=2048",
+                "CAE_MAX_TOKENS=200000",
+                "CAE_MAX_TOOL_CALLS=60",
+                "CAE_MAX_WALLCLOCK_SECONDS=900",
+                "CAE_MAX_ESTIMATED_COST_USD=0.25",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    attempts: list[str] = []
+
+    def provider_must_not_run(*args: object, **kwargs: object) -> None:
+        attempts.append("attempted")
+        raise AssertionError("legacy registration reached provider execution")
+
+    import coding_agent_eval.live as live
+
+    monkeypatch.setattr(live, "execute", provider_must_not_run)
+    result = main(
+        [
+            "suite",
+            "run",
+            "--tasks",
+            str(TASKS),
+            "--fixtures",
+            str(REPO_ROOT / "fixtures"),
+            "--env-file",
+            str(env_file),
+            "--registration",
+            str(REPO_ROOT / "runs" / "reference" / "registration.json"),
+            "--out",
+            str(tmp_path / "out"),
+        ]
+    )
+
+    assert result == 1
+    assert attempts == []
+    assert "predates adapter identity binding" in capsys.readouterr().err
 
 
 def test_registration_rejects_duplicate_tasks_and_fixture_version_drift(
@@ -251,6 +370,7 @@ def test_cli_dry_run_and_register_make_no_provider_call(
                 "CAE_PROVIDER_MODEL=gpt-5.6-luna",
                 "CAE_PROVIDER_API=responses",
                 "CAE_PROVIDER_REASONING_EFFORT=high",
+                "CAE_MAX_OUTPUT_TOKENS_PER_REQUEST=2048",
                 "CAE_MAX_TOKENS=200000",
                 "CAE_MAX_TOOL_CALLS=60",
                 "CAE_MAX_WALLCLOCK_SECONDS=900",

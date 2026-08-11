@@ -23,6 +23,8 @@ from coding_agent_eval.schemas.validate import validate_document
 from coding_agent_eval.tasks import validate_task_registry
 
 RETRY_POLICY = "no_automatic_retry"
+REGISTRATION_SCHEMA_VERSION = "1.1.0"
+CONVERSATION_STATE = "manual_history"
 EXPECTED_TASK_COUNT = 10
 TaskStatus = Literal[
     "completed",
@@ -70,6 +72,7 @@ BudgetRecord = Mapping[str, BudgetValue]
 
 @dataclass(frozen=True)
 class SuiteRegistration:
+    schema_version: str
     suite_id: str
     task_registry_sha256: str
     ordered_task_ids: tuple[str, ...]
@@ -77,6 +80,13 @@ class SuiteRegistration:
     model: str
     api: str
     reasoning_effort: str | None
+    agent_adapter: str | None
+    agent_adapter_version: str | None
+    system_prompt_version: str | None
+    system_prompt_sha256: str | None
+    conversation_state: str | None
+    store: bool | None
+    max_output_tokens_per_request: int | None
     budgets: Mapping[str, BudgetRecord]
     retry_policy: str
     image_identities: Mapping[str, PreparedImageIdentity]
@@ -84,8 +94,8 @@ class SuiteRegistration:
     created_date: str
 
     def as_dict(self) -> dict[str, Any]:
-        return {
-            "schema_version": "1.0.0",
+        document: dict[str, Any] = {
+            "schema_version": self.schema_version,
             "suite_id": self.suite_id,
             "task_registry_sha256": self.task_registry_sha256,
             "ordered_task_ids": list(self.ordered_task_ids),
@@ -106,6 +116,19 @@ class SuiteRegistration:
             "environment_fingerprints": dict(sorted(self.environment_fingerprints.items())),
             "created_date": self.created_date,
         }
+        if self.schema_version != "1.0.0":
+            document.update(
+                {
+                    "agent_adapter": self.agent_adapter,
+                    "agent_adapter_version": self.agent_adapter_version,
+                    "system_prompt_version": self.system_prompt_version,
+                    "system_prompt_sha256": self.system_prompt_sha256,
+                    "conversation_state": self.conversation_state,
+                    "store": self.store,
+                    "max_output_tokens_per_request": self.max_output_tokens_per_request,
+                }
+            )
+        return document
 
 
 def _canonical_bytes(payload: Any) -> bytes:
@@ -211,14 +234,29 @@ def build_registration(
     fixture_ids = {str(task["fixture_id"]) for task in registry["tasks"]}
     identities, fingerprints = _fixture_contracts(fixture_ids, fixture_root)
     budgets = _budgets(configuration, len(ordered))
+    from coding_agent_eval.agent.provider import SYSTEM_PROMPT_VERSION
+    from coding_agent_eval.live import build_adapter
+
+    adapter = build_adapter(configuration, client=None)
+    system_prompt = getattr(adapter, "system_prompt", None)
+    if not isinstance(system_prompt, str):
+        raise SuiteError("reference adapter lacks a rendered system prompt")
+    system_prompt_sha256 = _sha256(system_prompt.encode("utf-8"))
     provisional: dict[str, Any] = {
-        "schema_version": "1.0.0",
+        "schema_version": REGISTRATION_SCHEMA_VERSION,
         "task_registry_sha256": _sha256(task_registry_path.read_bytes()),
         "ordered_task_ids": list(ordered),
         "provider": provider,
         "model": configuration.model,
         "api": configuration.api,
         "reasoning_effort": configuration.reasoning_effort,
+        "agent_adapter": adapter.name,
+        "agent_adapter_version": adapter.version,
+        "system_prompt_version": SYSTEM_PROMPT_VERSION,
+        "system_prompt_sha256": system_prompt_sha256,
+        "conversation_state": CONVERSATION_STATE,
+        "store": False if configuration.api == "responses" else None,
+        "max_output_tokens_per_request": configuration.max_output_tokens_per_request,
         "budgets": budgets,
         "retry_policy": RETRY_POLICY,
         "image_identities": {
@@ -234,6 +272,7 @@ def build_registration(
     }
     suite_id = _suite_id(provisional)
     registration = SuiteRegistration(
+        schema_version=REGISTRATION_SCHEMA_VERSION,
         suite_id=suite_id,
         task_registry_sha256=provisional["task_registry_sha256"],
         ordered_task_ids=ordered,
@@ -241,6 +280,13 @@ def build_registration(
         model=configuration.model,
         api=configuration.api,
         reasoning_effort=configuration.reasoning_effort,
+        agent_adapter=adapter.name,
+        agent_adapter_version=adapter.version,
+        system_prompt_version=SYSTEM_PROMPT_VERSION,
+        system_prompt_sha256=system_prompt_sha256,
+        conversation_state=CONVERSATION_STATE,
+        store=False if configuration.api == "responses" else None,
+        max_output_tokens_per_request=configuration.max_output_tokens_per_request,
         budgets=budgets,
         retry_policy=RETRY_POLICY,
         image_identities=identities,
@@ -288,6 +334,7 @@ def _registration_from_document(document: dict[str, Any], fixture_root: Path) ->
     fixture_ids = set(document["image_identities"])
     identities, _ = _fixture_contracts(fixture_ids, fixture_root)
     return SuiteRegistration(
+        schema_version=str(document["schema_version"]),
         suite_id=str(document["suite_id"]),
         task_registry_sha256=str(document["task_registry_sha256"]),
         ordered_task_ids=tuple(str(task_id) for task_id in document["ordered_task_ids"]),
@@ -296,6 +343,35 @@ def _registration_from_document(document: dict[str, Any], fixture_root: Path) ->
         api=str(document["api"]),
         reasoning_effort=(
             None if document["reasoning_effort"] is None else str(document["reasoning_effort"])
+        ),
+        agent_adapter=(
+            None if document.get("agent_adapter") is None else str(document["agent_adapter"])
+        ),
+        agent_adapter_version=(
+            None
+            if document.get("agent_adapter_version") is None
+            else str(document["agent_adapter_version"])
+        ),
+        system_prompt_version=(
+            None
+            if document.get("system_prompt_version") is None
+            else str(document["system_prompt_version"])
+        ),
+        system_prompt_sha256=(
+            None
+            if document.get("system_prompt_sha256") is None
+            else str(document["system_prompt_sha256"])
+        ),
+        conversation_state=(
+            None
+            if document.get("conversation_state") is None
+            else str(document["conversation_state"])
+        ),
+        store=(None if "store" not in document else bool(document["store"])),
+        max_output_tokens_per_request=(
+            None
+            if document.get("max_output_tokens_per_request") is None
+            else int(document["max_output_tokens_per_request"])
         ),
         budgets={
             name: {field: value for field, value in values.items()}

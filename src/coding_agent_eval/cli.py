@@ -878,7 +878,12 @@ def _run_suite(args: argparse.Namespace) -> int:
             task_registry_path=registry,
             fixture_root=args.fixtures,
         )
-        if registration.agent_adapter is None or registration.agent_adapter_version is None:
+        if (
+            registration.agent_adapter is None
+            or registration.agent_adapter_version is None
+            or registration.system_prompt_version is None
+            or registration.system_prompt_sha256 is None
+        ):
             raise SuiteError(
                 "registration predates adapter identity binding; retain its evidence as "
                 "history and create a new registration before execution"
@@ -886,6 +891,14 @@ def _run_suite(args: argparse.Namespace) -> int:
         from coding_agent_eval.live import build_adapter
 
         runtime_adapter = build_adapter(configuration, client=None)
+        from coding_agent_eval.agent.provider import SYSTEM_PROMPT_VERSION
+
+        runtime_system_prompt = getattr(runtime_adapter, "system_prompt", None)
+        if not isinstance(runtime_system_prompt, str):
+            raise SuiteError("runtime adapter lacks a rendered system prompt")
+        runtime_prompt_sha256 = (
+            "sha256:" + hashlib.sha256(runtime_system_prompt.encode("utf-8")).hexdigest()
+        )
         expected_budget = dict(registration.budgets["per_task"])
         if (
             configuration.model != registration.model
@@ -895,6 +908,8 @@ def _run_suite(args: argparse.Namespace) -> int:
             or configuration.budget.as_dict() != expected_budget
             or runtime_adapter.name != registration.agent_adapter
             or runtime_adapter.version != registration.agent_adapter_version
+            or registration.system_prompt_version != SYSTEM_PROMPT_VERSION
+            or runtime_prompt_sha256 != registration.system_prompt_sha256
             or registration.conversation_state != CONVERSATION_STATE
             or registration.store != (False if configuration.api == "responses" else None)
             or configuration.max_output_tokens_per_request

@@ -39,7 +39,7 @@
     }
   },
   "properties": {
-    "schema_version": {"const": "1.0.0"},
+    "schema_version": {"enum": ["1.0.0", "1.1.0"]},
     "suite_id": {"type": "string", "pattern": "^suite-[0-9a-f]{64}$"},
     "task_registry_sha256": {"$ref": "#/$defs/sha256"},
     "ordered_task_ids": {
@@ -53,6 +53,13 @@
     "model": {"type": "string", "minLength": 1, "maxLength": 128},
     "api": {"enum": ["chat_completions", "responses"]},
     "reasoning_effort": {"type": ["string", "null"], "maxLength": 64},
+    "agent_adapter": {"type": "string", "minLength": 1, "maxLength": 128},
+    "agent_adapter_version": {"type": "string", "minLength": 1, "maxLength": 64},
+    "system_prompt_version": {"type": "string", "minLength": 1, "maxLength": 64},
+    "system_prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "conversation_state": {"const": "manual_history"},
+    "store": {"type": ["boolean", "null"]},
+    "max_output_tokens_per_request": {"type": "integer", "minimum": 1},
     "budgets": {
       "type": "object",
       "properties": {
@@ -92,5 +99,31 @@
     "environment_fingerprints",
     "created_date"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": "1.1.0"}}},
+      "then": {
+        "required": [
+          "agent_adapter",
+          "agent_adapter_version",
+          "system_prompt_version",
+          "system_prompt_sha256",
+          "conversation_state",
+          "store",
+          "max_output_tokens_per_request"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {"const": "1.1.0"},
+          "api": {"const": "responses"}
+        },
+        "required": ["schema_version", "api"]
+      },
+      "then": {"properties": {"store": {"const": false}}}
+    }
+  ]
 }
