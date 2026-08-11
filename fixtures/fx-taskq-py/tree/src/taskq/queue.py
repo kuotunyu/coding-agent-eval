@@ -84,28 +84,36 @@ class TaskQueue:
         key = None
         if idempotency_key is not None:
             key = validate_idempotency_key(idempotency_key)
+
+        def create_task() -> Task:
+            return Task(
+                id=new_task_id(),
+                queue=queue,
+                payload=payload,
+                state=TaskState.PENDING,
+                priority=priority,
+                attempts=0,
+                lease_generation=0,
+                max_attempts=attempts_limit,
+                created_at=moment,
+                available_at=moment + delay,
+                leased_until=None,
+                last_error=None,
+            )
+
+        if key is None:
+            task = create_task()
+            self.storage.insert(task)
+            return task
+
+        with self.storage.write_transaction():
             existing = self.idempotency.lookup(queue, key, moment)
             if existing is not None:
                 previous = self.storage.get(existing.task_id)
                 if previous is not None:
                     return previous
-
-        task = Task(
-            id=new_task_id(),
-            queue=queue,
-            payload=payload,
-            state=TaskState.PENDING,
-            priority=priority,
-            attempts=0,
-            lease_generation=0,
-            max_attempts=attempts_limit,
-            created_at=moment,
-            available_at=moment + delay,
-            leased_until=None,
-            last_error=None,
-        )
-        self.storage.insert(task)
-        if key is not None:
+            task = create_task()
+            self.storage.insert(task)
             self.idempotency.remember(
                 queue, key, task.id, moment, DEFAULT_KEY_TTL_SECONDS
             )

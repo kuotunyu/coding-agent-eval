@@ -75,6 +75,37 @@ def test_a_schema_one_database_migrates_without_losing_tasks(tmp_path) -> None:
         migrated.close()
 
 
+def test_an_interrupted_schema_two_migration_resumes(tmp_path) -> None:
+    database = tmp_path / "interrupted-schema-two.db"
+    connection = sqlite3.connect(database)
+    connection.executescript(
+        """
+        CREATE TABLE tasks (
+            id TEXT PRIMARY KEY, queue TEXT NOT NULL, payload TEXT NOT NULL,
+            state TEXT NOT NULL, priority INTEGER NOT NULL DEFAULT 0,
+            attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL,
+            created_at REAL NOT NULL, available_at REAL NOT NULL,
+            leased_until REAL, last_error TEXT
+        );
+        CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO schema_meta (key, value) VALUES ('version', '1');
+        ALTER TABLE tasks ADD COLUMN lease_generation INTEGER NOT NULL DEFAULT 0;
+        """
+    )
+    connection.close()
+
+    migrated = Storage(str(database))
+    try:
+        columns = [
+            row["name"]
+            for row in migrated.connection.execute("PRAGMA table_info(tasks)").fetchall()
+        ]
+        assert migrated.schema_version() == 2
+        assert columns.count("lease_generation") == 1
+    finally:
+        migrated.close()
+
+
 def test_reopening_does_not_reset_the_schema(config: Config, storage: Storage) -> None:
     storage.insert(make_task())
     storage.close()

@@ -99,18 +99,23 @@ class Storage:
 
     def _migrate(self) -> None:
         self._connection.executescript(_SCHEMA)
-        current = self.schema_version()
-        if current < 2:
-            self._connection.execute(
-                "ALTER TABLE tasks ADD COLUMN "
-                "lease_generation INTEGER NOT NULL DEFAULT 0"
-            )
-        if self.schema_version() != SCHEMA_VERSION:
-            self._connection.execute(
-                "INSERT INTO schema_meta (key, value) VALUES ('version', ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                (str(SCHEMA_VERSION),),
-            )
+        with self.write_transaction() as connection:
+            current = self.schema_version()
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(tasks)").fetchall()
+            }
+            if current < 2 and "lease_generation" not in columns:
+                connection.execute(
+                    "ALTER TABLE tasks ADD COLUMN "
+                    "lease_generation INTEGER NOT NULL DEFAULT 0"
+                )
+            if current != SCHEMA_VERSION:
+                connection.execute(
+                    "INSERT INTO schema_meta (key, value) VALUES ('version', ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    (str(SCHEMA_VERSION),),
+                )
 
     def schema_version(self) -> int:
         row = self._connection.execute(
