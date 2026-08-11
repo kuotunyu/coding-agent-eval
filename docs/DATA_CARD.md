@@ -20,13 +20,13 @@ agent defect-discovery evaluation vertical slice。
 
 | 欄位 | `fx-taskq-py` | `fx-ledger-ts` |
 |---|---|---|
-| Fixture version | 1.0.4 | 1.0.3 |
+| Fixture version | 1.0.5 | 1.0.3 |
 | Language／runtime | Python 3.12 | TypeScript／Node 22 |
 | Service shape | Background task queue、HTTP API、worker、SQLite | Double-entry ledger、HTTP API、locks、journal、batch settlement |
 | In-scope paths | `src/**` | `src/**` |
 | Out-of-scope paths | `tests/**` | `tests/**`、`node_modules/**`、`dist/**` |
-| In-scope LOC | 1,367 | 1,183 |
-| Own test suite | 205 tests | 174 tests |
+| In-scope LOC | 1,456 | 1,183 |
+| Own test suite | 220 tests | 174 tests |
 | Seeded bugs | 4 | 4 |
 | Runtime dependencies | 無 third-party runtime dependency | 無 third-party runtime dependency |
 | License | MIT | MIT |
@@ -74,7 +74,7 @@ clean-tree audit 與後續發現；`known_residual_defects.yaml` 必須為空，
 eligibility。
 
 Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixture defects，修正後皆 bump version、
-重建 OCI 並重新 pin；目前版本為 1.0.4／1.0.3。若未來 clean control 證實 fixture 或 harness defect，
+重建 OCI 並重新 pin；目前版本為 1.0.5／1.0.3。若未來 clean control 證實 fixture 或 harness defect，
 必須停止 suite、修復並建立新 registration，不得以 adjudication 把它標成 unsupported。
 
 ## OCI distribution
@@ -83,7 +83,7 @@ Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixtu
 
 | Fixture | Repository／tag | Manifest digest | Config digest |
 |---|---|---|---|
-| `fx-taskq-py` | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.4` | `sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad` | `sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1` |
+| `fx-taskq-py` | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py:1.0.5` | `sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966` | `sha256:7d2299a679f1a00d4e45d0901876e4894c2e5f4c5916bf97dbcfe1210277c09a` |
 | `fx-ledger-ts` | `ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts:1.0.3` | `sha256:38450742408270a0e48ae053499dd626f61a4cf09139d40ae494838def4b0312` | `sha256:c7d310f6a41a47132484bddc47969547c9e34cb7628456415696c59af223d583` |
 
 Image index／manifest 與 local image config 是不同 OCI objects，必須分開驗證。Current environment

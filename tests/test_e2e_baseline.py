@@ -43,7 +43,7 @@ FIXTURE_IDS = ["fx-taskq-py", "fx-ledger-ts"]
 IMAGE_TAGS = {
     "fx-taskq-py": (
         "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
-        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+        "sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966"
     ),
     "fx-ledger-ts": (
         "ghcr.io/kuotunyu/coding-agent-eval-fx-ledger-ts@"

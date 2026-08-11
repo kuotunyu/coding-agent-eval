@@ -340,7 +340,7 @@ That filter is not an optimisation, it is the requirement. A seeded defect the
 fixture's own tests catch measures whether an agent runs the test suite, not
 whether it can read code, and every bug it contributed would inflate recall for
 a behaviour the benchmark is not trying to measure. Every bug above survives
-the full suite (205 tests) on the mutated tree.
+the full suite (220 tests) on the mutated tree.
 
 ### What the screening said about this tree
 

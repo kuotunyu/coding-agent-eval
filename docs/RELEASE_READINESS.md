@@ -23,7 +23,7 @@ schema 1.1 的新 reference registration。Source/tag、GitHub Release、Zenodo 
 | 公開 claim | Machine-checkable evidence | 可重算值／限制 |
 |---|---|---|
 | Corpus 規模 | `tasks/v0.1.json` 的 `tasks[*].snapshot` 與 `bug_id`；`fixtures/*/fixture.yaml` 的 `bugs` | 10 tasks＝2 clean controls＋8 single-mutation tasks，分布於 2 fixtures。 |
-| Fixture 規模 | `fixtures/*/fixture.yaml` 的 `fixture_version`、`scope.in_scope_loc`；`fixtures/*/witness/clean_suite.yaml` 的 `expected_clean.stdout_contains` | `fx-taskq-py` 1.0.4：1,367 LOC／205 tests；`fx-ledger-ts` 1.0.3：1,183 LOC／174 tests。 |
+| Fixture 規模 | `fixtures/*/fixture.yaml` 的 `fixture_version`、`scope.in_scope_loc`；`fixtures/*/witness/clean_suite.yaml` 的 `expected_clean.stdout_contains` | `fx-taskq-py` 1.0.5：1,456 LOC／220 tests；`fx-ledger-ts` 1.0.3：1,183 LOC／174 tests。 |
 | 舊 agent configuration | `runs/reference/registration.json` 與各 trace header | `openai`／`gpt-5.6-luna`／Responses API／`high`／adapter 0.1；只代表舊協定 retained outcomes。 |
 | Pre-registration identity | `runs/reference/registration.json` 的 `suite_id`、`ordered_task_ids`、`task_registry_sha256` | `suite-ca6834e720ce87309847af909c342789286f7cffb943b03e9e140c73e040d80b`；順序固定。 |
 | Budget 與 retry | `runs/reference/registration.json` 的 `budgets`、`retry_policy` | 每 task：200,000 tokens／60 tool calls／900 s／USD 0.25；suite 上限 USD 2.50；`no_automatic_retry`。 |

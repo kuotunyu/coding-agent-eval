@@ -46,7 +46,7 @@ release artifact audit clean (0 warning(s))
 
 - A versioned Python CLI for fixture validation, agent execution, sanitization, replay,
   evaluation, suite registration, and publication auditing.
-- Two first-party MIT fixtures—Python and TypeScript—with 2,550 in-scope LOC, 379 own
+- Two first-party MIT fixtures—Python and TypeScript—with 2,639 in-scope LOC, 394 own
   tests, eight single-defect mutations, and two clean controls.
 - Digest-qualified OCI environments and runtime checks for network isolation, read-only
   roots, dropped capabilities, resource limits, and host-path separation.

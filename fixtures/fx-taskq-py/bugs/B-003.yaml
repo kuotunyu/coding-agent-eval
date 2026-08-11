@@ -70,6 +70,6 @@ witness:
       - "2 passed"
   artifacts:
     - path: witness/B-003/test_witness.py
-      sha256: ccef189a7aa1b3939e44200ee8c4aaf316e0c2165dc6032c3b3340970628532b
+      sha256: 2d70cd2ae4b4167b8c9b409c998a0d33205d27e5e5ac73d26c8546196c56b2af
   deterministic: true
   overlay_target: "/workspace/witness"

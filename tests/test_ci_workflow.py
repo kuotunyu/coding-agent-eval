@@ -36,7 +36,7 @@ def test_pull_request_jobs_use_owner_head_and_authenticated_registry(repo_root: 
     assert (
         "docker pull "
         "ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@"
-        "sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad"
+        "sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966"
     ) in witness_commands
     assert (
         "docker pull "

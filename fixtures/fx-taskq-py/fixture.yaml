@@ -50,13 +50,13 @@ environment:
   base_image_digest: sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
   prepared_image_repository: ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py
   prepared_image_tag: 1.0.5
-  prepared_image_manifest_digest: sha256:392d4fbb33427c4fee63ee6b00fa055665ae37ec099acbc140594ed2010c19ad
-  prepared_image_config_digest: sha256:8796584be151aa59e641a7c4d70202f7d147ef6130241478a96f67459157e6d1
+  prepared_image_manifest_digest: sha256:db6a0afabe3acfd9c704e020b27a5b55ccef430b4864d8e565711b0b9cbc8966
+  prepared_image_config_digest: sha256:7d2299a679f1a00d4e45d0901876e4894c2e5f4c5916bf97dbcfe1210277c09a
   lock_manifest: env/env.lock.json
   rebuild_recipe: env/Dockerfile
   # Over: base/registry-manifest/config digests, debian 12, Python 3.12.13,
   # pip 25.0.1, the lock manifest's sha256, and linux/amd64.
-  fingerprint: sha256:c58f1695a826a91308e1d839476b5d240c1e14e73f700a772d1b9bfd3594c3c9
+  fingerprint: sha256:af78b31c3152829c1177e4bccc6bb6c32a9724c63bb9090d27e1cafa731fcc6d
 
 bugs:
   - fx-taskq-py/B-001
