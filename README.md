@@ -5,7 +5,7 @@
 [![CI](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-![Release status: candidate](https://img.shields.io/badge/release-candidate-orange.svg)
+[![Release](https://img.shields.io/github/v/release/kuotunyu/coding-agent-eval)](https://github.com/kuotunyu/coding-agent-eval/releases/tag/v0.1.0)
 
 `coding-agent-eval` turns agent defect discovery into an auditable experiment. It
 registers immutable tasks and OCI environments, runs agents through a constrained tool
