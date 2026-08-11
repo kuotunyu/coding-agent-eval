@@ -242,7 +242,12 @@ def run_agent(
             },
         )
         transcript.append(
-            Observation(tool_name=invocation.tool_name, content=content, is_error=is_error)
+            Observation(
+                tool_name=invocation.tool_name,
+                content=content,
+                is_error=is_error,
+                assistant_turn=step.assistant_turn,
+            )
         )
 
         if consecutive_unexpected >= UNEXPECTED_LIMIT:

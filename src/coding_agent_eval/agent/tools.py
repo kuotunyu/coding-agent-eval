@@ -237,10 +237,9 @@ def _write_findings(context: ToolContext, args: dict[str, Any]) -> str:
     position — "no fuzzy deduplication: two distinct findings at the same
     location each count" — from inside a tool that cannot tell a resubmission
     from a second, genuinely different defect that happens to live on the same
-    lines. The note exists because this harness gives the model no other way
-    to know: transcripts never replay the model's own past turns (see
-    `provider.build_messages`), and until this note existed the only feedback
-    a `write_findings` call ever got back was a bare count. A 51-step live run
+    lines. The note exists because prior turns show that a finding was accepted
+    but do not make overlapping findings equivalent. Until this note existed,
+    the only feedback a `write_findings` call ever got back was a bare count. A 51-step live run
     against a reasoning model resubmitted one seeded bug seven times under
     seven different ids, each in its own separate call, because nothing it was
     ever told distinguished "new finding" from "already said this" — see

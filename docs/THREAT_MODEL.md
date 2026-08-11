@@ -157,6 +157,27 @@ writes nothing at all, rather than writing a partly-cleaned file that looks fini
 The tracked-file leak scan (**G11**) applies the same rule set to everything under version
 control, so a secret cannot reach a remote by being committed rather than by being traced.
 
+### Provider conversation state
+
+Both OpenAI wire formats use explicit, client-managed history. Chat Completions replays the
+assistant message containing `tool_calls` before the linked `role: tool` result. Responses
+replays every item from the previous `response.output` array—including function calls and
+encrypted reasoning items—before appending `function_call_output` with the same `call_id`.
+Responses requests set `store: false`; the benchmark does not use `previous_response_id` or
+the Conversations API as a hidden state dependency. This follows the official OpenAI
+[function-calling](https://developers.openai.com/api/docs/guides/function-calling) and
+[conversation-state](https://developers.openai.com/api/docs/guides/conversation-state)
+guidance.
+
+The exact request and response bodies are retained only in the owner-controlled
+`.run-store/` as known-private `llm_call` fields. The publishable trace keeps their request
+hash, latency, finish classification, and usage, but the fail-closed sanitizer drops both
+bodies. Provider free-text errors follow the same boundary: structural status/type/code may
+be public; message text remains private because a provider can quote source or prompts.
+Authorization headers are never traced, so the API key is neither in the raw event payload
+nor in its public projection. `store: false` disables saved Response objects; it is not a
+claim of Zero Data Retention certification or of the provider's wider account policy.
+
 ---
 
 ## Residual risks

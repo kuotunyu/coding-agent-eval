@@ -96,6 +96,15 @@ class ToolInvocation:
 
 
 @dataclass(frozen=True)
+class AssistantTurn:
+    """Opaque provider output that must precede one linked tool result."""
+
+    api: str
+    output: tuple[dict[str, Any], ...]
+    tool_call_id: str
+
+
+@dataclass(frozen=True)
 class Step:
     """One decision from the adapter.
 
@@ -118,6 +127,8 @@ class Step:
     #: after two seconds and left a trace of one line with no diagnostic in it,
     #: because the exception had been caught and discarded.
     error: dict[str, Any] = field(default_factory=dict)
+    #: Assistant output and call id needed to return this invocation's result.
+    assistant_turn: AssistantTurn | None = None
 
     def __post_init__(self) -> None:
         if (self.invocation is None) == (self.stop is None):
@@ -131,6 +142,7 @@ class Observation:
     tool_name: str
     content: str
     is_error: bool
+    assistant_turn: AssistantTurn | None = None
 
 
 @runtime_checkable

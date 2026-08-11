@@ -40,6 +40,7 @@ KNOWN_VARIABLES: tuple[str, ...] = (
     "CAE_PROVIDER_MODEL",
     "CAE_PROVIDER_REASONING_EFFORT",
     "CAE_PROVIDER_API",
+    "CAE_MAX_OUTPUT_TOKENS_PER_REQUEST",
     "CAE_MAX_TOKENS",
     "CAE_MAX_TOOL_CALLS",
     "CAE_MAX_WALLCLOCK_SECONDS",
@@ -48,8 +49,8 @@ KNOWN_VARIABLES: tuple[str, ...] = (
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
-#: Which endpoint shape `cae run` speaks. Both adapters have retained live
-#: observations; `chat_completions` remains the compatibility default, while
+#: Which endpoint shape `cae run` speaks. Older adapter versions have retained
+#: live observations; `chat_completions` remains the compatibility default, while
 #: `responses` supports the reasoning-enabled request shape.
 DEFAULT_API = "chat_completions"
 VALID_APIS: tuple[str, ...] = ("chat_completions", "responses")
@@ -119,6 +120,9 @@ class RunConfiguration:
     reasoning_effort: str | None = None
     #: One of `VALID_APIS`. Determines which adapter class `live.execute` builds.
     api: str = DEFAULT_API
+    #: Provider-side ceiling for one response. Total observed budgets are checked
+    #: after a paid request; this limits how far a single request can overshoot.
+    max_output_tokens_per_request: int | None = None
 
     def redacted(self) -> dict[str, object]:
         """What may be written to a trace, a log, or the terminal.
@@ -136,6 +140,7 @@ class RunConfiguration:
             # mention it", which is a different run from one that set it to
             # "none" — and on a reasoning model, a different subject entirely.
             "reasoning_effort": self.reasoning_effort,
+            "max_output_tokens_per_request": self.max_output_tokens_per_request,
             "pricing_table_version": self.pricing.version,
             "pricing_effective_date": self.pricing.effective_date,
             "budget": {
@@ -185,6 +190,10 @@ def load_configuration(
             f"CAE_PROVIDER_API must be one of {', '.join(VALID_APIS)}, not {api!r}"
         )
 
+    max_output_tokens_per_request = _int_or_none(source, "CAE_MAX_OUTPUT_TOKENS_PER_REQUEST")
+    if max_output_tokens_per_request is not None and max_output_tokens_per_request <= 0:
+        raise ConfigurationError("CAE_MAX_OUTPUT_TOKENS_PER_REQUEST must be greater than zero")
+
     max_cost = _float_or_none(source, "CAE_MAX_ESTIMATED_COST_USD")
     try:
         pricing = pricing_for(model, require_priced=max_cost is not None)
@@ -220,6 +229,7 @@ def load_configuration(
         pricing=pricing,
         reasoning_effort=source.get("CAE_PROVIDER_REASONING_EFFORT", "").strip() or None,
         api=api,
+        max_output_tokens_per_request=max_output_tokens_per_request,
     )
 
 
