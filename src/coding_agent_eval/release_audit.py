@@ -38,7 +38,7 @@ from coding_agent_eval.suite import (
     VALID_STATUSES,
     SuiteError,
     SuiteRegistration,
-    load_registration,
+    load_registration_snapshot,
 )
 from coding_agent_eval.tasks import validate_task_registry
 
@@ -366,8 +366,8 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     return loaded
 
 
-def _task_registry(root: Path) -> tuple[dict[str, dict[str, Any]], list[str]]:
-    document = _read_json_object(root / "tasks" / "v0.1.json")
+def _task_registry(path: Path) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    document = _read_json_object(path)
     tasks = document.get("tasks")
     if not isinstance(tasks, list) or not all(isinstance(task, dict) for task in tasks):
         raise TypeError("task registry must contain a tasks array of objects")
@@ -378,10 +378,11 @@ def _task_registry(root: Path) -> tuple[dict[str, dict[str, Any]], list[str]]:
 
 def _publication_registration(
     root: Path,
-) -> tuple[Path | None, SuiteRegistration | None, list[AuditFinding]]:
+) -> tuple[Path | None, Path | None, SuiteRegistration | None, list[AuditFinding]]:
     registrations = sorted((root / "runs" / "reference").glob("**/registration.json"))
     if len(registrations) != 1:
         return (
+            None,
             None,
             None,
             [
@@ -393,15 +394,16 @@ def _publication_registration(
             ],
         )
     path = registrations[0]
+    registry_path = path.parent / "task-registry.json"
     try:
-        registration = load_registration(
+        registration = load_registration_snapshot(
             path,
-            task_registry_path=root / "tasks" / "v0.1.json",
-            fixture_root=root / "fixtures",
+            task_registry_path=registry_path,
         )
     except (OSError, TypeError, SuiteError) as exc:
         return (
             path,
+            None,
             None,
             [
                 AuditFinding(
@@ -411,7 +413,7 @@ def _publication_registration(
                 )
             ],
         )
-    return path, registration, []
+    return path, registry_path, registration, []
 
 
 def _load_trace(path: Path) -> tuple[list[dict[str, Any]], list[str]]:
@@ -721,9 +723,10 @@ def _audit_replay(
 def _audit_publication_suite(
     root: Path,
     registration_path: Path | None,
+    task_registry_path: Path | None,
     registration: SuiteRegistration | None,
 ) -> list[AuditFinding]:
-    if registration_path is None or registration is None:
+    if registration_path is None or task_registry_path is None or registration is None:
         unavailable = "cannot verify without one valid immutable suite registration"
         return [
             AuditFinding(code, "runs/reference", unavailable)
@@ -740,10 +743,15 @@ def _audit_publication_suite(
 
     findings: list[AuditFinding] = []
     try:
-        tasks, registry_order = _task_registry(root)
+        tasks, registry_order = _task_registry(task_registry_path)
     except (OSError, TypeError, json.JSONDecodeError) as exc:
+        relative_registry = (
+            task_registry_path.relative_to(root).as_posix()
+            if task_registry_path.is_relative_to(root)
+            else str(task_registry_path)
+        )
         return [
-            AuditFinding("suite.coverage", "tasks/v0.1.json", str(exc)),
+            AuditFinding("suite.coverage", relative_registry, str(exc)),
             AuditFinding("suite.trace_contract", "runs/reference", str(exc)),
             AuditFinding("suite.outcomes", "runs/reference", str(exc)),
             AuditFinding("results.replay", "runs/reference", str(exc)),
@@ -976,9 +984,13 @@ def audit_release(
 
     identities, identity_findings = _fixture_identities(root)
     findings.extend(identity_findings)
-    registration_path, registration, registration_findings = _publication_registration(root)
+    registration_path, task_registry_path, registration, registration_findings = (
+        _publication_registration(root)
+    )
     findings.extend(registration_findings)
-    findings.extend(_audit_publication_suite(root, registration_path, registration))
+    findings.extend(
+        _audit_publication_suite(root, registration_path, task_registry_path, registration)
+    )
     findings.extend(_audit_claim_scope(root, registration))
     findings.extend(_audit_owner_only(root))
     findings.extend(_audit_private_data(root))

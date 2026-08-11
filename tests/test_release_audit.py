@@ -12,6 +12,7 @@ import yaml
 
 from coding_agent_eval.fixtures.image_identity import PreparedImageIdentity
 from coding_agent_eval.release_audit import (
+    _publication_registration,
     audit_git_history,
     audit_release,
     audit_release_metadata,
@@ -53,6 +54,37 @@ def test_offline_publication_audit_never_uses_the_online_probe(repo_root: Path) 
         online=False,
         online_probe=forbidden_probe,
     )
+
+
+def test_publication_registration_uses_the_adjacent_frozen_registry(repo_root: Path) -> None:
+    registration_path, registry_path, registration, findings = _publication_registration(
+        repo_root
+    )
+
+    assert findings == []
+    assert registration_path == repo_root / "runs" / "reference" / "registration.json"
+    assert registry_path == repo_root / "runs" / "reference" / "task-registry.json"
+    assert registration is not None
+    assert registration.image_identities["fx-taskq-py"].tag == "1.0.4"
+
+
+def test_publication_registration_rejects_a_drifted_frozen_registry(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    reference = tmp_path / "runs" / "reference"
+    reference.mkdir(parents=True)
+    source = repo_root / "runs" / "reference"
+    (reference / "registration.json").write_bytes((source / "registration.json").read_bytes())
+    registry = (source / "task-registry.json").read_bytes()
+    (reference / "task-registry.json").write_bytes(
+        registry.replace(b'"1.0.4"', b'"1.0.5"', 1)
+    )
+
+    _, _, registration, findings = _publication_registration(tmp_path)
+
+    assert registration is None
+    assert [finding.code for finding in findings] == ["suite.registration"]
+    assert "task registry hash drifted" in findings[0].message
 
 
 def test_online_publication_audit_checks_anonymous_manifest_and_config(
