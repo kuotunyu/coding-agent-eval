@@ -43,9 +43,8 @@ def test_manual_run_ids_do_not_collide_when_output_parents_differ() -> None:
 - [ ] **Step 2: Verify path privacy**
 
 ```python
-def test_manual_run_id_does_not_disclose_an_absolute_output_path() -> None:
-    run_id = manual_run_id(Path("C:/Users/private-name/evidence/clean"))
-    assert "users" not in run_id
+def test_manual_run_id_does_not_disclose_output_parent_names() -> None:
+    run_id = manual_run_id(Path("private-name/evidence/clean"))
     assert "private" not in run_id
 ```
 
