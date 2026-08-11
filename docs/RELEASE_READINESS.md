@@ -3,7 +3,7 @@
 ## Decision
 
 BugSeed v0.1 的 corpus、OCI environments、retained outcomes、trace、cost／latency、failure taxonomy、
-private/public boundary 與 replay rules 都有 machine-checkable evidence；因此 v0.1.0 的
+private/public boundary 與 replay rules 都有 machine-checkable evidence；因此 v0.1.1 的
 **software/tooling portfolio release is GO**。但 2026-08-10 reference suite 使用
 `openai-responses@0.1.0`，其多輪 tool conversation 不符合目前官方 contract；model-evaluation
 evidence 仍是 **methodology-fixed, smoke-gate-pending**，不是已閉合的 empirical benchmark release。
@@ -18,10 +18,15 @@ findings；兩者皆經 deterministic offline reproduction 證實為工程缺陷
 Attempt 5 使用 1.0.6，但在 final provider turn 前達到 token budget；它仍是 failed gate，不是 clean
 validation。Adapter 0.4 attempt 6 的 live conversation linkage 正常，但模型在用完 12 個工具後仍要求
 第 13 個工具，因此以 `step_exhausted` 終止；clean gate 仍未通過，conditional mutated 未執行。
-不得建立新的 schema 1.1 registration。Annotated tag `v0.1.0` 與 GitHub software Release 已取得
-owner 明確批准；Zenodo draft 與 Zenodo publish 未獲批准且維持 NO-GO。
+不得建立新的 schema 1.1 registration。`v0.1.0` annotated tag 與 GitHub software Release 已發布；
+`v0.1.1` annotated tag 與 GitHub software Release 已取得 owner 明確批准，且只可在所有 gates
+通過後執行；Zenodo draft 與 Zenodo publish 未獲批准且維持 NO-GO。
 
-## Claim-to-evidence matrix（2026-08-11）
+v0.1.1 是 software/tooling patch，benchmark identity 仍是 0.1.0。它新增 standalone
+`cae sanitize`、明確的 software/benchmark version separation、distribution metadata 與 sdist
+scope gate；沒有新增 task、provider run、human ruling、suite registration 或 empirical result。
+
+## Claim-to-evidence matrix（2026-08-12）
 
 下表是 README、GitHub About、Benchmark Card 與 release metadata 可公開敘述的上限；沒有列在表內或
 無法由指定欄位重算的數字，不得升格為 release claim。
@@ -65,7 +70,7 @@ success-rate 敘述。
 | R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得跨 adapter／prompt／fixture identity 回填結果。 | README、Benchmark Card、Reference Suite 與本 matrix 已分層；attempts 3--5 保持 adapter 0.3 identity，attempt 6 是 adapter 0.4 live linkage／budget evidence，但不是 clean completion evidence。 |
 | R8 | Offline publication audit、full tests、Ruff、format、strict mypy、build、Docker／Linux gates 全部可從公開 source 執行，不需 API key。 | `.github/workflows/ci.yml`、`scripts/verify_release.sh`；paid provider 不在 CI。 |
 | R9 | Release lineage 僅 `kuotunyu`，沒有 `Co-authored-by`；public artifacts 不含 secrets、raw store、worksheet keymaps 或 Docker credentials。 | `git.owner_only`、`artifact.private_data`、leak scan 與 history commands。 |
-| R10 | Source/tag、GitHub Release、Zenodo draft、Zenodo publish 各自是不可合併的 explicit owner gate。 | `v0.1.0` annotated tag 與 GitHub software Release 已獲 owner 批准；Zenodo draft／publish 未獲批准。 |
+| R10 | Source/tag、GitHub Release、Zenodo draft、Zenodo publish 各自是不可合併的 explicit owner gate。 | `v0.1.0` 已發布；`v0.1.1` annotated tag 與 GitHub software Release 已獲 owner 批准但須待全 gates 通過；Zenodo draft／publish 未獲批准。 |
 
 ## Reference execution interpretation
 
@@ -147,14 +152,14 @@ keymaps 或 reviewer private identity。`release-manifest.json` 只列 public be
 
 **GitHub software release readiness：GO。Empirical benchmark／Zenodo readiness：NO-GO，adapter 0.4 paid smoke gate 未通過。**
 
-`CITATION.cff` 與 `.zenodo.json` 已按 v0.1.0、正體中文 description、creator `kuotunyu` 與 release
+`CITATION.cff` 與 `.zenodo.json` 已按 software v0.1.1、正體中文 description、creator `kuotunyu` 與 release
 limitations 對齊；`release-manifest.json` 提供 deterministic artifact bytes／SHA-256。沒有捏造 DOI，
 也不表示 Zenodo record 已建立。
 
 外部發布 gate 的目前狀態：
 
-1. Annotated tag `v0.1.0` push：已批准；
-2. GitHub software Release：已批准；
+1. Annotated tag `v0.1.1` push：已批准，僅在全 gates 通過後執行；
+2. GitHub software Release `v0.1.1`：已批准，僅在 tag 驗證後執行；
 3. Zenodo draft upload：未批准；
 4. Zenodo publish：未批准。
 

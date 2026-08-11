@@ -5,7 +5,7 @@
 [![CI](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/kuotunyu/coding-agent-eval/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/kuotunyu/coding-agent-eval)](https://github.com/kuotunyu/coding-agent-eval/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/kuotunyu/coding-agent-eval)](https://github.com/kuotunyu/coding-agent-eval/releases/latest)
 
 `coding-agent-eval` turns agent defect discovery into an auditable experiment. It
 registers immutable tasks and OCI environments, runs agents through a constrained tool
@@ -42,6 +42,16 @@ fixture validation clean: fixtures
 release artifact audit clean (0 warning(s))
 ```
 
+To publish a trace from an existing ignored raw run without repeating a provider call:
+
+```bash
+uv run cae sanitize RUN_ID --store-root .run-store --out public-trace.jsonl
+```
+
+The command accepts one existing run ID, refuses output inside the private store, does not
+overwrite unless `--force` is explicit, and emits only the sanitizer's allowlisted public
+projection. It does not create benchmark results, review decisions, or completeness claims.
+
 ## What I built
 
 - A versioned Python CLI for fixture validation, agent execution, sanitization, replay,
@@ -63,6 +73,10 @@ identity, and making failures first-class evidence instead of silently retrying 
 selecting a better outcome.
 
 ## Evidence, without inflated claims
+
+Software v0.1.1 is a tooling and distribution patch over BugSeed benchmark v0.1.0. It adds
+the standalone sanitizer contract and package metadata; it adds no task, provider run,
+human ruling, or empirical result.
 
 | Evidence layer | What exists | What it supports |
 |---|---|---|
