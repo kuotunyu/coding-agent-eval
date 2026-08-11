@@ -54,7 +54,7 @@ success-rate 敘述。
 | R2 | 兩個 current fixtures 同時固定 GHCR repository、versioned tag、OCI manifest digest 與 config digest；digest-qualified anonymous pull 可驗證。 | `fixtures/*/fixture.yaml`、`cae fixture environment --online`、`cae release audit --publication --online`。 |
 | R3 | 在第一個 provider call 前 pre-register adapter/prompt identity、conversation state、provider、model、API、reasoning、task order、budgets、retry 與 OCI identity。 | Schema 1.1 與 tests 已實作；舊 schema 1.0 僅可讀，新的 paid registration 尚未建立。 |
 | R4 | 十個 tasks 每一個都保留 terminal outcome；failure 不得移除或重跑取代。 | `runs/reference/summary.json` 與 10 個 `status.json`；目前 10/10 `budget_exhausted`。 |
-| R5 | Current public traces 使用 schema 0.2.0，具唯一 header／cost／termination、per-call latency、usage、OCI identity；legacy contract 固定不可發布。 | 10 個 `trace.jsonl`、trace schema、sanitizer／replay tests；8 個 legacy warnings 保留。 |
+| R5 | Current public traces 使用 schema 0.2.0，具唯一 header／cost／termination、per-call latency、usage、OCI identity；legacy contract 固定不可發布。 | Current `trace.jsonl` artifacts、trace schema、sanitizer／replay tests；已由測試取代的 schema-0.1 provider diagnostics 不納入 release tree，仍可由 Git history 追溯。 |
 | R6 | 每個 completed outcome 的 candidate pairs 都需 dual blinded human review 與 deterministic replay；空 candidate set 不得製造 rulings。 | 本次 0 completed、0 candidates，因此沒有 current results／review sets；publication audit 仍 fail closed 驗證規則。 |
 | R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得把 adapter 0.1／0.2 outcomes 當成 0.3 結果。 | Benchmark Card、Reference Suite 與本 matrix；README portfolio rewrite 尚待 smoke gate 後完成。 |
 | R8 | Offline publication audit、full tests、Ruff、format、strict mypy、build、Docker／Linux gates 全部可從公開 source 執行，不需 API key。 | `.github/workflows/ci.yml`、`scripts/verify_release.sh`；paid provider 不在 CI。 |

@@ -52,9 +52,9 @@
       "sha256": "3dd44abdb688e4af4e711f80403c2f753f2b56c43b41ae689a1b3d24691654fa"
     },
     {
-      "bytes": 11624,
+      "bytes": 11714,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "2ce8ca5c0e5aa2b1831926990a7e00b55ce6dd9101ef20566bbe504a0be0ef6b"
+      "sha256": "75f9fd7a6e55c815ec6867fbfdab1535792c9f076f818de9c642c4f4dc75e6ce"
     },
     {
       "bytes": 5276,
@@ -590,126 +590,6 @@
       "bytes": 1273,
       "path": "runs/baseline-fx-taskq-py-mutated/results.json",
       "sha256": "9ab73e2f4bd1915675abdbf1070260e62b782727cd612c709f45adc664c0e220"
-    },
-    {
-      "bytes": 21,
-      "path": "runs/live-01/findings.json",
-      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
-    },
-    {
-      "bytes": 1341,
-      "path": "runs/live-01/run.json",
-      "sha256": "5f2a996c6eb8c29219adf6cb67940237e8af0aaa9484aa0a5c5c52ec29a41f64"
-    },
-    {
-      "bytes": 194,
-      "path": "runs/live-01/trace.jsonl",
-      "sha256": "db7626d3729e7fd7cc3463adafe7f8a7870f33b58648c17f7ce7bfcd39cb1006"
-    },
-    {
-      "bytes": 21,
-      "path": "runs/live-02/findings.json",
-      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
-    },
-    {
-      "bytes": 1682,
-      "path": "runs/live-02/run.json",
-      "sha256": "412c662d7bb76ae33035fecddaf1c7e99947f135ebf1ba44b88b67cc5de858b9"
-    },
-    {
-      "bytes": 322,
-      "path": "runs/live-02/trace.jsonl",
-      "sha256": "36a15694f3f1956714377d7e16cffb0026bce1047a1fa7e4fb93a6416b4aa60b"
-    },
-    {
-      "bytes": 21,
-      "path": "runs/live-03/findings.json",
-      "sha256": "8aa973100a15bf817985395637131e838cf84e427be4792583def923f020f5fa"
-    },
-    {
-      "bytes": 1396,
-      "path": "runs/live-03/run.json",
-      "sha256": "18f98b683db144fd50ab1a29cf483a3930eab76fafccc482f65eafa330a383fc"
-    },
-    {
-      "bytes": 16947,
-      "path": "runs/live-03/trace.jsonl",
-      "sha256": "ed87a0d6060173b90d006e4d6c7f603b306e3a71408ea9d3e9be59f0b5841d16"
-    },
-    {
-      "bytes": 11453,
-      "path": "runs/live-04/findings.json",
-      "sha256": "7d1d1cf0e6a957a20a5a4d50066e7f77f6b20a439f515c3dc5e826fe9d04dfad"
-    },
-    {
-      "bytes": 1420,
-      "path": "runs/live-04/run.json",
-      "sha256": "72aa45d7f9b770de311aa05531518fd99ab6f950be07fd201c4d02fbd3f1eed0"
-    },
-    {
-      "bytes": 30482,
-      "path": "runs/live-04/trace.jsonl",
-      "sha256": "72d0a3cacb2487777e6868e24bf87b48c903be162cbf965c29afc1ec1dc398e2"
-    },
-    {
-      "bytes": 6202,
-      "path": "runs/live-05/findings.json",
-      "sha256": "ce5d9ad69cc3a01e3977e2a7d97e288ea77f217269b0d4fcc810d145ff27ac60"
-    },
-    {
-      "bytes": 1388,
-      "path": "runs/live-05/run.json",
-      "sha256": "b3878cc07d86e880e5f633de2e9702deaaaa208d97d25b4a0622339fd8d814ec"
-    },
-    {
-      "bytes": 29011,
-      "path": "runs/live-05/trace.jsonl",
-      "sha256": "416227832ee50cc6be2c1442904a8ed9a0a38087e06e1e34fad4b6749e39b9de"
-    },
-    {
-      "bytes": 15899,
-      "path": "runs/live-06/findings.json",
-      "sha256": "a0fe43f5926a94024dc2e7d970a6d410f75ce131e6f07cb4a9ee37cd74ab7ebe"
-    },
-    {
-      "bytes": 1499,
-      "path": "runs/live-06/run.json",
-      "sha256": "e6aaff05d66d83773df0dfe9825b46f6390fd8e6bbc5a85b5009c32c7434caf5"
-    },
-    {
-      "bytes": 52127,
-      "path": "runs/live-06/trace.jsonl",
-      "sha256": "c58e201442465bb76c93149aee4a6ef7f9a2fdaf3b09fbe78dd56989c4965eef"
-    },
-    {
-      "bytes": 55656,
-      "path": "runs/live-07/findings.json",
-      "sha256": "48a787b758e616ed699f9aaa6df5782141dc7c08312708493c812ca41e6ca13b"
-    },
-    {
-      "bytes": 1487,
-      "path": "runs/live-07/run.json",
-      "sha256": "e28cddba7473fa2cd9bfbdf83bfc26ff280e7cb87a39d9f71af2f1d62fee0bec"
-    },
-    {
-      "bytes": 94305,
-      "path": "runs/live-07/trace.jsonl",
-      "sha256": "0e412006b51e97451c7991a2c23dbe7b719728d8ce7427fe47977db10173cabd"
-    },
-    {
-      "bytes": 27584,
-      "path": "runs/live-08/findings.json",
-      "sha256": "786a016182350b47aa9ded85366eb1d0af5c06bb78391bedfdda2a9177c9ca79"
-    },
-    {
-      "bytes": 1486,
-      "path": "runs/live-08/run.json",
-      "sha256": "7d4bfaad249242dc2d36681fb9da6b57a5ac7ac2cb4dc9c2f44ee8a050c23a7f"
-    },
-    {
-      "bytes": 66625,
-      "path": "runs/live-08/trace.jsonl",
-      "sha256": "9b8eb989f97c88ffee5ec46dea2e64532107a58dfb780e3d07d2679a53e9d5b1"
     },
     {
       "bytes": 1860,

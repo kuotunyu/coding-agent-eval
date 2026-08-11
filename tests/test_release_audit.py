@@ -23,8 +23,7 @@ from coding_agent_eval.release_manifest import build_release_manifest
 def test_all_implementable_repository_release_contracts_are_clean(repo_root: Path) -> None:
     findings = audit_repository(repo_root)
 
-    assert [finding.render() for finding in findings if finding.blocking] == []
-    assert sum(finding.code == "trace.legacy" for finding in findings) == 8
+    assert [finding.render() for finding in findings] == []
 
 
 def test_default_and_publication_audits_are_green_for_release_candidate(
