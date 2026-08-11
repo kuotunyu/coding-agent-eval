@@ -1,6 +1,6 @@
 # Clean terminal semantics design
 
-Date: 2026-08-11  
+Date: 2026-08-11
 Decision: approved through the repository owner's delegated engineering judgment
 
 ## Problem
