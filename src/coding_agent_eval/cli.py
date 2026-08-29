@@ -793,15 +793,16 @@ def _run_evaluate_resolve_import(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_run_summary(run: object, directory: Path) -> None:
+def _print_run_summary(run: object, directory: Path, *, adapter_mode: str) -> None:
     """Print the shared operator summary after either adapter writes evidence."""
     from coding_agent_eval.live import LiveRun
 
     assert isinstance(run, LiveRun)
     usage = run.usage_total()
-    failure = run.failure
+    failure = run.failure if adapter_mode == "provider" else run.adapter_failure
     if failure:
-        print("agent failure:", file=sys.stderr)
+        label = "provider failure" if adapter_mode == "provider" else "stdio adapter failure"
+        print(f"{label}:", file=sys.stderr)
         for name in ("exception", "status", "type", "code", "param", "message", "body_keys"):
             if name in failure:
                 print(f"  {name:<10} {failure[name]}", file=sys.stderr)
@@ -893,7 +894,6 @@ def _run_agent(args: argparse.Namespace) -> int:
 
         if args.dry_run:
             print(json.dumps(stdio_configuration.redacted(), indent=2, sort_keys=True))
-            print("\ndry run: configuration is valid and no process was started", file=sys.stderr)
             return 0
 
         if not args.fixture_dir.is_dir():
@@ -909,7 +909,7 @@ def _run_agent(args: argparse.Namespace) -> int:
             raw_store_root=Path(".run-store"),
         )
         directory = write_evidence(run, args.out)
-        _print_run_summary(run, directory)
+        _print_run_summary(run, directory, adapter_mode="stdio-jsonl")
         return 0
 
     for name in suspicious_variables(dict(os.environ)):
@@ -943,7 +943,7 @@ def _run_agent(args: argparse.Namespace) -> int:
     )
     directory = write_evidence(run, args.out)
 
-    _print_run_summary(run, directory)
+    _print_run_summary(run, directory, adapter_mode="provider")
     return 0
 
 

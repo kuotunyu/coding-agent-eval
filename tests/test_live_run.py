@@ -438,6 +438,68 @@ def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
     assert public_header["schema_version"] == "0.2.0"
 
 
+def test_provider_stable_raw_and_public_mapping_matches_the_golden_contract(
+    tmp_path: Path,
+) -> None:
+    """The shared executor must preserve every stable provider identity field together."""
+    handler, _ = submit_then_stop()
+    run = execute(
+        FIXTURE,
+        configuration=configuration(),
+        snapshot="clean",
+        workspace=tmp_path / "work",
+        raw_store_root=tmp_path / ".run-store",
+        run_id="provider-golden",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    directory = write_evidence(run, tmp_path / "out")
+    raw = run.raw_store.read_events()[0]["payload"]
+    public = json.loads(
+        (directory / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )["payload"]
+    stable_keys = (
+        "agent_adapter",
+        "agent_adapter_version",
+        "provider",
+        "model",
+        "prompt_hash",
+        "system_prompt_version",
+        "params_hash",
+        "budget",
+    )
+    expected_identity = {
+        "agent_adapter": "openai-compatible",
+        "agent_adapter_version": "0.5.0",
+        "provider": "chat_completions",
+        "model": "gpt-5.6-luna",
+        "prompt_hash": "6d0160d379fbe0c0a0bc2190e063adc0ef1aef6d36407f73e5580483b4523423",
+        "system_prompt_version": "0.3.0",
+        "params_hash": "22cf264d4cf853dac6c109ef6da63152873953f635e5a44f9c05dc0454787ad6",
+        "budget": {
+            "max_tokens": 200000,
+            "max_tool_calls": None,
+            "max_wallclock_seconds": None,
+            "max_estimated_cost_usd": None,
+        },
+    }
+    expected_parameters = {
+        "api": "chat_completions",
+        "api_key_present": True,
+        "base_url": "https://api.openai.com/v1",
+        "budget": expected_identity["budget"],
+        "max_output_tokens_per_request": None,
+        "model": "gpt-5.6-luna",
+        "pricing_effective_date": "2026-08-11",
+        "pricing_table_version": "openai-gpt-5.6-luna@2026-08-11-r2",
+        "reasoning_effort": None,
+    }
+
+    assert {key: raw[key] for key in stable_keys} == expected_identity
+    assert raw["params"] == expected_parameters
+    assert {key: public[key] for key in stable_keys} == expected_identity
+    assert "params" not in public
+
+
 def test_returned_headers_cannot_mutate_execution_metadata_or_trace_identity(
     tmp_path: Path,
 ) -> None:

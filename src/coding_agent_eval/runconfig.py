@@ -227,8 +227,9 @@ def load_stdio_configuration(
         raise StdioConfigurationError("command must contain an executable")
     if not all(isinstance(argument, str) for argument in argv):
         raise StdioConfigurationError("command must contain only strings")
-    if not argv[0].strip():
-        raise StdioConfigurationError("command[0] must not be empty")
+    for index, argument in enumerate(argv):
+        if not argument.strip():
+            raise StdioConfigurationError(f"command[{index}] must not be empty")
 
     inherited = tuple(inherited_environment)
     if not all(isinstance(name, str) and name and "=" not in name for name in inherited):

@@ -93,6 +93,13 @@ def test_stdio_rejects_empty_argv() -> None:
         valid_config(command=[])
 
 
+@pytest.mark.parametrize("value", ["", " ", "\t"])
+def test_stdio_rejects_an_empty_later_argv_element(value: str) -> None:
+    """Every argv position is operator configuration and must carry a value."""
+    with pytest.raises(StdioConfigurationError, match=r"command\[1\]"):
+        valid_config(command=[sys.executable, value])
+
+
 def test_stdio_rejects_duplicate_environment_names() -> None:
     """Duplicate delegated names indicate a malformed allow-list."""
     with pytest.raises(StdioConfigurationError, match="AGENT_KEY"):

@@ -7,15 +7,24 @@ and subcommands that fail loudly rather than silently doing nothing.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
 from coding_agent_eval import BENCHMARK_VERSION, __version__
-from coding_agent_eval.cli import build_parser, main, manual_run_id, subcommand_names
+from coding_agent_eval.cli import (
+    _print_run_summary,
+    build_parser,
+    main,
+    manual_run_id,
+    subcommand_names,
+)
 from coding_agent_eval.trace.raw_store import RawStore
 from coding_agent_eval.trace.sanitizer import sanitize_events
 from tests.conftest import REPO_ROOT, requires_checkout
@@ -524,13 +533,33 @@ def stdio_args(tmp_path: Path, *, dry_run: bool = False) -> list[str]:
 
 
 def test_stdio_dry_run_needs_no_provider_key_and_does_not_spawn(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Starting a child during dry-run would make preflight unsafe to use in CI."""
     monkeypatch.delenv("CAE_PROVIDER_API_KEY", raising=False)
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: pytest.fail("spawned"))
 
     assert main(stdio_args(tmp_path, dry_run=True)) == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["agent_name"] == "example-scripted-agent"
+    assert captured.err == ""
+
+
+@pytest.mark.parametrize("value", ["", " ", "\t"])
+def test_stdio_cli_rejects_an_empty_agent_argument(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    value: str,
+) -> None:
+    arguments = stdio_args(tmp_path, dry_run=True)
+    argument_index = arguments.index("--agent-arg") + 1
+    arguments[argument_index] = value
+
+    assert main(arguments) == 2
+    captured = capsys.readouterr()
+    assert "command[1] must not be empty" in captured.err
 
 
 @pytest.mark.parametrize("env_file", [".env", "alternate.env"])
@@ -631,6 +660,76 @@ def test_stdio_example_runs_offline_and_writes_only_public_evidence(tmp_path: Pa
         "run.json",
         "trace.jsonl",
     ]
+
+
+@pytest.mark.parametrize(
+    ("adapter_mode", "expected_prefix"),
+    [("provider", "provider failure:"), ("stdio-jsonl", "stdio adapter failure:")],
+)
+def test_run_failure_summary_keeps_mode_specific_cli_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    adapter_mode: str,
+    expected_prefix: str,
+) -> None:
+    """Provider compatibility and stdio diagnostics need distinct stable labels."""
+    from coding_agent_eval import live
+
+    class FakeLiveRun:
+        run_id = "run-001"
+        result = SimpleNamespace(
+            termination_reason=SimpleNamespace(
+                value="provider_error" if adapter_mode == "provider" else "adapter_error"
+            ),
+            findings=[],
+            tool_calls=0,
+            steps=0,
+        )
+        tool_backend = "host_process"
+        failure = (
+            {"code": "provider-code", "message": "provider detail"}
+            if adapter_mode == "provider"
+            else {}
+        )
+        adapter_failure = (
+            {"code": "stdio-code", "message": "stdio detail"}
+            if adapter_mode == "stdio-jsonl"
+            else {}
+        )
+
+        @staticmethod
+        def usage_total() -> dict[str, Any]:
+            return {
+                "input_tokens": 0,
+                "cached_input_tokens": 0,
+                "output_tokens": 0,
+                "estimated_cost_usd": 0.0,
+                "completeness": "partial",
+            }
+
+    monkeypatch.setattr(live, "LiveRun", FakeLiveRun)
+    _print_run_summary(FakeLiveRun(), tmp_path, adapter_mode=adapter_mode)
+
+    captured = capsys.readouterr()
+    detail = "provider" if adapter_mode == "provider" else "stdio"
+    assert captured.err == (
+        f"{expected_prefix}\n"
+        f"  code       {detail}-code\n"
+        f"  message    {detail} detail\n"
+        "\n"
+        "\nnot scored: `verified_*` metrics need a human ruling on blinded "
+        "finding/bug pairs first\n"
+    )
+    assert captured.out == (
+        f"run run-001: {'provider_error' if adapter_mode == 'provider' else 'adapter_error'}\n"
+        "  findings   0\n"
+        "  tool calls 0 in 0 step(s)\n"
+        "  tokens     0 in (0 cached) / 0 out\n"
+        "  cost       $0.0000 (partial)\n"
+        "  isolation  host_process\n"
+        f"  evidence   {tmp_path}\n"
+    )
 
 
 def test_fixture_verify_still_exits_two_for_a_path_that_is_not_a_fixture(

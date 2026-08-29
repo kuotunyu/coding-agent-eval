@@ -175,6 +175,19 @@ class LiveRun:
                 return detail
         return {}
 
+    @property
+    def adapter_failure(self) -> dict[str, Any]:
+        """The stdio adapter's structural and owner-only failure detail, or empty."""
+        for event in reversed(self.events):
+            if event["event"] == "termination":
+                payload = event["payload"]
+                detail = dict(payload.get("adapter_error") or {})
+                message = payload.get("adapter_error_message") or ""
+                if message:
+                    detail["message"] = message
+                return detail
+        return {}
+
     def usage_total(self) -> dict[str, Any]:
         """Tokens and estimated cost, summed across the run's provider calls.
 
