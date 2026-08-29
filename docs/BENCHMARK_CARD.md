@@ -156,7 +156,7 @@ usage、cost、fixture、candidate、review 或 hash drift 時 fail closed。
 
 2026-08-10 reference suite 的 trace 雖是 schema 0.2.0，agent adapter 是
 `openai-responses@0.1.0`；conversation continuation 當時不符合目前官方 function-calling contract。
-它保留 terminal outcomes 與 cost/failure provenance，但不是 adapter 0.3／0.4、prompt 0.2 的有效性證據。
+它保留 terminal outcomes 與 cost/failure provenance，但不是 adapter 0.3／0.4／0.5、prompt 0.2／0.3 的有效性證據。
 兩個 adapter 0.2 clean smoke attempts 也因 token/tool budget exhaustion 而未通過。新的 paid
 execution 必須先通過 smoke gate，再以 registration schema 1.1 建立不同 suite ID。
 
@@ -177,6 +177,12 @@ Attempt 6 使用 adapter 0.4／prompt 0.2，13 個唯一 function calls 中前 1
 仍要求第 13 個 `read_file`，因此 outcome 是 `step_exhausted`，USD 0.007277，沒有執行 mutated task。
 這是 live conversation／privacy／budget evidence，不是 clean completion evidence，也不能產生
 verified detection。
+
+Attempt 7 使用 adapter 0.5／prompt 0.3 與 TaskQ 1.0.6。第 12 次 provider call 在剩餘一個 executable
+call 時只提供 `write_findings`；工具成功後，第 13 次 call 記錄剩餘容量為 0、`finalization` 且不提供
+任何工具，最後正常 `completed`。它提交 1 項未驗證 clean-control candidate，USD 0.010995，因此
+零 finding clean gate 仍失敗；依凍結序列未執行 B-001、其他 mutation 或 rerun。這證實容量同步
+remediation 的 live 行為，但不是 mutated effectiveness 或 human-verified detection evidence。
 
 ## Sandbox boundary
 

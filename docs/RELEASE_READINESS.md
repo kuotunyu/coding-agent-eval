@@ -17,7 +17,10 @@ findings；兩者皆經 deterministic offline reproduction 證實為工程缺陷
 失去 release eligibility。TaskQ 1.0.6 已修復兩者、bump fixture／OCI identity 並通過離線 contracts。
 Attempt 5 使用 1.0.6，但在 final provider turn 前達到 token budget；它仍是 failed gate，不是 clean
 validation。Adapter 0.4 attempt 6 的 live conversation linkage 正常，但模型在用完 12 個工具後仍要求
-第 13 個工具，因此以 `step_exhausted` 終止；clean gate 仍未通過，conditional mutated 未執行。
+第 13 個工具，因此以 `step_exhausted` 終止。Adapter 0.5／prompt 0.3 attempt 7 已以容量同步介面
+消除該 dead end：第 12 次只提供 `write_findings`，第 13 次 remaining=0 且不暴露工具，並正常
+`completed`；但 clean control 提交 1 項未驗證 candidate，故零 finding gate 仍失敗，conditional
+B-001 未執行。
 不得建立新的 schema 1.1 registration。`v0.1.0` 與 `v0.1.1` annotated tags／GitHub software
 Releases 均已發布；`v0.1.1` 對應 commit `229931de2d738c30642c27dc3a0baa271b52c9b3`。
 Zenodo draft 與 Zenodo publish 未建立且維持 NO-GO。
@@ -26,7 +29,7 @@ v0.1.1 是 software/tooling patch，benchmark identity 仍是 0.1.0。它新增 
 `cae sanitize`、明確的 software/benchmark version separation、distribution metadata 與 sdist
 scope gate；沒有新增 task、provider run、human ruling、suite registration 或 empirical result。
 
-## Claim-to-evidence matrix（2026-08-12）
+## Claim-to-evidence matrix（2026-08-29）
 
 下表是 README、GitHub About、Benchmark Card 與 release metadata 可公開敘述的上限；沒有列在表內或
 無法由指定欄位重算的數字，不得升格為 release claim。
@@ -66,8 +69,8 @@ success-rate 敘述。
 | R3 | 在第一個 provider call 前 pre-register adapter/prompt identity、conversation state、provider、model、API、reasoning、task order、budgets、retry 與 OCI identity。 | Schema 1.1 與 tests 已實作；舊 schema 1.0 僅可讀，新的 paid registration 尚未建立。 |
 | R4 | 十個 tasks 每一個都保留 terminal outcome；failure 不得移除或重跑取代。 | `runs/reference/summary.json` 與 10 個 `status.json`；目前 10/10 `budget_exhausted`。 |
 | R5 | Current public traces 使用 schema 0.2.0，具唯一 header／cost／termination、per-call latency、usage、OCI identity；legacy contract 固定不可發布。 | Current `trace.jsonl` artifacts、trace schema、sanitizer／replay tests；已由測試取代的 schema-0.1 provider diagnostics 不納入 release tree，仍可由 Git history 追溯。 |
-| R6 | 每個 completed mutated outcome 的 candidate pairs 都需 dual blinded human review 與 deterministic replay；空 candidate set 不得製造 rulings。 | Attempts 3／4 是 failed clean controls，attempt 5 budget-exhausted，attempt 6 step-exhausted；沒有 mutated candidate pair 或 formal ruling；machine reproduction 不冒充 human review。 |
-| R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得跨 adapter／prompt／fixture identity 回填結果。 | README、Benchmark Card、Reference Suite 與本 matrix 已分層；attempts 3--5 保持 adapter 0.3 identity，attempt 6 是 adapter 0.4 live linkage／budget evidence，但不是 clean completion evidence。 |
+| R6 | 每個 completed mutated outcome 的 candidate pairs 都需 dual blinded human review 與 deterministic replay；空 candidate set 不得製造 rulings。 | Attempts 3／4／7 是 failed clean controls，attempt 5 budget-exhausted，attempt 6 step-exhausted；沒有 mutated candidate pair 或 formal ruling；machine reproduction 不冒充 human review。 |
+| R7 | 新舊 evidence 分層，cost、latency、failure 與 metric null behavior 清楚；不得跨 adapter／prompt／fixture identity 回填結果。 | README、Benchmark Card、Reference Suite 與本 matrix 已分層；attempts 3--5 保持 adapter 0.3 identity，attempt 6 是 adapter 0.4 live linkage／budget evidence，attempt 7 是 adapter 0.5 capacity/finalization evidence；clean gate 均未通過。 |
 | R8 | Offline publication audit、full tests、Ruff、format、strict mypy、build、Docker／Linux gates 全部可從公開 source 執行，不需 API key。 | `.github/workflows/ci.yml`、`scripts/verify_release.sh`；paid provider 不在 CI。 |
 | R9 | Release lineage 僅 `kuotunyu`，沒有 `Co-authored-by`；public artifacts 不含 secrets、raw store、worksheet keymaps 或 Docker credentials。 | `git.owner_only`、`artifact.private_data`、leak scan 與 history commands。 |
 | R10 | Source/tag、GitHub Release、Zenodo draft、Zenodo publish 各自是不可合併的 explicit owner gate。 | `v0.1.0` 與 `v0.1.1` annotated tags／GitHub software Releases 已發布；Zenodo draft／publish 未建立。 |
@@ -97,7 +100,8 @@ README 與 conversation validity 已閉合；adapter 0.2 的兩次 paid clean sm
 budget-exhausted outcomes，adapter 0.3／prompt 0.2 attempts 3／4 分別揭露 1.0.4／1.0.5 fixture
 defects，attempt 5 則在 1.0.6 final provider turn 前耗盡 token budget。Adapter 0.4 的 clean terminal
 semantics 經 attempt 6 取得 live multi-turn linkage evidence，但 clean outcome 仍為 `step_exhausted`，
-沒有 final message 或 mutated task。至少要在修正版 TaskQ 通過一個 clean＋一個 mutated smoke，且
+沒有 final message 或 mutated task。Adapter 0.5 attempt 7 已正常完成無工具 finalization，但提交一項
+clean-control candidate，依零 finding gate 停止且未執行 mutated task。至少要在修正版 TaskQ 通過一個 clean＋一個 mutated smoke，且
 完整保留 terminal outcomes，才能重新評估旗艦門檻。
 
 ## Reproducibility 與 release gates
@@ -150,7 +154,7 @@ keymaps 或 reviewer private identity。`release-manifest.json` 只列 public be
 
 ## Zenodo disposition
 
-**GitHub software release v0.1.1：PUBLISHED。Empirical benchmark／Zenodo readiness：NO-GO，adapter 0.4 paid smoke gate 未通過。**
+**GitHub software release v0.1.1：PUBLISHED。Empirical benchmark／Zenodo readiness：NO-GO，adapter 0.5 paid clean smoke 提交候選而未通過。**
 
 `CITATION.cff` 與 `.zenodo.json` 已按 software v0.1.1、正體中文 description、creator `kuotunyu` 與 release
 limitations 對齊；`release-manifest.json` 提供 deterministic artifact bytes／SHA-256。沒有捏造 DOI，

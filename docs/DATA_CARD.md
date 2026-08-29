@@ -80,7 +80,9 @@ Cleanliness 不是永久保證。早期 audit 與 live run 曾找出真實 fixtu
 `budget_exhausted_tokens`，因此不是通過的 paid clean evidence；不得以 adjudication 把歷史缺陷標成
 unsupported，也不得把 budget exhaustion 改寫成 clean validation。Attempt 6 亦使用相同 1.0.6
 identity，但在用完 12 個工具後要求第 13 個工具而以 `step_exhausted` 終止；這同樣不是 clean
-validation，且沒有 mutated evidence。
+validation，且沒有 mutated evidence。Attempt 7 使用 adapter 0.5 的容量同步介面，在第 12 次僅提供
+`write_findings`、第 13 次以零工具 finalization 正常完成，證實舊 dead end 已移除；但它提交 1 項
+未驗證 clean-control candidate，因此零 finding gate 仍失敗，依凍結序列未執行 B-001 或其他 mutation。
 
 ## OCI distribution
 

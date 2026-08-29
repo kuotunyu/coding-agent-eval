@@ -65,9 +65,10 @@ flowchart LR
 | Paid Smoke Attempt 4 | TaskQ 1.0.5 乾淨組完成；2 項機器重現候選 (USD 0.006662) | 該 run 的版本化計價、連結與隱私佐證；乾淨門禁未通過 |
 | Paid Smoke Attempt 5 | TaskQ 1.0.6 乾淨組經 12 次工具呼叫耗盡預算 (USD 0.005426) | 適配器 0.3 連結、隱私與預算佐證；Smoke 門禁未通過 |
 | Paid Smoke Attempt 6 | 適配器 0.4 乾淨組達 `step_exhausted` (USD 0.007277) | 適配器 0.4 多輪連結與隱私佐證；乾淨門禁未通過 |
+| Paid Smoke Attempt 7 | 適配器 0.5 乾淨組正常完成、提交 1 項候選 (USD 0.010995) | 容量同步與無工具 finalization 的 live 佐證；零候選乾淨門禁未通過 |
 | Human-verified Evidence | 尚無（保持空缺） | 不宣稱 `verified_bug_recall`、`verified_finding_precision` 或正式排行榜指標 |
 
-六次 paid smoke 的 terminal outcomes 全部保留；其跨各自 versioned pricing tables 的 recorded estimates 合計 USD 0.091930。Clean smoke gate 仍未通過，因此沒有 conditional mutated smoke、新完整 suite、independent human ruling 或可發布的 `verified_*` headline metrics。
+七次 paid smoke 的 terminal outcomes 全部保留；其跨各自 versioned pricing tables 的 recorded estimates 合計 USD 0.102925。Attempt 7 證實 12 次 executable tool budget 後仍有無工具 final response 路徑，但 clean control 提交 1 項未驗證候選，故 gate 仍未通過；依預註冊序列沒有執行 conditional B-001、其他 mutation 或 rerun，也沒有新完整 suite、independent human ruling 或可發布的 `verified_*` headline metrics。
 
 ---
 

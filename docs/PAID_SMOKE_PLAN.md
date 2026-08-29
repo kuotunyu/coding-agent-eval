@@ -293,7 +293,7 @@ worksheet, human ruling, or `verified_*` metric was produced.
 Attempt 6's paid authorization is consumed. Recorded estimates across all six retained paid
 attempts total USD 0.091930 across their respective versioned price tables.
 
-## Frozen remediation validation -- attempt 7 (authorization pending)
+## Approved remediation validation -- attempt 7 (consumed)
 
 Attempt 7 is a finite remediation validation, not another budget-tuning retry. Adapter
 0.5.0 synchronizes the model-facing tool interface with remaining executable capacity,
@@ -335,6 +335,40 @@ candidate is not a verified detection. If candidates exist, automation may gener
 worksheets and private ignored key maps, but only distinct eligible humans may act as primary
 reviewer, independent reviewer, and disagreement resolver under the existing contract.
 
-Attempt 7 has no inherited authorization from attempts 1--6. No credential may be consulted
-and no provider request may be made until implementation, secret-free offline verification,
-and an explicit new paid-run approval are complete.
+Attempt 7 had no inherited authorization from attempts 1--6. The owner explicitly approved
+the frozen sequence after implementation and secret-free offline verification completed.
+The credential was then supplied only through the existing ignored configuration.
+
+## Retained outcome -- attempt 7
+
+The TaskQ 1.0.6 clean task ran exactly once on 2026-08-29. It completed normally, but
+submitted one candidate finding, so the zero-finding clean gate failed. Per the frozen
+sequence, B-001 and all other mutations were not run, no fallback or rerun was attempted,
+and no worksheet or human ruling was created.
+
+| Field | Observed value |
+|---|---:|
+| Run ID | `manual-clean-d330932ce11f` |
+| Terminal outcome | `completed` |
+| Candidate findings | 1 |
+| LLM calls / executable tool calls | 13 / 12 |
+| Input / cached input / output | 96,855 / 52,526 / 899 tokens |
+| Reasoning tokens | 273 |
+| Wall clock | 102.696 s |
+| Estimated cost | USD 0.010995 (`complete`) |
+
+All twelve tool results were successful. When one executable call remained, call 12 exposed
+only `write_findings`; after that call, the thirteenth provider request recorded
+`executable_tool_calls_remaining: 0`, `interface_mode: finalization`, and an empty
+`tools_offered` list. This is live evidence that adapter 0.5.0 removed the former
+step-exhaustion dead end without adding an executable step beyond the registered limit.
+
+The public projection is retained at
+`runs/smoke/smoke-2026-08-29-attempt-7/clean`. A fresh fail-closed projection from the
+owner-only raw store produced an identical `trace.jsonl` SHA-256. The candidate remains an
+unverified clean-control finding; normal completion does not convert it into a verified
+defect, and adjudication could not make this zero-finding gate pass retroactively.
+
+Attempt 7's clean authorization is consumed. The conditional B-001 exposure was never
+used. Recorded estimates across all seven retained paid smoke attempts total USD 0.102925
+under their respective versioned price tables.

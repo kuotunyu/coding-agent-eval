@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "category": "concurrency",
+      "claim": "Dead-letter requeue is not atomic with its state check and can fail or produce an inconsistent result when purge runs concurrently.",
+      "evidence": "Lines 68-74 perform an unlocked read/check; lines 76-83 issue independent writes; lines 84-85 assume the row still exists. storage.purge_terminal deletes DONE/DEAD rows without coordinating with this sequence (storage.py:240-245).",
+      "file": "src/taskq/deadletter.py",
+      "id": "TQ-001",
+      "line_end": 86,
+      "line_start": 66,
+      "root_cause": "The method reads the task, checks DEAD, then performs reset_attempts and mark_state as separate autocommit statements without a write transaction or conditional UPDATE. purge_terminal can delete the row between these operations; the subsequent get returns None and triggers an AssertionError. Concurrent administrative operations therefore turn a valid requeue request into a server error.",
+      "severity": "medium",
+      "suggested_verification": "Run requeue and purge concurrently against the same DEAD task, or inject a delete between the initial get and reset_attempts; observe the assertion/500 response."
+    }
+  ]
+}
