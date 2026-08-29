@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -126,6 +127,32 @@ def test_stdio_resolves_a_named_executable_that_already_has_an_extension() -> No
     )
 
     assert config.command[0] == str(executable.resolve())
+
+
+def test_stdio_resolves_an_explicit_dot_relative_executable_outside_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `./agent.exe` command names a file directly, rather than a PATH lookup."""
+    source = Path(sys.executable)
+    copied_executable = tmp_path / source.name
+    shutil.copy2(source, copied_executable)
+    monkeypatch.chdir(tmp_path)
+
+    config = valid_config(
+        command=[f".\\{source.name}", "-c", "pass"],
+        environ={"AGENT_KEY": "value", "PATH": "", "PATHEXT": source.suffix},
+    )
+
+    assert config.command[0] == str(copied_executable.resolve())
+
+
+def test_stdio_refuses_an_existing_non_executable_file(tmp_path: Path) -> None:
+    """A regular source file must be rejected before shell=False attempts to launch it."""
+    non_executable = tmp_path / "agent.py"
+    non_executable.write_text("print('not executable')", encoding="utf-8")
+
+    with pytest.raises(StdioConfigurationError, match="not executable"):
+        valid_config(command=[str(non_executable)])
 
 
 def test_stdio_refuses_an_unresolvable_executable() -> None:

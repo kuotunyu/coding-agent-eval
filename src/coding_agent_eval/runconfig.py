@@ -81,6 +81,7 @@ _BASE_CHILD_ENVIRONMENT_NAMES: tuple[str, ...] = (
     "LANG",
     "LC_ALL",
 )
+_WINDOWS_EXECUTABLE_SUFFIXES = frozenset({".bat", ".cmd", ".com", ".exe"})
 
 
 @dataclass(frozen=True)
@@ -166,11 +167,19 @@ def _positive_finite_float(name: str, value: float | None) -> float:
 
 def _is_explicit_executable(command: str) -> bool:
     path = Path(command)
-    return path.is_absolute() or path.parent != Path(".")
+    return (
+        command.startswith(("./", ".\\"))
+        or "/" in command
+        or "\\" in command
+        or path.is_absolute()
+        or bool(path.drive)
+    )
 
 
 def _regular_executable(path: Path) -> Path | None:
     if not path.is_file() or not os.access(path, os.X_OK):
+        return None
+    if os.name == "nt" and path.suffix.casefold() not in _WINDOWS_EXECUTABLE_SUFFIXES:
         return None
     return path.resolve()
 
