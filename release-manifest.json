@@ -42,11 +42,6 @@
       "sha256": "2766027943497d783d6628b35057012a39653358f1055a1890e527eaff6a695c"
     },
     {
-      "bytes": 20575,
-      "path": "docs/PAID_SMOKE_PLAN.md",
-      "sha256": "9d2980d6e410ddd8fdacf2b73db023bdc22cf143db1c3c703c0b523bbd5869a1"
-    },
-    {
       "bytes": 7607,
       "path": "docs/REFERENCE_SUITE.md",
       "sha256": "696846da45a1646dbd28e72825c43717bc71975883a0e7ce892b525f529afa5b"
