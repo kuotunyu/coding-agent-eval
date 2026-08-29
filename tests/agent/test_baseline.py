@@ -182,10 +182,10 @@ def test_every_termination_reason_is_covered_by_this_file() -> None:
     assert covered == set(TerminationReason)
 
 
-def test_a_runaway_baseline_is_stopped_by_the_budget(tree: Path) -> None:
+def test_a_runaway_baseline_cannot_use_the_reserved_report_slot(tree: Path) -> None:
     result = drive(runs_forever(), tree, budget=Budget(max_tool_calls=4))
     assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
-    assert result.tool_calls == 4
+    assert result.tool_calls == 3
 
 
 def test_a_runaway_baseline_is_stopped_by_the_loop_ceiling(tree: Path) -> None:
