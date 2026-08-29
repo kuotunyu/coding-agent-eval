@@ -30,6 +30,7 @@ EXPECTED_SCHEMAS = {
     "review-set",
     "suite-registration",
     "task",
+    "agent-stdio-message",
 }
 
 
