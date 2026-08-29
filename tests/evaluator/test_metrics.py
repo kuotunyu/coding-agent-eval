@@ -19,7 +19,7 @@ from typing import Any, ClassVar
 
 import pytest
 
-from coding_agent_eval import TRACE_SCHEMA_VERSION
+from coding_agent_eval import REDACTION_MANIFEST_VERSION, TRACE_SCHEMA_VERSION
 from coding_agent_eval.evaluator.hashing import finding_hash
 from coding_agent_eval.evaluator.ledger import (
     SYNTHETIC_PREFIX,
@@ -484,6 +484,17 @@ def test_results_document_carries_every_version_field() -> None:
         "redaction_manifest_version",
     ):
         assert field in document, field
+
+
+def test_results_use_the_context_redaction_manifest_version() -> None:
+    context = deepcopy(CONTEXT)
+    context.redaction_manifest_version = "9.9.9"
+    result = score([], [], ledger_of([]), context=context)
+    assert result.as_dict()["redaction_manifest_version"] == "9.9.9"
+
+
+def test_new_context_defaults_to_the_current_redaction_manifest() -> None:
+    assert CONTEXT.redaction_manifest_version == REDACTION_MANIFEST_VERSION
 
 
 def test_results_document_validates_against_the_schema() -> None:

@@ -465,6 +465,8 @@ def test_the_trace_0_1_golden_still_replays_as_read_only_history() -> None:
     result = run_replay()
 
     assert result.context.trace_schema_version == "0.1.0"
+    assert result.context.redaction_manifest_version == "0.1.0"
+    assert result.as_dict()["redaction_manifest_version"] == "0.1.0"
     assert result.publishable is False
 
 

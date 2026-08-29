@@ -129,6 +129,30 @@ def test_a_known_private_field_is_dropped_without_complaint() -> None:
     assert public["payload"]["content_sha256"] == "a" * 64
 
 
+def test_interface_capacity_is_public_and_provider_bodies_stay_private() -> None:
+    safe = {
+        "request_hash": "a" * 64,
+        "latency_ms": 10,
+        "finish_reason": "completed",
+        "usage": {},
+        "executable_tool_call_limit": 12,
+        "executable_tool_calls_remaining": 0,
+        "interface_mode": "finalization",
+        "tools_offered": [],
+    }
+    public = project_record(
+        record(
+            "llm_call",
+            {
+                **safe,
+                "request_body": {"private": "request"},
+                "response_body": {"private": "response"},
+            },
+        )
+    )
+    assert public["payload"] == safe
+
+
 def test_an_unknown_field_makes_the_projection_raise() -> None:
     """E3 turns this into a fail-closed rejection of the whole artifact."""
     with pytest.raises(UnknownFieldError):

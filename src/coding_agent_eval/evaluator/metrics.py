@@ -82,6 +82,7 @@ class RunContext:
     provider: str | None = None
     model: str | None = None
     termination_reason: str = "completed"
+    redaction_manifest_version: str = REDACTION_MANIFEST_VERSION
     budget: dict[str, Any] = field(
         default_factory=lambda: {
             "max_tokens": None,
@@ -119,7 +120,7 @@ class ScoredRun:
             "adjudication_protocol_version": ADJUDICATION_PROTOCOL_VERSION,
             "trace_schema_version": self.context.trace_schema_version,
             "pricing_table_version": self.context.pricing_table_version,
-            "redaction_manifest_version": REDACTION_MANIFEST_VERSION,
+            "redaction_manifest_version": self.context.redaction_manifest_version,
             "run_id": self.context.run_id,
             "fixture_id": self.fixture.fixture_id,
             "fixture_version": self.fixture.fixture_version,

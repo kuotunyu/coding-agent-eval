@@ -27,7 +27,7 @@ READABLE_TRACE_SCHEMA_VERSIONS = frozenset({"0.1.0", TRACE_SCHEMA_VERSION})
 PUBLICATION_TRACE_SCHEMA_VERSION = TRACE_SCHEMA_VERSION
 
 #: Sanitizer rule set (spec §10.5).
-REDACTION_MANIFEST_VERSION = "0.1.0"
+REDACTION_MANIFEST_VERSION = "0.2.0"
 
 #: Context-specific hygiene policy, including the tracked-file email allowlist (spec §10.8).
 HYGIENE_POLICY_VERSION = "0.1.0"

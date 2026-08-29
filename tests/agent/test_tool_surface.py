@@ -532,6 +532,28 @@ def test_a_step_must_either_act_or_stop() -> None:
 # ------------------------------------------------------------------- trace
 
 
+def test_each_llm_call_records_pre_call_capacity_and_interface(context: ToolContext) -> None:
+    recorder = Recorder()
+    adapter = ScriptedSteps(
+        [
+            Step(
+                invocation=ToolInvocation("read_file", {"path": "src/auth.py"}),
+                trace={"request_hash": "a" * 64},
+            ),
+            Step(stop=TerminationReason.COMPLETED, trace={"request_hash": "b" * 64}),
+        ]
+    )
+    run_agent(adapter, context=context, budget=Budget(max_tool_calls=2), recorder=recorder)
+    calls = [event["payload"] for event in recorder.events if event["event"] == "llm_call"]
+    assert calls[0]["executable_tool_call_limit"] == 2
+    assert calls[0]["executable_tool_calls_remaining"] == 2
+    assert calls[0]["interface_mode"] == "review"
+    assert calls[0]["tools_offered"] == [tool["name"] for tool in model_schemas()]
+    assert calls[1]["executable_tool_calls_remaining"] == 1
+    assert calls[1]["interface_mode"] == "report_only"
+    assert calls[1]["tools_offered"] == ["write_findings"]
+
+
 def test_the_trace_records_the_call_and_its_result(context: ToolContext) -> None:
     recorder = Recorder()
     adapter = ScriptedSteps(

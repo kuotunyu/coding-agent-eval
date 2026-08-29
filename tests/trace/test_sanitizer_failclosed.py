@@ -13,6 +13,7 @@ not merely that an exception was raised.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +91,45 @@ def assert_nothing_written(out: Path) -> None:
     assert not out.exists(), "a rejected artifact must leave no output file"
     leftovers = [p.name for p in out.parent.iterdir()] if out.parent.exists() else []
     assert leftovers == [], f"partial files left behind: {leftovers}"
+
+
+def test_sanitizer_keeps_interface_capacity_but_drops_provider_bodies(
+    tmp_path: Path,
+) -> None:
+    raw = clean_events()
+    raw[1]["seq"] = 2
+    raw[2]["seq"] = 3
+    raw.insert(
+        1,
+        event(
+            1,
+            "llm_call",
+            {
+                "request_hash": "a" * 64,
+                "latency_ms": 10,
+                "finish_reason": "completed",
+                "usage": {},
+                "executable_tool_call_limit": 12,
+                "executable_tool_calls_remaining": 0,
+                "interface_mode": "finalization",
+                "tools_offered": [],
+                "request_body": {"marker": "PRIVATE_REQUEST_BODY"},
+                "response_body": {"marker": "PRIVATE_RESPONSE_BODY"},
+            },
+        ),
+    )
+    output = tmp_path / "trace.jsonl"
+    sanitize_events(raw, output)
+    text = output.read_text(encoding="utf-8")
+    assert "PRIVATE_REQUEST_BODY" not in text
+    assert "PRIVATE_RESPONSE_BODY" not in text
+    call = next(
+        json.loads(line)["payload"]
+        for line in text.splitlines()
+        if json.loads(line)["event"] == "llm_call"
+    )
+    assert call["interface_mode"] == "finalization"
+    assert call["tools_offered"] == []
 
 
 # ------------------------------------------------------------- happy path

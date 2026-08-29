@@ -60,7 +60,18 @@ PUBLIC_FIELDS: dict[str, frozenset[str]] = {
             "redaction_manifest_version",
         }
     ),
-    "llm_call": frozenset({"request_hash", "latency_ms", "finish_reason", "usage"}),
+    "llm_call": frozenset(
+        {
+            "request_hash",
+            "latency_ms",
+            "finish_reason",
+            "usage",
+            "executable_tool_call_limit",
+            "executable_tool_calls_remaining",
+            "interface_mode",
+            "tools_offered",
+        }
+    ),
     "tool_call": frozenset({"tool_name", "args_safe", "args_hash"}),
     "tool_result": frozenset(
         {"is_error", "content_sha256", "content_bytes", "excerpt", "excerpt_policy"}

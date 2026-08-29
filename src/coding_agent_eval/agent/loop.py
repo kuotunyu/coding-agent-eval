@@ -51,6 +51,15 @@ class _ToolInterface:
     def names(self) -> frozenset[str]:
         return frozenset(str(tool["name"]) for tool in self.tools)
 
+    def trace_payload(self) -> dict[str, Any]:
+        """Safe, harness-owned evidence describing this provider interface."""
+        return {
+            "executable_tool_call_limit": self.limit,
+            "executable_tool_calls_remaining": self.remaining,
+            "interface_mode": self.mode,
+            "tools_offered": [str(tool["name"]) for tool in self.tools],
+        }
+
 
 def _select_tool_interface(
     *,
@@ -241,7 +250,10 @@ def run_agent(
         tokens += int(step.usage.get("total_tokens", 0) or 0)
         cost += float(step.usage.get("estimated_cost_usd", 0.0) or 0.0)
         if step.usage or step.trace:
-            recorder.emit("llm_call", {**step.trace, "usage": dict(step.usage)})
+            recorder.emit(
+                "llm_call",
+                {**step.trace, **interface.trace_payload(), "usage": dict(step.usage)},
+            )
         if step.usage:
             cost_reports.append(dict(step.usage))
 

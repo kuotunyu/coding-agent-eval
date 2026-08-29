@@ -323,6 +323,7 @@ def replay_run(
         provider=header.get("provider"),
         model=header.get("model"),
         termination_reason=termination.get("reason", "completed"),
+        redaction_manifest_version=str(header["redaction_manifest_version"]),
         budget=header.get("budget", {}),
     )
 
