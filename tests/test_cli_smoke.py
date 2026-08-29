@@ -7,6 +7,7 @@ and subcommands that fail loudly rather than silently doing nothing.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -486,6 +487,143 @@ def test_run_refuses_without_configuration(tmp_path: Path) -> None:
         )
         == 2
     )
+
+
+def stdio_args(tmp_path: Path, *, dry_run: bool = False) -> list[str]:
+    """A complete external-agent invocation with no provider configuration.
+
+    If the CLI stopped forwarding an argument, preflight would refuse before the
+    offline child is reached; if it accidentally used the provider path, the
+    deliberately absent provider key would refuse instead.
+    """
+    arguments = [
+        "run",
+        str(tmp_path / "fixture"),
+        "--out",
+        str(tmp_path / "out"),
+        "--adapter",
+        "stdio-jsonl",
+        "--agent-command",
+        sys.executable,
+        "--agent-arg",
+        str(REPO_ROOT / "examples" / "external_agents" / "scripted_agent.py"),
+        "--agent-name",
+        "example-scripted-agent",
+        "--agent-version",
+        "1.0.0",
+        "--agent-model",
+        "deterministic-script",
+        "--max-tool-calls",
+        "2",
+        "--max-wallclock-seconds",
+        "10",
+    ]
+    if dry_run:
+        arguments.append("--dry-run")
+    return arguments
+
+
+def test_stdio_dry_run_needs_no_provider_key_and_does_not_spawn(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Starting a child during dry-run would make preflight unsafe to use in CI."""
+    monkeypatch.delenv("CAE_PROVIDER_API_KEY", raising=False)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: pytest.fail("spawned"))
+
+    assert main(stdio_args(tmp_path, dry_run=True)) == 0
+
+
+@pytest.mark.parametrize("env_file", [".env", "alternate.env"])
+def test_stdio_rejects_explicit_provider_env_file_before_spawn(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, env_file: str
+) -> None:
+    """An explicit provider dotenv cannot silently become child configuration."""
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: pytest.fail("spawned"))
+
+    assert main([*stdio_args(tmp_path), "--env-file", str(tmp_path / env_file)]) == 2
+
+
+def test_provider_mode_preserves_dotenv_default_and_explicit_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Changing omitted dotenv handling would break existing provider invocations."""
+    from coding_agent_eval import runconfig
+
+    seen: list[Path] = []
+
+    class ValidConfiguration:
+        def redacted(self) -> dict[str, str]:
+            return {"configured": "yes"}
+
+    def load(dotenv_path: Path) -> ValidConfiguration:
+        seen.append(dotenv_path)
+        return ValidConfiguration()
+
+    monkeypatch.setattr(runconfig, "load_configuration", load)
+    arguments = [
+        ["run", str(tmp_path), "--out", str(tmp_path / "out"), "--dry-run"],
+        [
+            "run",
+            str(tmp_path),
+            "--out",
+            str(tmp_path / "out"),
+            "--dry-run",
+            "--env-file",
+            ".env",
+        ],
+        [
+            "run",
+            str(tmp_path),
+            "--out",
+            str(tmp_path / "out"),
+            "--dry-run",
+            "--env-file",
+            str(tmp_path / "alternate.env"),
+        ],
+    ]
+
+    assert [main(argv) for argv in arguments] == [0, 0, 0]
+    assert seen == [Path(".env"), Path(".env"), tmp_path / "alternate.env"]
+
+
+def test_provider_mode_rejects_stdio_only_flags_before_loading_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Ignoring a stdio-only flag could send a billed provider request by mistake."""
+    from coding_agent_eval import runconfig
+
+    monkeypatch.setattr(
+        runconfig,
+        "load_configuration",
+        lambda **_kwargs: pytest.fail("provider configuration loaded"),
+    )
+
+    assert (
+        main(
+            [
+                "run",
+                str(tmp_path),
+                "--out",
+                str(tmp_path / "out"),
+                "--agent-command",
+                sys.executable,
+            ]
+        )
+        == 2
+    )
+
+
+def test_stdio_example_runs_offline_and_writes_only_public_evidence(tmp_path: Path) -> None:
+    """The packaged example must complete a real provider-free CLI run."""
+    fixture = tmp_path / "fixture"
+    shutil.copytree(REPO_ROOT / "fixtures" / "fx-taskq-py", fixture)
+
+    assert main(stdio_args(tmp_path)) == 0
+    assert sorted(path.name for path in (tmp_path / "out").iterdir()) == [
+        "findings.json",
+        "run.json",
+        "trace.jsonl",
+    ]
 
 
 def test_fixture_verify_still_exits_two_for_a_path_that_is_not_a_fixture(

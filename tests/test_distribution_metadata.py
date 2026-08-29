@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
+import tarfile
 import tomllib
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -43,3 +46,26 @@ def test_sdist_excludes_internal_design_records(repo_root: Path) -> None:
     sdist = load_pyproject(repo_root)["tool"]["hatch"]["build"]["targets"]["sdist"]
 
     assert "docs/superpowers/**" in sdist["exclude"]
+
+
+def test_sdist_includes_the_offline_agent_example_but_wheel_does_not(
+    repo_root: Path, tmp_path: Path
+) -> None:
+    """The example belongs in source releases, never in the importable package."""
+    result = subprocess.run(
+        ["uv", "build", "--offline", "--out-dir", str(tmp_path)],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+    sdist = next(tmp_path.glob("*.tar.gz"))
+    wheel = next(tmp_path.glob("*.whl"))
+    with tarfile.open(sdist) as archive:
+        assert any(name.endswith("examples/external_agents/scripted_agent.py") for name in archive.getnames())
+    with zipfile.ZipFile(wheel) as archive:
+        assert not any(name.endswith("scripted_agent.py") for name in archive.namelist())
+
+    project = load_pyproject(repo_root)["tool"]["hatch"]["build"]["targets"]
+    assert project["wheel"]["packages"] == ["src/coding_agent_eval"]

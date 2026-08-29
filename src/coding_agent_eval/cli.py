@@ -208,6 +208,12 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--bug-index", type=int, default=0)
             sub.add_argument("--out", type=Path, required=True, help="where to write evidence")
             sub.add_argument(
+                "--adapter",
+                choices=("provider", "stdio-jsonl"),
+                default="provider",
+                help="provider (default) or an external JSONL stdio agent",
+            )
+            sub.add_argument(
                 "--isolate",
                 metavar="IMMUTABLE_IMAGE_REF",
                 help=(
@@ -218,8 +224,52 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument(
                 "--env-file",
                 type=Path,
-                default=Path(".env"),
+                default=None,
                 help="read configuration from this file for names the shell does not set",
+            )
+            sub.add_argument(
+                "--agent-command",
+                help="stdio-jsonl: executable for the external agent process",
+            )
+            sub.add_argument(
+                "--agent-arg",
+                action="append",
+                default=[],
+                help="stdio-jsonl: one argument for --agent-command; repeat as needed",
+            )
+            sub.add_argument(
+                "--agent-env",
+                action="append",
+                default=[],
+                help="stdio-jsonl: inherited environment-variable name; repeat as needed",
+            )
+            sub.add_argument("--agent-name", help="stdio-jsonl: declared agent name")
+            sub.add_argument("--agent-version", help="stdio-jsonl: declared agent version")
+            sub.add_argument("--agent-model", help="stdio-jsonl: declared agent model")
+            sub.add_argument(
+                "--max-tool-calls",
+                type=int,
+                help="stdio-jsonl: host-enforced maximum tool calls",
+            )
+            sub.add_argument(
+                "--max-wallclock-seconds",
+                type=float,
+                help="stdio-jsonl: host-enforced total process deadline",
+            )
+            sub.add_argument(
+                "--startup-timeout-seconds",
+                type=float,
+                help="stdio-jsonl: initialization handshake timeout (default: 10)",
+            )
+            sub.add_argument(
+                "--step-timeout-seconds",
+                type=float,
+                help="stdio-jsonl: each next-step response timeout (default: 120)",
+            )
+            sub.add_argument(
+                "--shutdown-grace-seconds",
+                type=float,
+                help="stdio-jsonl: child shutdown grace period (default: 2)",
             )
             sub.add_argument(
                 "--dry-run",
@@ -743,54 +793,15 @@ def _run_evaluate_resolve_import(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_run(args: argparse.Namespace) -> int:
-    """Execute one live provider run. This is the command that spends money."""
-    import os
+def _print_run_summary(run: object, directory: Path) -> None:
+    """Print the shared operator summary after either adapter writes evidence."""
+    from coding_agent_eval.live import LiveRun
 
-    from coding_agent_eval.live import execute, write_evidence
-    from coding_agent_eval.runconfig import (
-        ConfigurationError,
-        load_configuration,
-        suspicious_variables,
-    )
-
-    for name in suspicious_variables(dict(os.environ)):
-        # A misspelled budget leaves a run unbounded while its operator believes
-        # otherwise, so an unread CAE_ variable is worth a line on stderr.
-        print(f"warning: {name} is set but nothing reads it; check the spelling", file=sys.stderr)
-
-    try:
-        configuration = load_configuration(dotenv_path=args.env_file)
-    except ConfigurationError as exc:
-        print(f"not configured: {exc}", file=sys.stderr)
-        return 2
-
-    if args.dry_run:
-        print(json.dumps(configuration.redacted(), indent=2, sort_keys=True))
-        print("\ndry run: configuration is valid and no request was made", file=sys.stderr)
-        return 0
-
-    if not args.fixture_dir.is_dir():
-        print(f"no such fixture directory: {args.fixture_dir}", file=sys.stderr)
-        return 2
-
-    run = execute(
-        args.fixture_dir,
-        configuration=configuration,
-        snapshot=args.snapshot,
-        bug_index=args.bug_index,
-        isolate_image=args.isolate,
-        run_id=manual_run_id(args.out),
-        raw_store_root=Path(".run-store"),
-    )
-    directory = write_evidence(run, args.out)
-
+    assert isinstance(run, LiveRun)
     usage = run.usage_total()
     failure = run.failure
     if failure:
-        # Printed first and to stderr, because it is the only thing that matters
-        # about a failed run and it is what the operator has to act on.
-        print("provider failure:", file=sys.stderr)
+        print("agent failure:", file=sys.stderr)
         for name in ("exception", "status", "type", "code", "param", "message", "body_keys"):
             if name in failure:
                 print(f"  {name:<10} {failure[name]}", file=sys.stderr)
@@ -810,6 +821,129 @@ def _run_run(args: argparse.Namespace) -> int:
         "\nnot scored: `verified_*` metrics need a human ruling on blinded finding/bug pairs first",
         file=sys.stderr,
     )
+
+
+def _stdio_only_flags_present(args: argparse.Namespace) -> bool:
+    """Whether an option with meaning only for the stdio transport was passed."""
+    return any(
+        value is not None and value != []
+        for value in (
+            args.agent_command,
+            args.agent_arg,
+            args.agent_env,
+            args.agent_name,
+            args.agent_version,
+            args.agent_model,
+            args.max_tool_calls,
+            args.max_wallclock_seconds,
+            args.startup_timeout_seconds,
+            args.step_timeout_seconds,
+            args.shutdown_grace_seconds,
+        )
+    )
+
+
+def _run_agent(args: argparse.Namespace) -> int:
+    """Execute one provider or externally supplied agent run."""
+    import os
+
+    from coding_agent_eval.live import execute, execute_stdio, write_evidence
+    from coding_agent_eval.runconfig import (
+        ConfigurationError,
+        load_configuration,
+        load_stdio_configuration,
+        suspicious_variables,
+    )
+
+    if args.adapter == "provider" and _stdio_only_flags_present(args):
+        print("stdio-jsonl options require --adapter stdio-jsonl", file=sys.stderr)
+        return 2
+
+    if args.adapter == "stdio-jsonl":
+        if args.env_file is not None:
+            print("--env-file is valid only for --adapter provider", file=sys.stderr)
+            return 2
+        try:
+            stdio_configuration = load_stdio_configuration(
+                command=([args.agent_command] if args.agent_command is not None else [])
+                + args.agent_arg,
+                inherited_environment=args.agent_env,
+                agent_name=args.agent_name,
+                agent_version=args.agent_version,
+                agent_model=args.agent_model,
+                max_tool_calls=args.max_tool_calls,
+                max_wallclock_seconds=args.max_wallclock_seconds,
+                startup_timeout_seconds=(
+                    args.startup_timeout_seconds
+                    if args.startup_timeout_seconds is not None
+                    else 10.0
+                ),
+                step_timeout_seconds=(
+                    args.step_timeout_seconds if args.step_timeout_seconds is not None else 120.0
+                ),
+                shutdown_grace_seconds=(
+                    args.shutdown_grace_seconds
+                    if args.shutdown_grace_seconds is not None
+                    else 2.0
+                ),
+            )
+        except ConfigurationError as exc:
+            print(f"not configured: {exc}", file=sys.stderr)
+            return 2
+
+        if args.dry_run:
+            print(json.dumps(stdio_configuration.redacted(), indent=2, sort_keys=True))
+            print("\ndry run: configuration is valid and no process was started", file=sys.stderr)
+            return 0
+
+        if not args.fixture_dir.is_dir():
+            print(f"no such fixture directory: {args.fixture_dir}", file=sys.stderr)
+            return 2
+        run = execute_stdio(
+            args.fixture_dir,
+            configuration=stdio_configuration,
+            snapshot=args.snapshot,
+            bug_index=args.bug_index,
+            isolate_image=args.isolate,
+            run_id=manual_run_id(args.out),
+            raw_store_root=Path(".run-store"),
+        )
+        directory = write_evidence(run, args.out)
+        _print_run_summary(run, directory)
+        return 0
+
+    for name in suspicious_variables(dict(os.environ)):
+        # A misspelled budget leaves a run unbounded while its operator believes
+        # otherwise, so an unread CAE_ variable is worth a line on stderr.
+        print(f"warning: {name} is set but nothing reads it; check the spelling", file=sys.stderr)
+
+    try:
+        provider_configuration = load_configuration(dotenv_path=args.env_file or Path(".env"))
+    except ConfigurationError as exc:
+        print(f"not configured: {exc}", file=sys.stderr)
+        return 2
+
+    if args.dry_run:
+        print(json.dumps(provider_configuration.redacted(), indent=2, sort_keys=True))
+        print("\ndry run: configuration is valid and no request was made", file=sys.stderr)
+        return 0
+
+    if not args.fixture_dir.is_dir():
+        print(f"no such fixture directory: {args.fixture_dir}", file=sys.stderr)
+        return 2
+
+    run = execute(
+        args.fixture_dir,
+        configuration=provider_configuration,
+        snapshot=args.snapshot,
+        bug_index=args.bug_index,
+        isolate_image=args.isolate,
+        run_id=manual_run_id(args.out),
+        raw_store_root=Path(".run-store"),
+    )
+    directory = write_evidence(run, args.out)
+
+    _print_run_summary(run, directory)
     return 0
 
 
@@ -1089,7 +1223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "release":
         return _run_release(args)
     if args.command == "run":
-        return _run_run(args)
+        return _run_agent(args)
     print(
         f"cae {args.command}: not implemented yet (benchmark {BENCHMARK_VERSION})",
         file=sys.stderr,

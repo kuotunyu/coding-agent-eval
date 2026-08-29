@@ -68,6 +68,7 @@ include = [
     "fixtures",
     "ledger",
     "runs",
+    "examples",
     "tests",
     "docs",
     ".zenodo.json",
