@@ -1,4 +1,4 @@
-# Manual Run — 付費 provider execution 與 evidence flow
+# Manual Run — provider 與外部 agent evidence flow
 
 本文件說明如何執行 current-contract reference suite。驗證 repository／release 不需要 API key；只有
 `cae suite run` 會呼叫 paid provider。任何 paid run 都應先產生 dry-run plan，確認 model、budgets、
@@ -32,7 +32,31 @@ uv run cae release audit --publication --online
 最後一個 command 會匿名讀 GHCR，但不使用 Docker credentials；其餘 publication audit 是 offline。
 若 clean control、witness、checksum 或 OCI identity 不一致，先停止，不得開始 provider calls。
 
-## 2. Local secret setup
+## 2. Provider-free `stdio-jsonl` 運行
+
+外部 agent 模式不讀 provider 設定、不需 API key，也不會發送 provider request。先用
+README 的絕對路徑 PowerShell 範例執行隨 repository 附帶的 deterministic agent。操作時必須
+保留以下邊界：
+
+- stdout 只能是 UTF-8 `cae-agent-stdio` 1.0.0 JSONL protocol；diagnostics 寫至 stderr。
+  Harness 會持續排空 stderr，但只保留有界 owner-only tail，不將原文放入公開證據。
+- 同時只有一個 request；協定不 retry、restart、pipeline 或進行 version negotiation。
+  Failure 是證據，不得用後來較好的 run 覆寫。
+- `--agent-name`、`--agent-version` 與 `--agent-model` 是 operator-declared identity；程序在
+  handshake 必須精確回傳，但這不是 remote attestation。公開組態標示
+  `host_unsandboxed`，usage 標示 `agent_reported_unverified`。
+- 子程序以新建空 cwd 與 allowlisted environment 啟動。正常停止時 harness 關閉 stdin
+  並等待有界 grace period；timeout 或異常時會 terminate／kill 並 reap。不可有子程序
+  在 `cae run` 後存活。
+- 公開 output directory 只產生 `run.json`、`trace.jsonl` 與 `findings.json`；完整
+  request／response 與 tool output 留在 owner-only `.run-store/`。Command、environment names／values、
+  raw protocol bodies 與 stderr 不得進入公開 files。
+
+成功的協定交換或 candidate finding 都不會產生 `verified_*` 結論。如果有 candidate
+pairs，仍必須依本文第 9 節的 blinded primary、independent 與必要的 resolver human
+review 完整審查後才可發布。
+
+## 3. Local secret setup
 
 將 provider key 放在 repository 之外或 ignored `.env`；不要貼到 issue、terminal transcript、README、
 trace、worksheet 或 shell history。Repository 使用 `CAE_PROVIDER_API_KEY` process variable，public
@@ -45,7 +69,7 @@ git check-ignore .env .run-store
 git status --short
 ```
 
-## 3. Dry-run：產生不含 secret 的 exact plan
+## 4. Dry-run：產生不含 secret 的 exact plan
 
 ```powershell
 uv run cae suite dry-run --env-file .env --tasks tasks --fixtures fixtures `
@@ -63,7 +87,7 @@ uv run cae suite dry-run --env-file .env --tasks tasks --fixtures fixtures `
 
 `dry-run` 不開 network connection，不產生 API 費用。
 
-## 4. Register：第一個 API call 前凍結 identity
+## 5. Register：第一個 API call 前凍結 identity
 
 ```powershell
 uv run cae suite register --plan PLAN.json --tasks tasks --fixtures fixtures `
@@ -77,7 +101,7 @@ system-prompt version/hash、manual conversation state 與 Responses `store: fal
 schema 1.0 registration 只能讀取
 歷史 evidence，不能再執行。
 
-## 5. Run：唯一會付費的步驟
+## 6. Run：唯一會付費的步驟
 
 ```powershell
 uv run cae suite run `
@@ -100,7 +124,7 @@ Failure 也是 evidence，不得刪除、重新命名或以後續較好 outcome 
 harness defect，整個 registration 不得成為 publication evidence；修復、bump fixture、重建／re-pin OCI
 後再建立新 registration。
 
-## 6. Cost 與 budget 解讀
+## 7. Cost 與 budget 解讀
 
 `CAE_MAX_TOKENS` 是 observed usage boundary；`CAE_MAX_ESTIMATED_COST_USD` 依版本化 pricing table
 估算。兩者都只能在 provider 回覆後檢查，因此可能超出一個 in-flight request。設定
@@ -127,7 +151,7 @@ USD 0.25，suite 上限 2,000,000 tokens／600 tool calls／9,000 s／USD 2.50�
 都是 token budget 先觸發。新 run 才使用上表的 2026-08-11 `r2` 費率；同日 revision
 用 suffix 區分兩次觀測，不能拿新表回算或覆寫舊 artifact。
 
-## 7. Private raw events 與 public trace
+## 8. Private raw events 與 public trace
 
 每個 run 先把完整 provider／tool events 寫入本機 `.run-store/`。Public trace 只能經 fail-closed、
 atomic sanitizer 產生；unknown field 使整個 export 失敗。禁止手動複製 raw payload 到 `runs/`。
@@ -150,7 +174,7 @@ sanitized trace、request hash、結構化 failure classification、usage 與 fi
 [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling) 與
 [conversation state](https://developers.openai.com/api/docs/guides/conversation-state)。
 
-## 8. Human review 與 replay
+## 9. Human review 與 replay
 
 `cae run`／`cae suite run` 不產生 `verified_*` scores。只有 completed task 實際產生 candidate pairs 時，
 才建立 review set，依序完成 blinded primary、independent 與必要的 resolver workflow。AI 不得填寫

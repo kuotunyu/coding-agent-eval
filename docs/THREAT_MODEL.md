@@ -37,8 +37,23 @@ Three things, in descending order of how badly losing them would hurt:
 | Agent output (findings, tool arguments) | **No** | It is model output. Paths are validated, findings are schema-checked, and neither is used to construct a filesystem operation without checking. |
 | Model provider responses | **No** | Parsed defensively: a malformed tool call becomes an empty argument dict and an ordinary tool error, and a non-JSON body ends the run as `provider_error` rather than raising. |
 | The harness itself | Yes | It runs on the host, unsandboxed. This is the assumption everything else rests on; see [what is not defended](#what-this-does-not-defend-against). |
+| External `stdio-jsonl` agent process | Operator-trusted | It is selected by the operator and runs on the host as `host_unsandboxed`; the `cae-agent-stdio` handshake is identity matching, not containment or attestation. |
 | Fixture manifests, patches, witnesses | Yes | Repository content, reviewed in Git. They are the ground truth; if they are wrong the benchmark is wrong, and no runtime check can help. |
 | The adjudication ledger | Yes, with verification | Append-only and entry-hashed. The evaluator verifies hashes and refuses to score a tampered ledger rather than scoring it anyway. |
+
+### External process boundary
+
+The empty child working directory and environment allowlist reduce accidental exposure of
+repository paths and ambient credentials. They do not contain hostile code: the executable
+is an operator-trusted host process, can use host resources available to it, and may transmit
+tool results after the harness returns them. **--isolate does not sandbox the external process.**
+It applies only to fixture tool execution.
+
+The external child may self-report normalized usage, but that evidence is labelled
+`agent_reported_unverified`. Protocol 1.0.0 has no harness-enforced token or cost cap because
+the harness cannot independently observe model calls made inside the child. The operator
+must enforce upstream spend controls. These limitations apply even when the child completes
+the `cae-agent-stdio` handshake successfully.
 
 ### The boundary that matters most
 

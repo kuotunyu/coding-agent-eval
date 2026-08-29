@@ -17,9 +17,9 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 8636,
+      "bytes": 9844,
       "path": "README.md",
-      "sha256": "7016b1efafe0992d09fe0c231a34bbb7c5195bb1d1782e145637b70b6d50c21b"
+      "sha256": "dd2e32818e88b0619f4924905807472927e3188f57816c6ee5635a866c66651b"
     },
     {
       "bytes": 12975,
@@ -32,9 +32,9 @@
       "sha256": "05552cb749ee7fc7d5fe594c2f5d93deeac4c40e16b7c12a79bee3761a2ebebb"
     },
     {
-      "bytes": 8846,
+      "bytes": 10471,
       "path": "docs/MANUAL_RUN.md",
-      "sha256": "165607175c10f259039fc4936247367a1998a17136fe661239a7f952081359b0"
+      "sha256": "62b3a9c6225da13a37698f267dc3c4f47ab3fa4f6f5e578a1150b48f3630d219"
     },
     {
       "bytes": 10936,
@@ -47,9 +47,9 @@
       "sha256": "696846da45a1646dbd28e72825c43717bc71975883a0e7ce892b525f529afa5b"
     },
     {
-      "bytes": 13929,
+      "bytes": 14395,
       "path": "docs/RELEASE_READINESS.md",
-      "sha256": "53e43c78e006f532ee5df06938ae64e4c1c54d9da42d59916f8313655cc1030a"
+      "sha256": "1a580a2bd5475db1109099a01003be7592c72efe93dca024936dac3a102937e1"
     },
     {
       "bytes": 5276,
@@ -57,9 +57,9 @@
       "sha256": "0c76600fb63ab93312794b7cf5d6f8888e893a5a1c982081a5d844a70bbef28e"
     },
     {
-      "bytes": 18187,
+      "bytes": 19263,
       "path": "docs/THREAT_MODEL.md",
-      "sha256": "c42b177b9222741cc88c74f8d86d1ad5950923cdf7e169fc2be88d75e4ea7401"
+      "sha256": "c5e523eac7a13264f0351b29a6dab72857908f96adc22ed78dde27550cf930b1"
     },
     {
       "bytes": 2833,
@@ -557,9 +557,9 @@
       "sha256": "92e9121e0c05e816f029fd192e4850b130bd9e45109c8341e369f8d9068cf4fa"
     },
     {
-      "bytes": 2813,
+      "bytes": 2829,
       "path": "pyproject.toml",
-      "sha256": "e4df9ecc55a3e064afe34b627fb4fdcf1dea544195566bc6dcb7d116e9130a92"
+      "sha256": "011fa2aca9201c3c2a6c0f6f6a5bb66777c564eae593595edaf0d78aa6a0044a"
     },
     {
       "bytes": 3734,
@@ -905,6 +905,11 @@
       "bytes": 25063,
       "path": "runs/smoke/smoke-2026-08-29-attempt-7/clean/trace.jsonl",
       "sha256": "dec1bd5071c5652cb4778cb53f612fc7c35b6578408d071866104f5daf97a3c5"
+    },
+    {
+      "bytes": 3957,
+      "path": "schemas/agent-stdio-message.schema.json",
+      "sha256": "6b8be9ad4bd2a134d9547d9ce8a86e1598dff0180f4c133980f4a71b4a1981ab"
     },
     {
       "bytes": 8762,

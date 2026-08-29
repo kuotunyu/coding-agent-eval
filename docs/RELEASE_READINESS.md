@@ -112,6 +112,12 @@ clean-control candidate，依零 finding gate 停止且未執行 mutated task。
 uv run cae release audit --publication
 ```
 
+外部 agent 發布邊界也是 offline gate：distribution／CI metadata tests 要求 README 與
+Threat Model 保留 `cae-agent-stdio` 的 host-process 信任說明；完整驗證必須建立套件、
+用 `uv pip install --offline` 安裝唯一 wheel，並由該獨立 environment 匯入
+`coding_agent_eval.agent.stdio_protocol` 與 bundled `agent-stdio-message` schema。這個 gate 只驗證
+協定、打包與信任邊界，不產生 model-performance claim。
+
 Online OCI gate：
 
 ```powershell

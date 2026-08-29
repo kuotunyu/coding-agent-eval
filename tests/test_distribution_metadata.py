@@ -63,9 +63,23 @@ def test_sdist_includes_the_offline_agent_example_but_wheel_does_not(
     sdist = next(tmp_path.glob("*.tar.gz"))
     wheel = next(tmp_path.glob("*.whl"))
     with tarfile.open(sdist) as archive:
-        assert any(name.endswith("examples/external_agents/scripted_agent.py") for name in archive.getnames())
+        assert any(
+            name.endswith("examples/external_agents/scripted_agent.py")
+            for name in archive.getnames()
+        )
     with zipfile.ZipFile(wheel) as archive:
         assert not any(name.endswith("scripted_agent.py") for name in archive.namelist())
 
     project = load_pyproject(repo_root)["tool"]["hatch"]["build"]["targets"]
     assert project["wheel"]["packages"] == ["src/coding_agent_eval"]
+
+
+def test_external_agent_documentation_preserves_the_trust_boundary(repo_root: Path) -> None:
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    threat_model = (repo_root / "docs" / "THREAT_MODEL.md").read_text(encoding="utf-8")
+
+    for document in (readme, threat_model):
+        assert "cae-agent-stdio" in document
+        assert "host_unsandboxed" in document
+        assert "agent_reported_unverified" in document
+    assert "--isolate does not sandbox the external process" in threat_model

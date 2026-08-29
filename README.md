@@ -96,7 +96,32 @@ fixture validation clean: fixtures
 release artifact audit clean (0 warning(s))
 ```
 
-### 2. 脫敏公開 Trace 產生
+### 2. Provider-free 外部 agent 協定示範
+
+下列 PowerShell 範例先將 fixture、Python 與範例 agent 解析為絕對路徑，然後以
+`stdio-jsonl` 運行；不需要 API key，也不會呼叫付費 provider。
+
+```powershell
+$repoRoot = (Resolve-Path '.').Path
+$python = (Resolve-Path '.venv/Scripts/python.exe').Path
+$agent = (Resolve-Path 'examples/external_agents/scripted_agent.py').Path
+$fixture = (Resolve-Path 'fixtures/fx-taskq-py').Path
+$out = Join-Path $env:TEMP 'cae-stdio-demo'
+
+uv run cae run $fixture --out $out --adapter stdio-jsonl `
+  --agent-command $python --agent-arg $agent `
+  --agent-name example-scripted-agent --agent-version 1.0.0 `
+  --agent-model deterministic-script --max-tool-calls 4 `
+  --max-wallclock-seconds 60
+```
+
+此範例只驗證 `cae-agent-stdio` 1.0.0 協定、tool loop 與證據路徑，不是 model
+benchmark 結果，也不支持準確率或排名宣稱。外部程序由 operator 選擇並在 host 上以
+`host_unsandboxed` 執行；其 usage 僅是 `agent_reported_unverified`，非 harness 獨立計量或強制的
+token／cost 上限。完整操作與威脅邊界見 [Manual Run](docs/MANUAL_RUN.md) 與
+[Threat Model](docs/THREAT_MODEL.md)。
+
+### 3. 脫敏公開 Trace 產生
 
 從現有未追蹤的原始運行紀錄中匯出安全公開 Trace：
 
