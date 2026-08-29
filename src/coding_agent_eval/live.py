@@ -29,10 +29,13 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
+from collections.abc import Mapping
 from contextlib import nullcontext
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import httpx
@@ -71,6 +74,19 @@ class ExecutionMetadata:
     protocol_version: str | None
     usage_source: str
     system_prompt_version: str
+
+    def __post_init__(self) -> None:
+        """Snapshot and recursively freeze caller-owned configuration containers."""
+        object.__setattr__(
+            self,
+            "public_configuration",
+            _deep_freeze(deepcopy(self.public_configuration)),
+        )
+        object.__setattr__(
+            self,
+            "private_parameters",
+            _deep_freeze(deepcopy(self.private_parameters)),
+        )
 
 
 @dataclass(frozen=True)
@@ -135,7 +151,7 @@ class LiveRun:
             "tool_calls": self.result.tool_calls,
             "wall_clock_ms": self.result.wall_clock_ms,
             "findings_submitted": len(self.result.findings),
-            "provider": self.metadata.public_configuration,
+            "provider": _defensive_copy(self.metadata.public_configuration),
             "adjudication": (
                 "Not scored. `verified_*` metrics require a human ruling on blinded "
                 "finding/bug pairs; run `cae evaluate` once the ledger has one."
@@ -196,7 +212,7 @@ class LiveRun:
 
     def trace_header(self) -> dict[str, Any]:
         """Replay provenance for the public trace, with private inputs classified explicitly."""
-        params = self.metadata.private_parameters
+        params = _defensive_copy(self.metadata.private_parameters)
         prompt = self.system_prompt
         return {
             "run_id": self.run_id,
@@ -236,6 +252,24 @@ class LiveRun:
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     text = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
     path.write_text(text + "\n", encoding="utf-8", newline="\n")
+
+
+def _deep_freeze(value: Any) -> Any:
+    """Recursively replace mutable JSON containers with immutable snapshots."""
+    if isinstance(value, dict):
+        return MappingProxyType({key: _deep_freeze(child) for key, child in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_deep_freeze(child) for child in value)
+    return value
+
+
+def _defensive_copy(value: Any) -> Any:
+    """Return ordinary JSON containers with no references into frozen metadata."""
+    if isinstance(value, Mapping):
+        return {key: _defensive_copy(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return [_defensive_copy(child) for child in value]
+    return deepcopy(value)
 
 
 def _canonical_hash(payload: Any) -> str:

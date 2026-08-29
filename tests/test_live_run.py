@@ -19,12 +19,13 @@ contract; see `docs/MANUAL_RUN.md`.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -435,6 +436,62 @@ def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
         (directory / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0]
     )
     assert public_header["schema_version"] == "0.2.0"
+
+
+def test_returned_headers_cannot_mutate_execution_metadata_or_trace_identity(
+    tmp_path: Path,
+) -> None:
+    """A caller-owned artifact must not alias the execution's frozen identity."""
+    handler, _ = submit_then_stop()
+    run = execute(
+        FIXTURE,
+        configuration=configuration(),
+        snapshot="clean",
+        workspace=tmp_path / "work",
+        raw_store_root=tmp_path / ".run-store",
+        run_id="immutable-metadata",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    raw_before = run.raw_store.read_events()[0]["payload"]
+    returned_header = run.header()
+    returned_trace_header = run.trace_header()
+
+    returned_header["provider"]["model"] = "tampered-model"
+    returned_header["provider"]["budget"]["max_tokens"] = 1
+    returned_trace_header["params"]["model"] = "tampered-params"
+
+    assert run.metadata.public_configuration["model"] == "gpt-5.6-luna"
+    assert run.metadata.private_parameters["model"] == "gpt-5.6-luna"
+    assert run.metadata.public_configuration is not run.metadata.private_parameters
+    public_budget = cast(dict[str, Any], run.metadata.public_configuration["budget"])
+    private_budget = cast(dict[str, Any], run.metadata.private_parameters["budget"])
+    assert public_budget is not private_budget
+    with pytest.raises(TypeError):
+        public_budget["max_tokens"] = 7
+    assert run.events[0]["payload"]["params"]["model"] == "gpt-5.6-luna"
+    assert run.raw_store.read_events()[0]["payload"] == raw_before
+    raw_encoded_params = json.dumps(
+        raw_before["params"],
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    assert raw_before["params_hash"] == hashlib.sha256(
+        raw_encoded_params.encode("utf-8")
+    ).hexdigest()
+    assert run.header()["provider"]["model"] == "gpt-5.6-luna"
+
+    subsequent_trace_header = run.trace_header()
+    assert subsequent_trace_header["params"]["model"] == "gpt-5.6-luna"
+    encoded_params = json.dumps(
+        subsequent_trace_header["params"],
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    assert subsequent_trace_header["params_hash"] == hashlib.sha256(
+        encoded_params.encode("utf-8")
+    ).hexdigest()
 
 
 def test_current_isolated_run_binds_the_fixture_oci_identity(
