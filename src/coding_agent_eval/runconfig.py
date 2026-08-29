@@ -21,9 +21,14 @@ It is not echoed, not written to a trace, and not included in any error message
 
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 import os
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 
 from coding_agent_eval.agent.protocol import Budget
 from coding_agent_eval.agent.provider import (
@@ -31,6 +36,7 @@ from coding_agent_eval.agent.provider import (
     UnpricedModelError,
     pricing_for,
 )
+from coding_agent_eval.agent.stdio_protocol import MAX_MESSAGE_BYTES
 
 #: Everything the run reads. Listed so an unknown `CAE_` variable can be
 #: reported as probably-a-typo rather than silently ignored.
@@ -58,6 +64,203 @@ VALID_APIS: tuple[str, ...] = ("chat_completions", "responses")
 
 class ConfigurationError(RuntimeError):
     """The run was not configured well enough to start. No request was made."""
+
+
+class StdioConfigurationError(ConfigurationError):
+    """An external-agent subprocess could not be safely preflighted."""
+
+
+_BASE_CHILD_ENVIRONMENT_NAMES: tuple[str, ...] = (
+    "PATH",
+    "PATHEXT",
+    "SYSTEMROOT",
+    "WINDIR",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL",
+)
+
+
+@dataclass(frozen=True)
+class StdioRunConfiguration:
+    """Validated launch parameters for a JSONL stdio agent process.
+
+    The child environment is deliberately an allow-list. Its values are retained
+    only so the already-preflighted child can be spawned; public rendering never
+    exposes them.
+    """
+
+    command: tuple[str, ...]
+    inherited_environment: tuple[str, ...]
+    agent_name: str
+    agent_version: str
+    agent_model: str
+    budget: Budget
+    startup_timeout_seconds: float = 10.0
+    step_timeout_seconds: float = 120.0
+    shutdown_grace_seconds: float = 2.0
+    max_message_bytes: int = MAX_MESSAGE_BYTES
+    _preflight_environ: Mapping[str, str] = field(
+        default_factory=dict, repr=False, compare=False
+    )
+
+    def child_environment(self, environ: Mapping[str, str] | None = None) -> dict[str, str]:
+        """Return the small, explicit environment passed to the child process."""
+        source = self._preflight_environ if environ is None else environ
+        names = (*_BASE_CHILD_ENVIRONMENT_NAMES, *self.inherited_environment)
+        return {name: source[name] for name in names if name in source}
+
+    def redacted(self) -> dict[str, object]:
+        """Return public metadata without command or environment material."""
+        return {
+            "agent_name": self.agent_name,
+            "agent_version": self.agent_version,
+            "agent_model": self.agent_model,
+            "budget": self.budget.as_dict(),
+            "startup_timeout_seconds": self.startup_timeout_seconds,
+            "step_timeout_seconds": self.step_timeout_seconds,
+            "shutdown_grace_seconds": self.shutdown_grace_seconds,
+            "max_message_bytes": self.max_message_bytes,
+            "argv_sha256": _argv_sha256(self.command),
+            "inherited_environment_count": len(self.inherited_environment),
+            "usage_source": "agent_reported_unverified",
+            "agent_process_profile": "host_unsandboxed",
+        }
+
+    def private_parameters(self) -> dict[str, object]:
+        """Return owner-only launch inputs, still omitting environment values."""
+        return {
+            "argv": list(self.command),
+            "inherited_environment": list(self.inherited_environment),
+        }
+
+
+def _argv_sha256(command: Sequence[str]) -> str:
+    """Hash the exact JSON argv representation that will be sent to subprocess."""
+    canonical = json.dumps(list(command), ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _required_text(name: str, value: str | None) -> str:
+    if value is None or not value.strip():
+        raise StdioConfigurationError(f"{name} must not be empty")
+    return value.strip()
+
+
+def _positive_int(name: str, value: int | None) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise StdioConfigurationError(f"{name} must be a positive whole number")
+    return value
+
+
+def _positive_finite_float(name: str, value: float | None) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise StdioConfigurationError(f"{name} must be a finite positive number")
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise StdioConfigurationError(f"{name} must be a finite positive number")
+    return number
+
+
+def _is_explicit_executable(command: str) -> bool:
+    path = Path(command)
+    return path.is_absolute() or path.parent != Path(".")
+
+
+def _regular_executable(path: Path) -> Path | None:
+    if not path.is_file() or not os.access(path, os.X_OK):
+        return None
+    return path.resolve()
+
+
+def _path_candidates(command: str, environ: Mapping[str, str]) -> Sequence[Path]:
+    path = Path(command)
+    if _is_explicit_executable(command):
+        return (path,)
+
+    suffixes = ("",) if path.suffix else ("", *environ.get("PATHEXT", "").split(os.pathsep))
+    return tuple(
+        Path(directory.strip().strip('"')) / f"{command}{suffix}"
+        for directory in environ.get("PATH", "").split(os.pathsep)
+        if directory.strip()
+        for suffix in suffixes
+    )
+
+
+def _resolve_executable(command: str, environ: Mapping[str, str]) -> str:
+    for candidate in _path_candidates(command, environ):
+        resolved = _regular_executable(candidate)
+        if resolved is not None:
+            return str(resolved)
+    raise StdioConfigurationError(f"executable {command!r} was not found or is not executable")
+
+
+def load_stdio_configuration(
+    *,
+    command: Sequence[str],
+    inherited_environment: Sequence[str],
+    agent_name: str | None,
+    agent_version: str | None,
+    agent_model: str | None,
+    max_tool_calls: int | None,
+    max_wallclock_seconds: float | None,
+    startup_timeout_seconds: float,
+    step_timeout_seconds: float,
+    shutdown_grace_seconds: float,
+    environ: Mapping[str, str] | None = None,
+) -> StdioRunConfiguration:
+    """Validate and resolve all externally supplied process parameters before spawn."""
+    source = dict(os.environ if environ is None else environ)
+    argv = tuple(command)
+    if not argv:
+        raise StdioConfigurationError("command must contain an executable")
+    if not all(isinstance(argument, str) for argument in argv):
+        raise StdioConfigurationError("command must contain only strings")
+    if not argv[0].strip():
+        raise StdioConfigurationError("command[0] must not be empty")
+
+    inherited = tuple(inherited_environment)
+    if not all(isinstance(name, str) and name and "=" not in name for name in inherited):
+        raise StdioConfigurationError(
+            "inherited_environment names must be non-empty variable names"
+        )
+    duplicates = {name for name in inherited if inherited.count(name) > 1}
+    if duplicates:
+        raise StdioConfigurationError(
+            f"inherited_environment contains duplicate name {sorted(duplicates)[0]!r}"
+        )
+    for name in inherited:
+        if name not in source:
+            raise StdioConfigurationError(
+                f"required inherited environment variable {name!r} is not set"
+            )
+
+    resolved_command = (_resolve_executable(argv[0], source), *argv[1:])
+    return StdioRunConfiguration(
+        command=resolved_command,
+        inherited_environment=inherited,
+        agent_name=_required_text("agent_name", agent_name),
+        agent_version=_required_text("agent_version", agent_version),
+        agent_model=_required_text("agent_model", agent_model),
+        budget=Budget(
+            max_tokens=None,
+            max_tool_calls=_positive_int("max_tool_calls", max_tool_calls),
+            max_wallclock_seconds=_positive_finite_float(
+                "max_wallclock_seconds", max_wallclock_seconds
+            ),
+            max_estimated_cost_usd=None,
+        ),
+        startup_timeout_seconds=_positive_finite_float(
+            "startup_timeout_seconds", startup_timeout_seconds
+        ),
+        step_timeout_seconds=_positive_finite_float("step_timeout_seconds", step_timeout_seconds),
+        shutdown_grace_seconds=_positive_finite_float(
+            "shutdown_grace_seconds", shutdown_grace_seconds
+        ),
+        _preflight_environ=MappingProxyType(source),
+    )
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
