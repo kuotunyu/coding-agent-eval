@@ -55,7 +55,7 @@ class StdioAgentAdapter:
         self._transcript: tuple[Observation, ...] = ()
         self._started_at: float | None = None
         self._closed = False
-        self._stdout_lines: queue.Queue[bytes] = queue.Queue(maxsize=1)
+        self._stdout_lines: queue.Queue[tuple[bytes, float]] = queue.Queue(maxsize=1)
         self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
         self._writer_threads: list[threading.Thread] = []
@@ -123,9 +123,10 @@ class StdioAgentAdapter:
         limit = self._configuration.max_message_bytes + 1
         while not self._reader_stop.is_set():
             line = stream.readline(limit)
+            received_at = self._clock()
             while not self._reader_stop.is_set():
                 try:
-                    self._stdout_lines.put(line, timeout=0.05)
+                    self._stdout_lines.put((line, received_at), timeout=0.05)
                     break
                 except queue.Full:
                     continue
@@ -167,7 +168,8 @@ class StdioAgentAdapter:
         assert self._process.stdin is not None
         started = self._clock()
         phase_deadline = started + phase_timeout
-        remaining = self._remaining_wallclock()
+        overall_deadline = self._overall_deadline()
+        remaining = overall_deadline - started
         if remaining <= 0:
             self.close()
             raise AdapterWallclockExceeded(
@@ -185,7 +187,7 @@ class StdioAgentAdapter:
         try:
             write_error = write_result.get(timeout=min(phase_timeout, remaining))
         except queue.Empty as exc:
-            self._raise_timeout(phase, phase_deadline, exc)
+            self._raise_timeout(phase, phase_deadline, overall_deadline, exc)
         if write_error is not None:
             self._settle_reader_threads()
             raise self._child_failure(
@@ -193,12 +195,14 @@ class StdioAgentAdapter:
             ) from write_error
         timeout = min(phase_deadline - self._clock(), self._remaining_wallclock())
         if timeout <= 0:
-            self._raise_timeout(phase, phase_deadline, None)
+            self._raise_timeout(phase, phase_deadline, overall_deadline, None)
         try:
-            response = self._stdout_lines.get(timeout=timeout)
+            response, received_at = self._stdout_lines.get(timeout=timeout)
         except queue.Empty as exc:
-            self._raise_timeout(phase, phase_deadline, exc)
-        latency = self._clock() - started
+            self._raise_timeout(phase, phase_deadline, overall_deadline, exc)
+        if received_at >= min(phase_deadline, overall_deadline):
+            self._raise_timeout(phase, phase_deadline, overall_deadline, None)
+        latency = received_at - started
         if not response:
             self._settle_reader_threads()
             raise self._child_failure(
@@ -237,21 +241,21 @@ class StdioAgentAdapter:
         self,
         phase: str,
         phase_deadline: float,
+        overall_deadline: float,
         cause: BaseException | None,
     ) -> None:
-        overall = self._remaining_wallclock() <= 0
         self.close()
-        if overall:
-            failure: AdapterFailure = AdapterWallclockExceeded(
-                "wallclock_exceeded", phase, "external agent overall wallclock expired"
-            )
-        else:
+        if phase_deadline <= overall_deadline:
             timeout_code = "startup_timeout" if phase == "initialize" else "step_timeout"
-            failure = AdapterFailure(
+            failure: AdapterFailure = AdapterFailure(
                 timeout_code,
                 phase,
                 f"external agent {phase} response timed out",
                 detail=self._stderr_detail(),
+            )
+        else:
+            failure = AdapterWallclockExceeded(
+                "wallclock_exceeded", phase, "external agent overall wallclock expired"
             )
         if cause is None:
             raise failure
@@ -267,6 +271,12 @@ class StdioAgentAdapter:
             return
         if self._stderr_thread is not None:
             self._stderr_thread.join(timeout=0.05)
+
+    def _overall_deadline(self) -> float:
+        assert self._started_at is not None
+        maximum = self._configuration.budget.max_wallclock_seconds
+        assert maximum is not None
+        return self._started_at + maximum
 
     def _child_failure(
         self, phase: str, *, fallback_code: str, fallback_message: str

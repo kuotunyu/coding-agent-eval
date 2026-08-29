@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -74,7 +75,23 @@ else:
         identity["name"] = "other"
     send(initialize["id"], "initialized", {"agent": identity})
 
-if mode == "hang_before_read":
+if mode == "late_response":
+    step = receive()
+    with open(evidence + ".late", "w", encoding="utf-8") as stream:
+        stream.write("response is now late")
+    send(step["id"], "step", {"kind": "stop", "reason": "completed"})
+elif mode == "hang_after_large_second":
+    step = receive()
+    send(step["id"], "step", {
+        "kind": "tool_call",
+        "tool_name": "list_directory",
+        "arguments": {"path": "."},
+    })
+    receive()
+    with open(evidence + ".waiting", "w", encoding="utf-8") as stream:
+        stream.write("both deadlines are now expired")
+    time.sleep(60)
+elif mode == "hang_before_read":
     time.sleep(60)
 elif mode in {"hang", "step_timeout"}:
     receive()
@@ -155,6 +172,7 @@ def adapter_for(
     step_timeout: float = 1.0,
     shutdown_grace: float = 0.05,
     max_message_bytes: int = 4096,
+    clock: Callable[[], float] = time.monotonic,
 ) -> StdioAgentAdapter:
     script = tmp_path / f"child-{mode}.py"
     script.write_text(CHILD, encoding="utf-8")
@@ -172,12 +190,20 @@ def adapter_for(
         max_message_bytes=max_message_bytes,
         _preflight_environ=os.environ,
     )
-    return StdioAgentAdapter(config, instructions="Review the supplied tree.")
+    return StdioAgentAdapter(
+        config,
+        instructions="Review the supplied tree.",
+        clock=clock,
+    )
 
 
 def evidence_for(tmp_path: Path, mode: str) -> list[dict[str, Any]]:
     path = tmp_path / f"evidence-{mode}.jsonl"
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def marker_clock(marker: Path, *, late_value: float) -> Callable[[], float]:
+    return lambda: late_value if marker.exists() else 0.0
 
 
 def test_one_process_handles_multiple_dynamic_tool_steps(tmp_path: Path) -> None:
@@ -240,6 +266,49 @@ def test_overall_deadline_bounds_a_blocked_stdin_write(tmp_path: Path) -> None:
 
     assert time.monotonic() - started < 2.0
     assert adapter.poll() is not None
+
+
+def test_response_received_after_step_deadline_is_never_accepted(tmp_path: Path) -> None:
+    marker = tmp_path / "evidence-late_response.jsonl.late"
+    adapter = adapter_for(
+        tmp_path,
+        "late_response",
+        wallclock=5.0,
+        step_timeout=1.0,
+        clock=marker_clock(marker, late_value=2.0),
+    )
+    try:
+        with pytest.raises(AdapterFailure) as error:
+            adapter.next_step(tools=ALL_TOOLS, transcript=[])
+        assert not isinstance(error.value, AdapterWallclockExceeded)
+        assert error.value.as_dict() == {"code": "step_timeout", "phase": "step"}
+    finally:
+        adapter.close()
+
+
+def test_earlier_step_deadline_wins_when_both_are_expired(tmp_path: Path) -> None:
+    marker = tmp_path / "evidence-hang_after_large_second.jsonl.waiting"
+    adapter = adapter_for(
+        tmp_path,
+        "hang_after_large_second",
+        wallclock=0.5,
+        step_timeout=0.3,
+        max_message_bytes=200_000,
+        clock=marker_clock(marker, late_value=1.0),
+    )
+    huge_tools = ({"name": "x", "description": "x" * 100_000},)
+    try:
+        first = adapter.next_step(tools=ALL_TOOLS, transcript=[])
+        assert first.invocation and first.invocation.tool_name == "list_directory"
+        with pytest.raises(AdapterFailure) as error:
+            adapter.next_step(
+                tools=huge_tools,
+                transcript=[observation("list_directory")],
+            )
+        assert not isinstance(error.value, AdapterWallclockExceeded)
+        assert error.value.as_dict() == {"code": "step_timeout", "phase": "step"}
+    finally:
+        adapter.close()
 
 
 def test_non_adapter_termination_payload_is_unchanged(tmp_path: Path) -> None:
