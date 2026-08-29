@@ -132,6 +132,23 @@ def test_sanitizer_keeps_interface_capacity_but_drops_provider_bodies(
     assert call["tools_offered"] == []
 
 
+def test_sanitizer_drops_private_adapter_failure_evidence(tmp_path: Path) -> None:
+    raw = clean_events()
+    raw[-1]["payload"].update(
+        provider_error={},
+        provider_error_message="",
+        adapter_error={"code": "child_exit", "phase": "step"},
+        adapter_error_message="PRIVATE_RESPONSE PRIVATE_STDERR PRIVATE_MESSAGE",
+    )
+    output = tmp_path / "trace.jsonl"
+    sanitize_events(raw, output)
+
+    text = output.read_text(encoding="utf-8")
+    assert "PRIVATE" not in text
+    termination = json.loads(text.splitlines()[-1])["payload"]
+    assert termination["adapter_error"] == {"code": "child_exit", "phase": "step"}
+
+
 # ------------------------------------------------------------- happy path
 
 

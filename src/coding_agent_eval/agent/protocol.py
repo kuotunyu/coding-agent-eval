@@ -19,6 +19,41 @@ from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
 
+class AdapterFailure(RuntimeError):
+    """Typed external-adapter evidence with a public structural projection."""
+
+    def __init__(
+        self,
+        code: str,
+        phase: str,
+        message: str,
+        *,
+        detail: dict[str, Any] | None = None,
+        trace: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.phase = phase
+        self.message = message
+        self.detail = {} if detail is None else dict(detail)
+        self.trace = {} if trace is None else dict(trace)
+
+    def as_dict(self) -> dict[str, str]:
+        """Return only stable, content-free fields safe for a public trace."""
+        return {"code": self.code, "phase": self.phase}
+
+    @property
+    def private_message(self) -> str:
+        """Return owner-only diagnostic text, including bounded private detail."""
+        if not self.detail:
+            return self.message
+        return f"{self.message}; detail={self.detail!r}"
+
+
+class AdapterWallclockExceeded(AdapterFailure):
+    """The host-owned overall process deadline expired."""
+
+
 class TerminationReason(StrEnum):
     """Why a run stopped. Spec §13.1.
 

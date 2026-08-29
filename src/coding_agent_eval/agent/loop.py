@@ -24,6 +24,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from coding_agent_eval.agent.protocol import (
+    AdapterFailure,
+    AdapterWallclockExceeded,
     AgentAdapter,
     Budget,
     Observation,
@@ -216,6 +218,7 @@ def run_agent(
     reason: TerminationReason | None = None
     #: Populated only by a provider failure, so an operator can act on it.
     failure: dict[str, Any] = {}
+    adapter_failure: AdapterFailure | None = None
 
     def elapsed_ms() -> int:
         return int((clock() - started) * 1000)
@@ -240,6 +243,18 @@ def run_agent(
 
         try:
             step = adapter.next_step(tools=interface.tools, transcript=transcript)
+        except AdapterWallclockExceeded:
+            reason = TerminationReason.BUDGET_EXHAUSTED_WALLCLOCK
+            break
+        except AdapterFailure as exc:
+            adapter_failure = exc
+            if exc.trace:
+                recorder.emit(
+                    "llm_call",
+                    {**exc.trace, **interface.trace_payload(), "usage": {}},
+                )
+            reason = TerminationReason.ADAPTER_ERROR
+            break
         except Exception:
             # The adapter itself failed. That is not the model's result and not
             # the harness's, so it is neither scored nor blamed on the tools.
@@ -337,6 +352,14 @@ def run_agent(
             # the request back and the request carries the tree the agent read.
             "provider_error": {k: v for k, v in failure.items() if k != "message"},
             "provider_error_message": failure.get("message", ""),
+            **(
+                {}
+                if adapter_failure is None
+                else {
+                    "adapter_error": adapter_failure.as_dict(),
+                    "adapter_error_message": adapter_failure.private_message,
+                }
+            ),
         },
     )
 

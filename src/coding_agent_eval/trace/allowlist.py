@@ -89,7 +89,16 @@ PUBLIC_FIELDS: dict[str, frozenset[str]] = {
     # `provider_error` carries the provider's own structural classification of a
     # failure — exception type, HTTP status, error type, code, param. None of it
     # is content, and without it a failed run cannot be acted on at all.
-    "termination": frozenset({"reason", "steps", "tool_calls", "wall_clock_ms", "provider_error"}),
+    "termination": frozenset(
+        {
+            "reason",
+            "steps",
+            "tool_calls",
+            "wall_clock_ms",
+            "provider_error",
+            "adapter_error",
+        }
+    ),
     "cost": frozenset(
         {
             "estimated_cost_usd",
@@ -114,7 +123,7 @@ KNOWN_PRIVATE_FIELDS: dict[str, frozenset[str]] = {
     # The provider's free text. Useful to the operator, and a provider may quote
     # the request back — which here would be source code the agent had read — so
     # it stays out of the projection and is written to the run directory instead.
-    "termination": frozenset({"final_message", "provider_error_message"}),
+    "termination": frozenset({"final_message", "provider_error_message", "adapter_error_message"}),
     "cost": frozenset({"provider_raw_usage"}),
 }
 

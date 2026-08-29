@@ -153,6 +153,32 @@ def test_interface_capacity_is_public_and_provider_bodies_stay_private() -> None
     assert public["payload"] == safe
 
 
+def test_adapter_failure_publishes_only_structural_codes() -> None:
+    public = project_record(
+        record(
+            "termination",
+            {
+                "reason": "adapter_error",
+                "steps": 0,
+                "tool_calls": 0,
+                "wall_clock_ms": 12,
+                "provider_error": {},
+                "provider_error_message": "",
+                "adapter_error": {"code": "invalid_json", "phase": "step"},
+                "adapter_error_message": (
+                    "PRIVATE_RAW_RESPONSE PRIVATE_STDERR PRIVATE_OPERATOR_MESSAGE"
+                ),
+            },
+        )
+    )
+    assert public["payload"]["adapter_error"] == {
+        "code": "invalid_json",
+        "phase": "step",
+    }
+    assert "adapter_error_message" not in public["payload"]
+    assert "PRIVATE" not in str(public)
+
+
 def test_an_unknown_field_makes_the_projection_raise() -> None:
     """E3 turns this into a fail-closed rejection of the whole artifact."""
     with pytest.raises(UnknownFieldError):
