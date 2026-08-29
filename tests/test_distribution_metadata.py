@@ -83,3 +83,20 @@ def test_external_agent_documentation_preserves_the_trust_boundary(repo_root: Pa
         assert "host_unsandboxed" in document
         assert "agent_reported_unverified" in document
     assert "--isolate does not sandbox the external process" in threat_model
+
+
+def test_external_agent_operator_docs_preserve_run_and_review_boundaries(repo_root: Path) -> None:
+    readme = " ".join((repo_root / "README.md").read_text(encoding="utf-8").split())
+    manual = " ".join(
+        (repo_root / "docs" / "MANUAL_RUN.md").read_text(encoding="utf-8").split()
+    )
+
+    assert "Resolve-Path 'examples/external_agents/scripted_agent.py'" in readme
+    assert "不是 model benchmark 結果" in readme
+    assert "operator-declared identity" in manual
+    assert "run.json`、`trace.jsonl` 與 `findings.json`" in manual
+    assert "owner-only `.run-store/`" in manual
+    assert "blinded primary、independent" in manual
+    assert "only the directly launched child" in manual
+    assert "does not manage detached descendants" in manual
+    assert "must not daemonize or leave helper processes behind" in manual

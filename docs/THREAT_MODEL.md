@@ -306,6 +306,13 @@ the digest itself is a manual, online step.
 The seeded bugs are novel and privately authored as of `2026-08-05`. Once published they may
 enter future training data, and the property weakens with time and exposure.
 
+### 10. External process cleanup does not own descendants
+
+The stdio adapter closes, escalates, and reaps only the directly launched child process. It
+does not create or manage a process group, Windows Job Object, or detached descendants. An
+operator-trusted external agent must not daemonize or leave helper processes behind; the
+harness does not guarantee those descendants stop when `cae run` ends.
+
 ---
 
 ## What this does not defend against

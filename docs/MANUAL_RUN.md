@@ -45,9 +45,10 @@ README 的絕對路徑 PowerShell 範例執行隨 repository 附帶的 determini
 - `--agent-name`、`--agent-version` 與 `--agent-model` 是 operator-declared identity；程序在
   handshake 必須精確回傳，但這不是 remote attestation。公開組態標示
   `host_unsandboxed`，usage 標示 `agent_reported_unverified`。
-- 子程序以新建空 cwd 與 allowlisted environment 啟動。正常停止時 harness 關閉 stdin
-  並等待有界 grace period；timeout 或異常時會 terminate／kill 並 reap。不可有子程序
-  在 `cae run` 後存活。
+- 直接啟動的子程序以新建空 cwd 與 allowlisted environment 執行。 The harness closes,
+  escalates, and reaps only the directly launched child. It does not manage detached
+  descendants, so an operator-trusted agent must not daemonize or leave helper processes
+  behind.
 - 公開 output directory 只產生 `run.json`、`trace.jsonl` 與 `findings.json`；完整
   request／response 與 tool output 留在 owner-only `.run-store/`。Command、environment names／values、
   raw protocol bodies 與 stderr 不得進入公開 files。
