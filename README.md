@@ -121,6 +121,13 @@ benchmark 結果，也不支持準確率或排名宣稱。外部程序由 operat
 token／cost 上限。完整操作與威脅邊界見 [Manual Run](docs/MANUAL_RUN.md) 與
 [Threat Model](docs/THREAT_MODEL.md)。
 
+1.0.0 host messages are one closed shape: `initialize.payload` contains exactly
+`instructions` and the closed `capabilities` object (`incremental_observations`,
+`one_tool_call_per_step`, and `host_executes_tools`, all `true`). Each later request has
+`type: "next_step"`; its closed payload contains `tools` plus `observation`, which is `null`
+for the first decision and exactly one newly appended `{tool_name, content, is_error}` object
+after a tool call. The protocol does not define `next-step` or a plural `observations` array.
+
 ### 3. 脫敏公開 Trace 產生
 
 從現有未追蹤的原始運行紀錄中匯出安全公開 Trace：

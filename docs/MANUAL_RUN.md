@@ -40,6 +40,11 @@ README 的絕對路徑 PowerShell 範例執行隨 repository 附帶的 determini
 
 - stdout 只能是 UTF-8 `cae-agent-stdio` 1.0.0 JSONL protocol；diagnostics 寫至 stderr。
   Harness 會持續排空 stderr，但只保留有界 owner-only tail，不將原文放入公開證據。
+- Host envelopes and payloads are closed. `initialize.payload` has exactly `instructions`
+  and capabilities `incremental_observations: true`, `one_tool_call_per_step: true`, and
+  `host_executes_tools: true`. Decision requests use `type: "next_step"` with closed `tools`
+  and `observation` fields; `observation` is `null` first and then exactly one newly appended
+  `{tool_name, content, is_error}` object. `next-step` and plural `observations` are not 1.0.0.
 - 同時只有一個 request；協定不 retry、restart、pipeline 或進行 version negotiation。
   Failure 是證據，不得用後來較好的 run 覆寫。
 - `--agent-name`、`--agent-version` 與 `--agent-model` 是 operator-declared identity；程序在
@@ -52,6 +57,9 @@ README 的絕對路徑 PowerShell 範例執行隨 repository 附帶的 determini
 - 公開 output directory 只產生 `run.json`、`trace.jsonl` 與 `findings.json`；完整
   request／response 與 tool output 留在 owner-only `.run-store/`。Command、environment names／values、
   raw protocol bodies 與 stderr 不得進入公開 files。
+- Failed attempted exchanges retain the full intended request and any response/stderr only in
+  `.run-store/`. Public `llm_call` evidence keeps the request hash, offered interface, and
+  `request_write: complete | partial`, so timeout/EOF/exit/broken-pipe runs remain auditable.
 
 成功的協定交換或 candidate finding 都不會產生 `verified_*` 結論。如果有 candidate
 pairs，仍必須依本文第 9 節的 blinded primary、independent 與必要的 resolver human

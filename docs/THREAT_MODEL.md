@@ -55,6 +55,12 @@ the harness cannot independently observe model calls made inside the child. The 
 must enforce upstream spend controls. These limitations apply even when the child completes
 the `cae-agent-stdio` handshake successfully.
 
+Protocol 1.0.0 closes every host envelope and payload. Initialization declares the three true
+host capabilities; subsequent `next_step` requests expose only the capacity-aware tool list and
+`null` or one incremental observation. Failed attempted requests remain owner-auditable while
+public evidence discloses only the request hash, complete/partial write state, and safe offered
+interface metadata.
+
 ### The boundary that matters most
 
 **The agent must never see the answers.** Three mechanisms, none of which trusts the others:

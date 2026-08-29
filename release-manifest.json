@@ -17,9 +17,9 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 9844,
+      "bytes": 10376,
       "path": "README.md",
-      "sha256": "dd2e32818e88b0619f4924905807472927e3188f57816c6ee5635a866c66651b"
+      "sha256": "8a9c65aaed759510122a7934df5985c9f3d5ea9d2cfabf1785f3099d7907e795"
     },
     {
       "bytes": 12975,
@@ -32,9 +32,9 @@
       "sha256": "05552cb749ee7fc7d5fe594c2f5d93deeac4c40e16b7c12a79bee3761a2ebebb"
     },
     {
-      "bytes": 10521,
+      "bytes": 11262,
       "path": "docs/MANUAL_RUN.md",
-      "sha256": "5a5ba6e700147de6e8c8dee213d1cad69c5a5e1c076e783b3f4628badef1fa97"
+      "sha256": "58267b17d7a0d5e297c221d10a2dfa26e1ad4ded667d8c7eca2c9345f033c8c7"
     },
     {
       "bytes": 10936,
@@ -57,9 +57,9 @@
       "sha256": "0c76600fb63ab93312794b7cf5d6f8888e893a5a1c982081a5d844a70bbef28e"
     },
     {
-      "bytes": 19666,
+      "bytes": 20067,
       "path": "docs/THREAT_MODEL.md",
-      "sha256": "39aca5800a00156d0fc7fcf6d98d8b0b28218a83cc4cbddf31262a8b1861d5b0"
+      "sha256": "cb7909cf6004f3fd858b30a50f751299fda7c9112de51067e518913779d2bbdd"
     },
     {
       "bytes": 2833,
@@ -907,9 +907,9 @@
       "sha256": "dec1bd5071c5652cb4778cb53f612fc7c35b6578408d071866104f5daf97a3c5"
     },
     {
-      "bytes": 3957,
+      "bytes": 5765,
       "path": "schemas/agent-stdio-message.schema.json",
-      "sha256": "6b8be9ad4bd2a134d9547d9ce8a86e1598dff0180f4c133980f4a71b4a1981ab"
+      "sha256": "9307afdcece756e8cfcbf8d0ba6d964f25fe8c97344ea22839b4a43776dd687e"
     },
     {
       "bytes": 8762,
