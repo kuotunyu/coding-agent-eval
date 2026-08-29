@@ -292,3 +292,49 @@ worksheet, human ruling, or `verified_*` metric was produced.
 
 Attempt 6's paid authorization is consumed. Recorded estimates across all six retained paid
 attempts total USD 0.091930 across their respective versioned price tables.
+
+## Frozen remediation validation -- attempt 7 (authorization pending)
+
+Attempt 7 is a finite remediation validation, not another budget-tuning retry. Adapter
+0.5.0 synchronizes the model-facing tool interface with remaining executable capacity,
+reserves the final executable slot for `write_findings`, and exposes no tools during the
+final-response phase. This request-time behavior differs from adapter 0.4.0 and therefore
+uses a new adapter identity. Prompt 0.3.0 explains the phased interface; redaction manifest
+0.2.0 publishes only the numeric capacity, phase, and first-party tool names added to each
+`llm_call`. Trace schema remains 0.2.0, and attempts 1--6 are not rewritten or backfilled.
+
+The exact run identity is frozen as follows:
+
+| Field | Frozen value |
+|---|---|
+| Provider / model / reasoning | OpenAI Responses / `gpt-5.6-luna` / `low` |
+| Adapter / prompt | `openai-responses@0.5.0` / `0.3.0` |
+| Trace / redaction | trace `0.2.0` / redaction manifest `0.2.0` |
+| Fixture | `fx-taskq-py` 1.0.6 |
+| OCI image | `ghcr.io/kuotunyu/coding-agent-eval-fx-taskq-py@sha256:fc4e636299244b23a04a57f02cba1ed84b2cd4919cdc248eb7cb9a495bc75fc3` |
+| OCI config digest | `sha256:301061b7b9ad08a26f2ba5eb280e25702d5afd8d960356dfe1948417734fca07` |
+| Environment fingerprint | `sha256:d8beb4db04503ae26493647d2d81895e81731daf67994f1cdae3653b09ebfc91` |
+| Conversation state | manual replay, Responses `store: false`, no `previous_response_id` |
+| Output limit | 1,024 tokens per provider request |
+| Per-run stops | 120,000 aggregate tokens / 12 executable tool calls / 300 seconds / USD 0.035 estimated cost |
+| Provider-side maximum | USD 0.05 per run; USD 0.10 total only if both conditional runs become eligible |
+| Retry | none |
+
+The frozen sequence is:
+
+1. Run `fx-taskq-py/clean` exactly once.
+2. Only if clean terminates `completed` with zero candidate findings, run only
+   `fx-taskq-py/B-001` exactly once.
+3. Do not run the other seven mutations, a fallback mutation, a changed task, or a rerun.
+4. Any failed gate retains its complete owner-only raw evidence and sanitized public
+   evidence, then stops the sequence.
+
+B-001 was selected in this plan before observing attempt-7 model output. Its automated gate
+requires `completed` and at least one successful `write_findings` tool result. A submitted
+candidate is not a verified detection. If candidates exist, automation may generate blinded
+worksheets and private ignored key maps, but only distinct eligible humans may act as primary
+reviewer, independent reviewer, and disagreement resolver under the existing contract.
+
+Attempt 7 has no inherited authorization from attempts 1--6. No credential may be consulted
+and no provider request may be made until implementation, secret-free offline verification,
+and an explicit new paid-run approval are complete.
