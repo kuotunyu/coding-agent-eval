@@ -461,9 +461,7 @@ def test_any_write_findings_attempt_forces_tool_free_finalization(
 def test_a_registered_tool_withheld_by_the_phase_is_never_executed(
     context: ToolContext,
 ) -> None:
-    adapter = ScriptedSteps(
-        [Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"}))]
-    )
+    adapter = ScriptedSteps([Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"}))])
     result = run_agent(adapter, context=context, budget=Budget(max_tool_calls=1))
     assert adapter.tool_names_by_step == [("write_findings",)]
     assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
