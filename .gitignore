@@ -31,6 +31,7 @@ node_modules/
 *.keymap.json
 
 # --- Local agent workflow and maintainer notes ---
+.worktrees/
 .agents/
 .claude/
 .codex/
