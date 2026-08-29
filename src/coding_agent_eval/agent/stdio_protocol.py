@@ -83,7 +83,7 @@ def _decode(line: bytes) -> dict[str, Any]:
 
 def _encode(
     request_id: int,
-    message_type: Literal["initialize", "next-step"],
+    message_type: Literal["initialize", "next_step"],
     payload: dict[str, Any],
 ) -> bytes:
     message = {
@@ -107,8 +107,8 @@ def encode_initialize(request_id: int, payload: dict[str, Any]) -> bytes:
 
 
 def encode_next_step(request_id: int, payload: dict[str, Any]) -> bytes:
-    """Encode one host-to-child next-step request."""
-    return _encode(request_id, "next-step", payload)
+    """Encode one host-to-child next_step request."""
+    return _encode(request_id, "next_step", payload)
 
 
 def decode_initialized(
@@ -135,7 +135,7 @@ def decode_initialized(
 
 
 def decode_step(line: bytes, *, request_id: int) -> StepMessage:
-    """Decode one child decision after the host has issued ``next-step``."""
+    """Decode one child decision after the host has issued ``next_step``."""
     message = _decode(line)
     if message["type"] != "step":
         raise _schema_error("expected a step message")

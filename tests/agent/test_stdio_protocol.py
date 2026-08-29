@@ -43,12 +43,59 @@ def step_wire(request_id: int, payload: dict[str, Any]) -> bytes:
 
 def test_encoders_emit_canonical_lf_terminated_messages() -> None:
     """Changing envelope construction or JSON formatting must break this wire contract."""
-    assert encode_initialize(0, {}) == (
-        b'{"id":0,"payload":{},"protocol":"cae-agent-stdio","type":"initialize","version":"1.0.0"}\n'
+    assert encode_initialize(
+        0,
+        {
+            "instructions": "Review the supplied tree.",
+            "capabilities": {
+                "incremental_observations": True,
+                "one_tool_call_per_step": True,
+                "host_executes_tools": True,
+            },
+        },
+    ) == (
+        b'{"id":0,"payload":{"capabilities":{"host_executes_tools":true,'
+        b'"incremental_observations":true,"one_tool_call_per_step":true},'
+        b'"instructions":"Review the supplied tree."},"protocol":"cae-agent-stdio",'
+        b'"type":"initialize","version":"1.0.0"}\n'
     )
-    assert encode_next_step(1, {}) == (
-        b'{"id":1,"payload":{},"protocol":"cae-agent-stdio","type":"next-step","version":"1.0.0"}\n'
+    assert encode_next_step(
+        1,
+        {
+            "tools": [],
+            "observation": None,
+        },
+    ) == (
+        b'{"id":1,"payload":{"observation":null,"tools":[]},'
+        b'"protocol":"cae-agent-stdio","type":"next_step","version":"1.0.0"}\n'
     )
+
+
+@pytest.mark.parametrize(
+    ("encode", "payload"),
+    [
+        (
+            encode_initialize,
+            {
+                "instructions": "Review.",
+                "capabilities": {
+                    "incremental_observations": True,
+                    "one_tool_call_per_step": True,
+                    "host_executes_tools": True,
+                    "unknown": True,
+                },
+            },
+        ),
+        (encode_next_step, {"tools": [], "observation": None, "unknown": True}),
+    ],
+)
+def test_host_payloads_reject_unknown_fields(
+    encode: Any,
+    payload: dict[str, Any],
+) -> None:
+    """Permissive host payloads would make independently implemented children diverge."""
+    with pytest.raises(StdioProtocolError, match="schema"):
+        encode(0, payload)
 
 
 def test_initialized_decodes_matching_operator_identity() -> None:

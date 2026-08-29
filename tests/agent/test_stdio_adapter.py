@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+import coding_agent_eval.agent.stdio_adapter as stdio_adapter_module
 from coding_agent_eval.agent.loop import run_agent
 from coding_agent_eval.agent.protocol import (
     AdapterFailure,
@@ -158,6 +159,117 @@ if mode == "normal":
 ALL_TOOLS = tuple(model_schemas())
 WRITE_ONLY = tuple(tool for tool in ALL_TOOLS if tool["name"] == "write_findings")
 
+STRICT_CONTRACT_CHILD = r"""
+import json
+import sys
+
+EXPECTED_CAPABILITIES = {
+    "incremental_observations": True,
+    "one_tool_call_per_step": True,
+    "host_executes_tools": True,
+}
+
+def receive():
+    message = json.loads(sys.stdin.readline())
+    assert set(message) == {"protocol", "version", "id", "type", "payload"}
+    assert message["protocol"] == "cae-agent-stdio"
+    assert message["version"] == "1.0.0"
+    return message
+
+def send(request_id, message_type, payload):
+    message = {
+        "protocol": "cae-agent-stdio",
+        "version": "1.0.0",
+        "id": request_id,
+        "type": message_type,
+        "payload": payload,
+    }
+    print(json.dumps(message, separators=(",", ":")), flush=True)
+
+initialize = receive()
+assert initialize["type"] == "initialize"
+assert set(initialize["payload"]) == {"instructions", "capabilities"}
+assert initialize["payload"]["capabilities"] == EXPECTED_CAPABILITIES
+send(initialize["id"], "initialized", {
+    "agent": {"name": "external", "version": "2.3", "model": "script"}
+})
+
+step = receive()
+assert step["type"] == "next_step"
+assert set(step["payload"]) == {"tools", "observation"}
+assert step["payload"]["observation"] is None
+send(step["id"], "step", {"kind": "stop", "reason": "completed"})
+"""
+
+
+class CloseInterruptedReader:
+    """A pipe proxy that deterministically wakes a blocked read by raising on close."""
+
+    def __init__(self, delegate: Any, operation: str) -> None:
+        self._delegate = delegate
+        self._operation = operation
+        self.entered = threading.Event()
+        self.closed = threading.Event()
+
+    def readline(self, _limit: int = -1) -> bytes:
+        assert self._operation == "readline"
+        self.entered.set()
+        assert self.closed.wait(timeout=2.0)
+        raise OSError(9, "deterministic close interruption")
+
+    def read(self, _size: int = -1) -> bytes:
+        assert self._operation == "read"
+        self.entered.set()
+        assert self.closed.wait(timeout=2.0)
+        raise ValueError("deterministic close interruption")
+
+    def close(self) -> None:
+        self.closed.set()
+        self._delegate.close()
+
+
+class UnexpectedReaderFailure:
+    """A pipe proxy that injects a read failure while the adapter is running."""
+
+    def __init__(self, delegate: Any, operation: str) -> None:
+        self._delegate = delegate
+        self._operation = operation
+
+    def readline(self, _limit: int = -1) -> bytes:
+        assert self._operation == "readline"
+        raise OSError(5, "deterministic unexpected reader failure")
+
+    def read(self, _size: int = -1) -> bytes:
+        assert self._operation == "read"
+        raise ValueError("deterministic unexpected reader failure")
+
+    def close(self) -> None:
+        self._delegate.close()
+
+
+def patch_process_reader(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    stream_name: str,
+    wrapper_type: type[CloseInterruptedReader] | type[UnexpectedReaderFailure],
+) -> list[Any]:
+    """Wrap one real child pipe while retaining the real subprocess boundary."""
+    real_popen = stdio_adapter_module.subprocess.Popen
+    wrapped: list[Any] = []
+
+    def open_process(*args: Any, **kwargs: Any) -> Any:
+        process = real_popen(*args, **kwargs)
+        delegate = getattr(process, stream_name)
+        assert delegate is not None
+        operation = "readline" if stream_name == "stdout" else "read"
+        proxy = wrapper_type(delegate, operation)
+        setattr(process, stream_name, proxy)
+        wrapped.append(proxy)
+        return process
+
+    monkeypatch.setattr(stdio_adapter_module.subprocess, "Popen", open_process)
+    return wrapped
+
 
 def observation(tool_name: str) -> Observation:
     return Observation(tool_name=tool_name, content="result", is_error=False)
@@ -215,14 +327,51 @@ def test_one_process_handles_multiple_dynamic_tool_steps(tmp_path: Path) -> None
         assert second.invocation and second.invocation.tool_name == "write_findings"
         assert adapter.observed_child_pids == {adapter.child_pid}
         requests = evidence_for(tmp_path, "normal")
-        assert requests[0]["message"]["payload"] == {"instructions": "Review the supplied tree."}
-        assert requests[1]["message"]["payload"]["observations"] == []
-        assert requests[2]["message"]["payload"]["observations"] == [
-            {"content": "result", "is_error": False, "tool_name": "list_directory"}
-        ]
+        assert requests[0]["message"]["payload"] == {
+            "instructions": "Review the supplied tree.",
+            "capabilities": {
+                "incremental_observations": True,
+                "one_tool_call_per_step": True,
+                "host_executes_tools": True,
+            },
+        }
+        assert requests[1]["message"]["type"] == "next_step"
+        assert requests[1]["message"]["payload"]["observation"] is None
+        assert requests[2]["message"]["payload"]["observation"] == {
+            "content": "result",
+            "is_error": False,
+            "tool_name": "list_directory",
+        }
         assert requests[2]["message"]["payload"]["tools"] == list(WRITE_ONLY)
     finally:
         adapter.close()
+
+
+def test_independently_written_strict_child_accepts_the_shipped_host_contract(
+    tmp_path: Path,
+) -> None:
+    """A child derived from the approved design must interoperate without shared helpers."""
+    script = tmp_path / "strict-contract-child.py"
+    script.write_text(STRICT_CONTRACT_CHILD, encoding="utf-8")
+    configuration = StdioRunConfiguration(
+        command=(sys.executable, str(script)),
+        inherited_environment=(),
+        agent_name="external",
+        agent_version="2.3",
+        agent_model="script",
+        budget=Budget(max_tool_calls=1, max_wallclock_seconds=5.0),
+        startup_timeout_seconds=1.0,
+        step_timeout_seconds=1.0,
+        shutdown_grace_seconds=0.1,
+        _preflight_environ=os.environ,
+    )
+    adapter = StdioAgentAdapter(configuration, instructions="Review the supplied tree.")
+    try:
+        step = adapter.next_step(tools=ALL_TOOLS, transcript=[])
+    finally:
+        adapter.close()
+
+    assert step.stop is TerminationReason.COMPLETED
 
 
 def test_wrong_response_id_becomes_adapter_error_evidence(tmp_path: Path) -> None:
@@ -258,7 +407,7 @@ def test_overall_deadline_bounds_a_blocked_stdin_write(tmp_path: Path) -> None:
         step_timeout=5.0,
         max_message_bytes=200_000,
     )
-    huge_tools = ({"name": "x", "description": "x" * 100_000},)
+    huge_tools = ({"name": "x", "description": "x" * 100_000, "parameters": {}},)
     started = time.monotonic()
     with pytest.raises(AdapterWallclockExceeded):
         adapter.next_step(tools=huge_tools, transcript=[])
@@ -296,7 +445,7 @@ def test_earlier_step_deadline_wins_when_both_are_expired(tmp_path: Path) -> Non
         max_message_bytes=200_000,
         clock=marker_clock(marker, late_value=1.0),
     )
-    huge_tools = ({"name": "x", "description": "x" * 100_000},)
+    huge_tools = ({"name": "x", "description": "x" * 100_000, "parameters": {}},)
     try:
         first = adapter.next_step(tools=ALL_TOOLS, transcript=[])
         assert first.invocation and first.invocation.tool_name == "list_directory"
@@ -383,7 +532,7 @@ def test_startup_timeout_has_a_distinct_structural_code(tmp_path: Path) -> None:
 
 def test_configured_message_cap_rejects_an_oversize_outbound_request(tmp_path: Path) -> None:
     adapter = adapter_for(tmp_path, max_message_bytes=1024)
-    oversize_tools = ({"name": "x", "description": "x" * 2000},)
+    oversize_tools = ({"name": "x", "description": "x" * 2000, "parameters": {}},)
     try:
         with pytest.raises(AdapterFailure) as error:
             adapter.next_step(tools=oversize_tools, transcript=[])
@@ -402,6 +551,57 @@ def test_oversize_response_cleanup_leaves_no_worker_thread(tmp_path: Path) -> No
 
     leaked = [thread for thread in threading.enumerate() if thread not in original_threads]
     assert leaked == []
+
+
+@pytest.mark.parametrize("stream_name", ["stdout", "stderr"])
+@pytest.mark.filterwarnings("error::pytest.PytestUnhandledThreadExceptionWarning")
+def test_close_swallows_only_expected_blocked_reader_interruptions(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    stream_name: str,
+) -> None:
+    """Closing a blocked real-process drainer must not escape through threading.excepthook."""
+    wrapped = patch_process_reader(
+        monkeypatch,
+        stream_name=stream_name,
+        wrapper_type=CloseInterruptedReader,
+    )
+    adapter = adapter_for(tmp_path, "hang_handshake", shutdown_grace=0.02)
+    adapter._start()
+    assert len(wrapped) == 1
+    assert wrapped[0].entered.wait(timeout=1.0)
+
+    adapter.close()
+
+    assert wrapped[0].closed.is_set()
+    assert adapter.poll() is not None
+
+
+@pytest.mark.parametrize(
+    ("stream_name", "expected_code"),
+    [("stdout", "stdout_reader_failed"), ("stderr", "stderr_reader_failed")],
+)
+@pytest.mark.filterwarnings("error::pytest.PytestUnhandledThreadExceptionWarning")
+def test_unexpected_reader_failure_is_returned_to_the_exchange(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    stream_name: str,
+    expected_code: str,
+) -> None:
+    """A crashed drainer is an adapter failure, not a misleading response timeout."""
+    patch_process_reader(
+        monkeypatch,
+        stream_name=stream_name,
+        wrapper_type=UnexpectedReaderFailure,
+    )
+    adapter = adapter_for(tmp_path, "hang_handshake", startup_timeout=1.0)
+    try:
+        with pytest.raises(AdapterFailure) as error:
+            adapter.next_step(tools=ALL_TOOLS, transcript=[])
+        assert error.value.as_dict() == {"code": expected_code, "phase": "initialize"}
+        assert "deterministic unexpected reader failure" in error.value.private_message
+    finally:
+        adapter.close()
 
 
 def test_stderr_is_bounded_and_remains_private(tmp_path: Path) -> None:
@@ -424,6 +624,24 @@ def test_transcript_must_only_append(tmp_path: Path) -> None:
         with pytest.raises(AdapterFailure) as error:
             adapter.next_step(tools=ALL_TOOLS, transcript=[])
         assert error.value.as_dict() == {"code": "transcript_not_append_only", "phase": "step"}
+    finally:
+        adapter.close()
+
+
+def test_transcript_must_append_at_most_one_observation_per_step(tmp_path: Path) -> None:
+    """Batching observations would violate the incremental protocol 1.0.0 contract."""
+    adapter = adapter_for(tmp_path)
+    try:
+        adapter.next_step(tools=ALL_TOOLS, transcript=[])
+        with pytest.raises(AdapterFailure) as error:
+            adapter.next_step(
+                tools=ALL_TOOLS,
+                transcript=[observation("list_directory"), observation("read_file")],
+            )
+        assert error.value.as_dict() == {
+            "code": "transcript_not_incremental",
+            "phase": "step",
+        }
     finally:
         adapter.close()
 

@@ -34,6 +34,40 @@
       "required": ["name", "version", "model"],
       "additionalProperties": false
     },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "incremental_observations": {"const": true},
+        "one_tool_call_per_step": {"const": true},
+        "host_executes_tools": {"const": true}
+      },
+      "required": [
+        "incremental_observations",
+        "one_tool_call_per_step",
+        "host_executes_tools"
+      ],
+      "additionalProperties": false
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "description": {"type": "string"},
+        "parameters": {"type": "object"}
+      },
+      "required": ["name", "description", "parameters"],
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "properties": {
+        "tool_name": {"type": "string", "minLength": 1},
+        "content": {"type": "string"},
+        "is_error": {"type": "boolean"}
+      },
+      "required": ["tool_name", "content", "is_error"],
+      "additionalProperties": false
+    },
     "usage": {
       "type": "object",
       "properties": {
@@ -53,7 +87,15 @@
         {
           "properties": {
             "type": {"const": "initialize"},
-            "payload": {"type": "object"}
+            "payload": {
+              "type": "object",
+              "properties": {
+                "instructions": {"type": "string"},
+                "capabilities": {"$ref": "#/$defs/capabilities"}
+              },
+              "required": ["instructions", "capabilities"],
+              "additionalProperties": false
+            }
           }
         }
       ]
@@ -79,8 +121,24 @@
         {"$ref": "#/$defs/envelope"},
         {
           "properties": {
-            "type": {"const": "next-step"},
-            "payload": {"type": "object"}
+            "type": {"const": "next_step"},
+            "payload": {
+              "type": "object",
+              "properties": {
+                "tools": {
+                  "type": "array",
+                  "items": {"$ref": "#/$defs/tool"}
+                },
+                "observation": {
+                  "oneOf": [
+                    {"type": "null"},
+                    {"$ref": "#/$defs/observation"}
+                  ]
+                }
+              },
+              "required": ["tools", "observation"],
+              "additionalProperties": false
+            }
           }
         }
       ]

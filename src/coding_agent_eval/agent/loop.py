@@ -243,7 +243,12 @@ def run_agent(
 
         try:
             step = adapter.next_step(tools=interface.tools, transcript=transcript)
-        except AdapterWallclockExceeded:
+        except AdapterWallclockExceeded as exc:
+            if exc.trace:
+                recorder.emit(
+                    "llm_call",
+                    {**exc.trace, **interface.trace_payload(), "usage": {}},
+                )
             reason = TerminationReason.BUDGET_EXHAUSTED_WALLCLOCK
             break
         except AdapterFailure as exc:

@@ -12,8 +12,9 @@ import threading
 import time
 from collections.abc import Callable, Sequence
 from contextlib import suppress
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Literal, NoReturn
 
 from coding_agent_eval.agent.protocol import (
     AdapterFailure,
@@ -32,6 +33,42 @@ from coding_agent_eval.agent.stdio_protocol import (
 from coding_agent_eval.runconfig import StdioRunConfiguration
 
 _STDERR_TAIL_BYTES = 8192
+_CAPABILITIES = {
+    "incremental_observations": True,
+    "one_tool_call_per_step": True,
+    "host_executes_tools": True,
+}
+
+
+@dataclass(frozen=True)
+class _StdoutLine:
+    content: bytes
+    received_at: float
+
+
+@dataclass(frozen=True)
+class _ReaderFailure:
+    stream_name: str
+    exception: Exception
+
+
+@dataclass
+class _WriteProgress:
+    bytes_written: int = 0
+    complete: bool = False
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def add(self, count: int) -> None:
+        with self._lock:
+            self.bytes_written += count
+
+    def mark_complete(self) -> None:
+        with self._lock:
+            self.complete = True
+
+    def status(self) -> Literal["complete", "partial"]:
+        with self._lock:
+            return "complete" if self.complete else "partial"
 
 
 class StdioAgentAdapter:
@@ -55,7 +92,7 @@ class StdioAgentAdapter:
         self._transcript: tuple[Observation, ...] = ()
         self._started_at: float | None = None
         self._closed = False
-        self._stdout_lines: queue.Queue[tuple[bytes, float]] = queue.Queue(maxsize=1)
+        self._reader_events: queue.Queue[_StdoutLine | _ReaderFailure] = queue.Queue(maxsize=1)
         self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
         self._writer_threads: list[threading.Thread] = []
@@ -111,10 +148,16 @@ class StdioAgentAdapter:
         assert process.stdout is not None
         assert process.stderr is not None
         self._stdout_thread = threading.Thread(
-            target=self._drain_stdout, args=(process.stdout,), daemon=True
+            target=self._drain_stdout,
+            args=(process.stdout,),
+            daemon=True,
+            name="cae-stdio-stdout",
         )
         self._stderr_thread = threading.Thread(
-            target=self._drain_stderr, args=(process.stderr,), daemon=True
+            target=self._drain_stderr,
+            args=(process.stderr,),
+            daemon=True,
+            name="cae-stdio-stderr",
         )
         self._stdout_thread.start()
         self._stderr_thread.start()
@@ -122,27 +165,42 @@ class StdioAgentAdapter:
     def _drain_stdout(self, stream: BinaryIO) -> None:
         limit = self._configuration.max_message_bytes + 1
         while not self._reader_stop.is_set():
-            line = stream.readline(limit)
+            try:
+                line = stream.readline(limit)
+            except Exception as exc:
+                if self._reader_stop.is_set() and isinstance(exc, (OSError, ValueError)):
+                    return
+                self._publish_reader_event(_ReaderFailure("stdout", exc))
+                return
             received_at = self._clock()
-            while not self._reader_stop.is_set():
-                try:
-                    self._stdout_lines.put((line, received_at), timeout=0.05)
-                    break
-                except queue.Full:
-                    continue
+            self._publish_reader_event(_StdoutLine(line, received_at))
             if self._reader_stop.is_set():
                 return
             if not line:
                 return
 
     def _drain_stderr(self, stream: BinaryIO) -> None:
-        while True:
-            chunk = stream.read(4096)
+        while not self._reader_stop.is_set():
+            try:
+                chunk = stream.read(4096)
+            except Exception as exc:
+                if self._reader_stop.is_set() and isinstance(exc, (OSError, ValueError)):
+                    return
+                self._publish_reader_event(_ReaderFailure("stderr", exc))
+                return
             if not chunk:
                 return
             with self._stderr_lock:
                 self._stderr_tail.extend(chunk)
                 del self._stderr_tail[:-_STDERR_TAIL_BYTES]
+
+    def _publish_reader_event(self, event: _StdoutLine | _ReaderFailure) -> None:
+        while not self._reader_stop.is_set():
+            try:
+                self._reader_events.put(event, timeout=0.05)
+                return
+            except queue.Full:
+                continue
 
     def _stderr_detail(self) -> dict[str, str]:
         with self._stderr_lock:
@@ -176,9 +234,10 @@ class StdioAgentAdapter:
                 "wallclock_exceeded", phase, "external agent overall wallclock expired"
             )
         write_result: queue.Queue[BaseException | None] = queue.Queue(maxsize=1)
+        write_progress = _WriteProgress()
         writer = threading.Thread(
             target=self._write_request,
-            args=(self._process.stdin, request, write_result),
+            args=(self._process.stdin, request, write_result, write_progress),
             daemon=True,
             name="cae-stdio-writer",
         )
@@ -187,26 +246,91 @@ class StdioAgentAdapter:
         try:
             write_error = write_result.get(timeout=min(phase_timeout, remaining))
         except queue.Empty as exc:
-            self._raise_timeout(phase, phase_deadline, overall_deadline, exc)
+            self._raise_timeout(
+                request,
+                phase,
+                started,
+                phase_deadline,
+                overall_deadline,
+                write_progress,
+                exc,
+            )
         if write_error is not None:
             self._settle_reader_threads()
             raise self._child_failure(
-                phase, fallback_code="broken_pipe", fallback_message="child stdin closed"
+                request,
+                phase,
+                started,
+                write_progress,
+                fallback_code="broken_pipe",
+                fallback_message="child stdin closed",
             ) from write_error
         timeout = min(phase_deadline - self._clock(), self._remaining_wallclock())
         if timeout <= 0:
-            self._raise_timeout(phase, phase_deadline, overall_deadline, None)
+            self._raise_timeout(
+                request,
+                phase,
+                started,
+                phase_deadline,
+                overall_deadline,
+                write_progress,
+                None,
+            )
         try:
-            response, received_at = self._stdout_lines.get(timeout=timeout)
+            event = self._reader_events.get(timeout=timeout)
         except queue.Empty as exc:
-            self._raise_timeout(phase, phase_deadline, overall_deadline, exc)
+            self._raise_timeout(
+                request,
+                phase,
+                started,
+                phase_deadline,
+                overall_deadline,
+                write_progress,
+                exc,
+            )
+        if isinstance(event, _ReaderFailure):
+            latency = max(0.0, self._clock() - started)
+            failure = AdapterFailure(
+                f"{event.stream_name}_reader_failed",
+                phase,
+                f"external agent {event.stream_name} reader failed",
+                detail={
+                    **self._stderr_detail(),
+                    "exception": type(event.exception).__name__,
+                    "reader_error": str(event.exception),
+                },
+                trace=self._failure_trace(
+                    request,
+                    None,
+                    latency,
+                    f"{event.stream_name}_reader_failed",
+                    write_progress.status(),
+                ),
+            )
+            self.close()
+            raise failure from event.exception
+        response = event.content
+        received_at = event.received_at
         if received_at >= min(phase_deadline, overall_deadline):
-            self._raise_timeout(phase, phase_deadline, overall_deadline, None)
+            self._raise_timeout(
+                request,
+                phase,
+                started,
+                phase_deadline,
+                overall_deadline,
+                write_progress,
+                None,
+            )
         latency = received_at - started
         if not response:
             self._settle_reader_threads()
             raise self._child_failure(
-                phase, fallback_code="unexpected_eof", fallback_message="child stdout closed"
+                request,
+                phase,
+                started,
+                write_progress,
+                fallback_code="unexpected_eof",
+                fallback_message="child stdout closed",
             )
         if len(response) > self._configuration.max_message_bytes:
             raise AdapterFailure(
@@ -214,7 +338,13 @@ class StdioAgentAdapter:
                 phase,
                 "external agent response exceeds the configured byte limit",
                 detail={**self._stderr_detail(), "response": "<oversize>"},
-                trace=self._failure_trace(request, "<oversize>", latency, "message_too_large"),
+                trace=self._failure_trace(
+                    request,
+                    "<oversize>",
+                    latency,
+                    "message_too_large",
+                    write_progress.status(),
+                ),
             )
         return response, latency
 
@@ -223,6 +353,7 @@ class StdioAgentAdapter:
         stream: BinaryIO,
         request: bytes,
         result: queue.Queue[BaseException | None],
+        progress: _WriteProgress,
     ) -> None:
         try:
             remaining = memoryview(request)
@@ -230,21 +361,27 @@ class StdioAgentAdapter:
                 written = stream.write(remaining)
                 if written is None or written <= 0:
                     raise BrokenPipeError("child stdin accepted no bytes")
+                progress.add(written)
                 remaining = remaining[written:]
             stream.flush()
         except (BrokenPipeError, OSError, ValueError) as exc:
             result.put(exc)
         else:
+            progress.mark_complete()
             result.put(None)
 
     def _raise_timeout(
         self,
+        request: bytes,
         phase: str,
+        started: float,
         phase_deadline: float,
         overall_deadline: float,
+        write_progress: _WriteProgress,
         cause: BaseException | None,
-    ) -> None:
+    ) -> NoReturn:
         self.close()
+        latency = max(0.0, self._clock() - started)
         if phase_deadline <= overall_deadline:
             timeout_code = "startup_timeout" if phase == "initialize" else "step_timeout"
             failure: AdapterFailure = AdapterFailure(
@@ -252,10 +389,26 @@ class StdioAgentAdapter:
                 phase,
                 f"external agent {phase} response timed out",
                 detail=self._stderr_detail(),
+                trace=self._failure_trace(
+                    request,
+                    None,
+                    latency,
+                    timeout_code,
+                    write_progress.status(),
+                ),
             )
         else:
             failure = AdapterWallclockExceeded(
-                "wallclock_exceeded", phase, "external agent overall wallclock expired"
+                "wallclock_exceeded",
+                phase,
+                "external agent overall wallclock expired",
+                trace=self._failure_trace(
+                    request,
+                    None,
+                    latency,
+                    "wallclock_exceeded",
+                    write_progress.status(),
+                ),
             )
         if cause is None:
             raise failure
@@ -279,18 +432,38 @@ class StdioAgentAdapter:
         return self._started_at + maximum
 
     def _child_failure(
-        self, phase: str, *, fallback_code: str, fallback_message: str
+        self,
+        request: bytes,
+        phase: str,
+        started: float,
+        write_progress: _WriteProgress,
+        *,
+        fallback_code: str,
+        fallback_message: str,
     ) -> AdapterFailure:
         assert self._process is not None
         returncode = self._process.poll()
         detail: dict[str, Any] = self._stderr_detail()
         if returncode is not None:
             detail["returncode"] = returncode
+        code = "child_exit" if returncode not in (None, 0) else fallback_code
+        message = (
+            "external agent process exited non-zero"
+            if code == "child_exit"
+            else fallback_message
+        )
+        trace = self._failure_trace(
+            request,
+            "" if fallback_code == "unexpected_eof" else None,
+            max(0.0, self._clock() - started),
+            code,
+            write_progress.status(),
+        )
         if returncode not in (None, 0):
             return AdapterFailure(
-                "child_exit", phase, "external agent process exited non-zero", detail=detail
+                code, phase, message, detail=detail, trace=trace
             )
-        return AdapterFailure(fallback_code, phase, fallback_message, detail=detail)
+        return AdapterFailure(code, phase, message, detail=detail, trace=trace)
 
     @staticmethod
     def _request_document(request: bytes) -> dict[str, Any]:
@@ -301,14 +474,16 @@ class StdioAgentAdapter:
     def _failure_trace(
         self,
         request: bytes,
-        response: str,
+        response: Any,
         latency: float,
         finish_reason: str,
+        request_write: Literal["complete", "partial"],
     ) -> dict[str, Any]:
         return {
             "request_hash": hashlib.sha256(request).hexdigest(),
             "latency_ms": max(0, int(latency * 1000)),
             "finish_reason": finish_reason,
+            "request_write": request_write,
             "request_body": self._request_document(request),
             "response_body": response,
         }
@@ -336,7 +511,9 @@ class StdioAgentAdapter:
                 phase,
                 exc.message,
                 detail={**self._stderr_detail(), "response": raw_response},
-                trace=self._failure_trace(request, raw_response, latency, exc.code),
+                trace=self._failure_trace(
+                    request, raw_response, latency, exc.code, "complete"
+                ),
             ) from exc
 
     @staticmethod
@@ -350,7 +527,13 @@ class StdioAgentAdapter:
     def _initialize(self) -> None:
         self._start()
         request = self._bounded_request(
-            lambda: encode_initialize(self._request_id, {"instructions": self._instructions}),
+            lambda: encode_initialize(
+                self._request_id,
+                {
+                    "instructions": self._instructions,
+                    "capabilities": _CAPABILITIES,
+                },
+            ),
             phase="initialize",
         )
         response, latency = self._exchange(
@@ -380,12 +563,20 @@ class StdioAgentAdapter:
                 "transcript changed instead of appending observations",
             )
         additions = current[len(self._transcript) :]
+        if len(additions) > 1:
+            raise AdapterFailure(
+                "transcript_not_incremental",
+                "step",
+                "transcript appended more than one observation",
+            )
         request = self._bounded_request(
             lambda: encode_next_step(
                 self._request_id,
                 {
                     "tools": list(tools),
-                    "observations": [self._observation_document(item) for item in additions],
+                    "observation": (
+                        None if not additions else self._observation_document(additions[0])
+                    ),
                 },
             ),
             phase="step",
@@ -403,6 +594,7 @@ class StdioAgentAdapter:
             "request_hash": hashlib.sha256(request).hexdigest(),
             "latency_ms": max(0, int(latency * 1000)),
             "finish_reason": message.kind,
+            "request_write": "complete",
             "request_body": self._request_document(request),
             "response_body": response_document,
         }
@@ -464,6 +656,7 @@ class StdioAgentAdapter:
         if self._closed:
             return
         self._closed = True
+        self._reader_stop.set()
         process = self._process
         if process is not None:
             if process.stdin is not None:
@@ -486,7 +679,6 @@ class StdioAgentAdapter:
                     process.wait()
             else:
                 process.wait()
-            self._reader_stop.set()
             for stream in (process.stdout, process.stderr):
                 if stream is not None:
                     with suppress(OSError):
@@ -494,11 +686,9 @@ class StdioAgentAdapter:
             if process.stdin is not None:
                 with suppress(OSError):
                     process.stdin.close()
-        else:
-            self._reader_stop.set()
         while True:
             try:
-                self._stdout_lines.get_nowait()
+                self._reader_events.get_nowait()
             except queue.Empty:
                 break
         join_timeout = max(self._configuration.shutdown_grace_seconds, 0.1)

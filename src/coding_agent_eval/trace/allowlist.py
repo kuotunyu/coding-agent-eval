@@ -63,6 +63,7 @@ PUBLIC_FIELDS: dict[str, frozenset[str]] = {
     "llm_call": frozenset(
         {
             "request_hash",
+            "request_write",
             "latency_ms",
             "finish_reason",
             "usage",
