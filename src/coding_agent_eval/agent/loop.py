@@ -38,6 +38,39 @@ UNEXPECTED_LIMIT = 3
 DEFAULT_MAX_STEPS = 1000
 
 
+@dataclass(frozen=True)
+class _ToolInterface:
+    """The executable capabilities advertised for one provider decision."""
+
+    mode: str
+    tools: tuple[dict[str, Any], ...]
+    limit: int | None
+    remaining: int | None
+
+    @property
+    def names(self) -> frozenset[str]:
+        return frozenset(str(tool["name"]) for tool in self.tools)
+
+
+def _select_tool_interface(
+    *,
+    all_tools: tuple[dict[str, Any], ...],
+    max_tool_calls: int | None,
+    tool_calls: int,
+    write_findings_attempted: bool,
+) -> _ToolInterface:
+    """Synchronize the advertised interface with executable capacity."""
+    remaining = None if max_tool_calls is None else max(max_tool_calls - tool_calls, 0)
+    if write_findings_attempted or remaining == 0:
+        return _ToolInterface("finalization", (), max_tool_calls, remaining)
+    if remaining == 1:
+        report_tool = tuple(tool for tool in all_tools if tool["name"] == "write_findings")
+        if len(report_tool) != 1:
+            raise RuntimeError("write_findings must be registered exactly once")
+        return _ToolInterface("report_only", report_tool, max_tool_calls, remaining)
+    return _ToolInterface("review", all_tools, max_tool_calls, remaining)
+
+
 @dataclass
 class RunResult:
     """What a run produced, and how it ended."""
@@ -160,7 +193,7 @@ def run_agent(
     """
     budget = budget or Budget()
     recorder = recorder or Recorder()
-    tools = model_schemas()
+    all_tools = tuple(model_schemas())
     transcript: list[Observation] = []
     started = clock()
 
@@ -170,6 +203,7 @@ def run_agent(
     cost = 0.0
     cost_reports: list[dict[str, Any]] = []
     consecutive_unexpected = 0
+    write_findings_attempted = False
     reason: TerminationReason | None = None
     #: Populated only by a provider failure, so an operator can act on it.
     failure: dict[str, Any] = {}
@@ -188,8 +222,15 @@ def run_agent(
             reason = TerminationReason.BUDGET_EXHAUSTED_WALLCLOCK
             break
 
+        interface = _select_tool_interface(
+            all_tools=all_tools,
+            max_tool_calls=budget.max_tool_calls,
+            tool_calls=tool_calls,
+            write_findings_attempted=write_findings_attempted,
+        )
+
         try:
-            step = adapter.next_step(tools=tools, transcript=transcript)
+            step = adapter.next_step(tools=interface.tools, transcript=transcript)
         except Exception:
             # The adapter itself failed. That is not the model's result and not
             # the harness's, so it is neither scored nor blamed on the tools.
@@ -212,9 +253,16 @@ def run_agent(
         invocation = step.invocation
         assert invocation is not None  # Step.__post_init__ guarantees one or the other
 
+        if invocation.tool_name not in interface.names:
+            reason = TerminationReason.STEP_EXHAUSTED
+            break
+
         if budget.max_tool_calls is not None and tool_calls >= budget.max_tool_calls:
             reason = TerminationReason.STEP_EXHAUSTED
             break
+
+        if invocation.tool_name == "write_findings":
+            write_findings_attempted = True
 
         tool_calls += 1
         recorder.emit(

@@ -297,10 +297,12 @@ class ScriptedSteps:
     def __init__(self, steps: list[Step]) -> None:
         self._steps = list(steps)
         self.seen: list[Observation] = []
+        self.tool_names_by_step: list[tuple[str, ...]] = []
 
     def next_step(
         self, *, tools: Sequence[dict[str, Any]], transcript: Sequence[Observation]
     ) -> Step:
+        self.tool_names_by_step.append(tuple(str(tool["name"]) for tool in tools))
         self.seen = list(transcript)
         if not self._steps:
             return Step(stop=TerminationReason.COMPLETED)
@@ -373,15 +375,14 @@ def test_an_expected_failure_resets_the_unexpected_count(context: ToolContext) -
     assert result.termination_reason is not TerminationReason.HARNESS_ERROR
 
 
-def test_naming_an_unknown_tool_does_not_count_as_a_harness_fault(
+def test_naming_an_unoffered_tool_is_a_scored_capacity_failure(
     context: ToolContext,
 ) -> None:
-    adapter = ScriptedSteps(
-        [Step(invocation=ToolInvocation("no_such_tool", {}))] * 4
-        + [Step(stop=TerminationReason.NO_OUTPUT)]
-    )
+    adapter = ScriptedSteps([Step(invocation=ToolInvocation("no_such_tool", {}))])
     result = run_agent(adapter, context=context)
-    assert result.termination_reason is TerminationReason.NO_OUTPUT
+    assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
+    assert not result.termination_reason.is_invalid
+    assert result.tool_calls == 0
 
 
 def test_a_failing_adapter_is_an_adapter_error(context: ToolContext) -> None:
@@ -410,11 +411,63 @@ def test_an_explicit_no_output_stop_stays_no_output(context: ToolContext) -> Non
 
 def test_the_tool_call_budget_ends_the_run(context: ToolContext) -> None:
     adapter = ScriptedSteps(
-        [Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"}))] * 10
+        [
+            Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"})),
+            Step(invocation=ToolInvocation("write_findings", {"findings": [VALID_FINDING]})),
+            Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"})),
+        ]
     )
     result = run_agent(adapter, context=context, budget=Budget(max_tool_calls=2))
     assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
     assert result.tool_calls == 2
+
+
+def test_zero_tool_capacity_starts_in_tool_free_finalization(context: ToolContext) -> None:
+    adapter = ScriptedSteps([Step(stop=TerminationReason.COMPLETED)])
+    result = run_agent(adapter, context=context, budget=Budget(max_tool_calls=0))
+    assert result.termination_reason is TerminationReason.COMPLETED
+    assert result.tool_calls == 0
+    assert adapter.tool_names_by_step == [()]
+
+
+def test_the_last_executable_slot_is_reserved_for_write_findings(
+    context: ToolContext,
+) -> None:
+    adapter = ScriptedSteps(
+        [
+            Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"})),
+            Step(stop=TerminationReason.COMPLETED),
+        ]
+    )
+    run_agent(adapter, context=context, budget=Budget(max_tool_calls=2))
+    assert adapter.tool_names_by_step[0] == tuple(tool["name"] for tool in model_schemas())
+    assert adapter.tool_names_by_step[1] == ("write_findings",)
+
+
+@pytest.mark.parametrize("findings", [[VALID_FINDING], []], ids=["accepted", "rejected"])
+def test_any_write_findings_attempt_forces_tool_free_finalization(
+    context: ToolContext, findings: list[dict[str, Any]]
+) -> None:
+    adapter = ScriptedSteps(
+        [
+            Step(invocation=ToolInvocation("write_findings", {"findings": findings})),
+            Step(stop=TerminationReason.COMPLETED),
+        ]
+    )
+    run_agent(adapter, context=context, budget=Budget(max_tool_calls=12))
+    assert adapter.tool_names_by_step[1] == ()
+
+
+def test_a_registered_tool_withheld_by_the_phase_is_never_executed(
+    context: ToolContext,
+) -> None:
+    adapter = ScriptedSteps(
+        [Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"}))]
+    )
+    result = run_agent(adapter, context=context, budget=Budget(max_tool_calls=1))
+    assert adapter.tool_names_by_step == [("write_findings",)]
+    assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
+    assert result.tool_calls == 0
 
 
 def test_the_token_budget_ends_the_run(context: ToolContext) -> None:
