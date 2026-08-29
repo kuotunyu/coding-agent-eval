@@ -40,7 +40,7 @@ import httpx
 from coding_agent_eval import BENCHMARK_VERSION, REDACTION_MANIFEST_VERSION, TRACE_SCHEMA_VERSION
 from coding_agent_eval.agent.backend import LocalTree, TreeBackend
 from coding_agent_eval.agent.loop import Recorder, RunResult, run_agent
-from coding_agent_eval.agent.protocol import AgentAdapter, TerminationReason
+from coding_agent_eval.agent.protocol import AgentAdapter, Budget, TerminationReason
 from coding_agent_eval.agent.provider import (
     DEFAULT_SYSTEM_PROMPT,
     SYSTEM_PROMPT_VERSION,
@@ -53,9 +53,24 @@ from coding_agent_eval.fixtures.image_identity import (
     PreparedImageIdentity,
 )
 from coding_agent_eval.fixtures.patcher import apply_patch, materialise
-from coding_agent_eval.runconfig import RunConfiguration
+from coding_agent_eval.runconfig import RunConfiguration, StdioRunConfiguration
 from coding_agent_eval.trace.raw_store import RawStore
 from coding_agent_eval.trace.sanitizer import sanitize_events
+
+
+@dataclass(frozen=True)
+class ExecutionMetadata:
+    """Provider-neutral identity and disclosure policy for one live execution."""
+
+    provider: str | None
+    model: str | None
+    public_configuration: dict[str, object]
+    private_parameters: dict[str, object]
+    pricing_table_version: str
+    transport: str
+    protocol_version: str | None
+    usage_source: str
+    system_prompt_version: str
 
 
 @dataclass(frozen=True)
@@ -69,7 +84,8 @@ class LiveRun:
     result: RunResult
     events: list[dict[str, Any]]
     tool_backend: str
-    configuration: RunConfiguration
+    metadata: ExecutionMetadata
+    budget: Budget
     started_at: str
     adapter_name: str
     adapter_version: str
@@ -119,7 +135,7 @@ class LiveRun:
             "tool_calls": self.result.tool_calls,
             "wall_clock_ms": self.result.wall_clock_ms,
             "findings_submitted": len(self.result.findings),
-            "provider": self.configuration.redacted(),
+            "provider": self.metadata.public_configuration,
             "adjudication": (
                 "Not scored. `verified_*` metrics require a human ruling on blinded "
                 "finding/bug pairs; run `cae evaluate` once the ledger has one."
@@ -159,6 +175,8 @@ class LiveRun:
             if event["event"] != "llm_call":
                 continue
             usage = event["payload"].get("usage") or {}
+            if self.metadata.usage_source == "agent_reported_unverified" and not usage:
+                completeness = "partial"
             input_tokens += int(usage.get("input_tokens") or 0)
             cached_tokens += int(usage.get("cached_input_tokens") or 0)
             output_tokens += int(usage.get("output_tokens") or 0)
@@ -173,12 +191,12 @@ class LiveRun:
             "reasoning_tokens": reasoning_tokens,
             "estimated_cost_usd": round(cost, 6),
             "completeness": completeness,
-            "pricing_table_version": self.configuration.pricing.version,
+            "pricing_table_version": self.metadata.pricing_table_version,
         }
 
     def trace_header(self) -> dict[str, Any]:
         """Replay provenance for the public trace, with private inputs classified explicitly."""
-        params = self.configuration.redacted()
+        params = self.metadata.private_parameters
         prompt = self.system_prompt
         return {
             "run_id": self.run_id,
@@ -190,10 +208,10 @@ class LiveRun:
             "bug_set_hash": _canonical_hash(list(self.bug_ids)),
             "agent_adapter": self.adapter_name,
             "agent_adapter_version": self.adapter_version,
-            "provider": self.configuration.api,
-            "model": self.configuration.model,
+            "provider": self.metadata.provider,
+            "model": self.metadata.model,
             "prompt_hash": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
-            "system_prompt_version": SYSTEM_PROMPT_VERSION,
+            "system_prompt_version": self.metadata.system_prompt_version,
             "params_hash": _canonical_hash(params),
             "seed": None,
             "image_ref": (
@@ -208,7 +226,7 @@ class LiveRun:
             "env_fingerprint": self.fixture.manifest["environment"]["fingerprint"],
             "sandbox_profile": "measure" if self.image_identity is not None else "host_process",
             "tool_backend": self.tool_backend,
-            "budget": self.configuration.budget.as_dict(),
+            "budget": self.budget.as_dict(),
             "redaction_manifest_version": REDACTION_MANIFEST_VERSION,
             "system_prompt": prompt,
             "params": params,
@@ -302,28 +320,21 @@ def _bind_image_identity(
     return identity
 
 
-def execute(
+def execute_with_adapter(
     fixture_dir: Path,
     *,
-    configuration: RunConfiguration,
+    adapter: AgentAdapter,
+    metadata: ExecutionMetadata,
+    budget: Budget,
+    system_prompt: str,
     snapshot: str,
     bug_index: int = 0,
     isolate_image: str | None = None,
     run_id: str | None = None,
     workspace: Path | None = None,
     raw_store_root: Path | None = None,
-    client: httpx.Client | None = None,
 ) -> LiveRun:
-    """Run one snapshot against a live provider. Makes real, billed requests.
-
-    The only function in the package that does. Everything it needs to refuse
-    has already been refused by `load_configuration` before it is called.
-
-    `client` is injected the same way the adapter allows it: with an
-    `httpx.MockTransport` this whole path can be exercised end to end without a
-    network, a key, or a bill — which is how it is tested, and the only way it
-    has been exercised so far.
-    """
+    """Run one adapter through the shared fixture, tool, trace, and evidence core."""
     fixture = load_fixture(fixture_dir)
     if snapshot not in (CLEAN, MUTATED):
         raise ValueError(f"snapshot must be {CLEAN!r} or {MUTATED!r}, not {snapshot!r}")
@@ -337,8 +348,6 @@ def execute(
         bug = fixture.bugs[bug_index]
         apply_patch(tree, fixture.directory / bug["patch"])
         bug_ids = (str(bug["bug_id"]),)
-
-    adapter = build_adapter(configuration, client=client)
 
     started_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "+00:00"
     effective_run_id = run_id or f"live-{fixture.fixture_id}-{snapshot}"
@@ -374,19 +383,20 @@ def execute(
             ),
             events=recorder.events,
             tool_backend=tool_backend,
-            configuration=configuration,
+            metadata=metadata,
+            budget=budget,
             started_at=started_at,
             adapter_name=adapter.name,
             adapter_version=adapter.version,
             raw_store=store,
             image_identity=image_identity,
-            system_prompt=getattr(adapter, "system_prompt", DEFAULT_SYSTEM_PROMPT),
+            system_prompt=system_prompt,
         )
         recorder.emit("run_header", provisional.trace_header())
         result = run_agent(
             adapter,
             context=ToolContext(backend=view_backend),
-            budget=configuration.budget,
+            budget=budget,
             recorder=recorder,
         )
 
@@ -398,11 +408,113 @@ def execute(
         result=result,
         events=recorder.events,
         tool_backend=tool_backend,
-        configuration=configuration,
+        metadata=metadata,
+        budget=budget,
         started_at=started_at,
         adapter_name=adapter.name,
         adapter_version=adapter.version,
         raw_store=store,
         image_identity=image_identity,
-        system_prompt=getattr(adapter, "system_prompt", DEFAULT_SYSTEM_PROMPT),
+        system_prompt=system_prompt,
     )
+
+
+def _provider_metadata(configuration: RunConfiguration) -> ExecutionMetadata:
+    """Map the existing provider configuration without changing its artifacts."""
+    redacted = configuration.redacted()
+    return ExecutionMetadata(
+        provider=configuration.api,
+        model=configuration.model,
+        public_configuration=redacted,
+        private_parameters=redacted,
+        pricing_table_version=configuration.pricing.version,
+        transport="https-json",
+        protocol_version=None,
+        usage_source="provider_reported",
+        system_prompt_version=SYSTEM_PROMPT_VERSION,
+    )
+
+
+def execute(
+    fixture_dir: Path,
+    *,
+    configuration: RunConfiguration,
+    snapshot: str,
+    bug_index: int = 0,
+    isolate_image: str | None = None,
+    run_id: str | None = None,
+    workspace: Path | None = None,
+    raw_store_root: Path | None = None,
+    client: httpx.Client | None = None,
+) -> LiveRun:
+    """Run one snapshot against a live provider. Makes real, billed requests.
+
+    `client` permits the complete path to be exercised with an
+    `httpx.MockTransport`, without a network, key, or bill.
+    """
+    # Preserve the refusal boundary: malformed snapshot/OCI identity must be
+    # rejected before even constructing a provider adapter.
+    fixture = load_fixture(fixture_dir)
+    if snapshot not in (CLEAN, MUTATED):
+        raise ValueError(f"snapshot must be {CLEAN!r} or {MUTATED!r}, not {snapshot!r}")
+    _bind_image_identity(fixture, isolate_image)
+
+    adapter = build_adapter(configuration, client=client)
+    system_prompt = getattr(adapter, "system_prompt", DEFAULT_SYSTEM_PROMPT)
+    return execute_with_adapter(
+        fixture_dir,
+        adapter=adapter,
+        metadata=_provider_metadata(configuration),
+        budget=configuration.budget,
+        system_prompt=system_prompt,
+        snapshot=snapshot,
+        bug_index=bug_index,
+        isolate_image=isolate_image,
+        run_id=run_id,
+        workspace=workspace,
+        raw_store_root=raw_store_root,
+    )
+
+
+def execute_stdio(
+    fixture_dir: Path,
+    *,
+    configuration: StdioRunConfiguration,
+    snapshot: str,
+    bug_index: int = 0,
+    isolate_image: str | None = None,
+    run_id: str | None = None,
+    workspace: Path | None = None,
+    raw_store_root: Path | None = None,
+) -> LiveRun:
+    """Run one external JSONL stdio agent through the shared live executor."""
+    from coding_agent_eval.agent.provider import render_system_prompt
+    from coding_agent_eval.agent.stdio_adapter import StdioAgentAdapter
+    from coding_agent_eval.agent.stdio_protocol import PROTOCOL_VERSION
+
+    system_prompt = render_system_prompt(configuration.budget.max_tool_calls)
+    metadata = ExecutionMetadata(
+        provider=None,
+        model=configuration.agent_model,
+        public_configuration=configuration.redacted(),
+        private_parameters=configuration.private_parameters(),
+        pricing_table_version="external-self-reported/1.0",
+        transport="stdio-jsonl",
+        protocol_version=PROTOCOL_VERSION,
+        usage_source="agent_reported_unverified",
+        system_prompt_version=SYSTEM_PROMPT_VERSION,
+    )
+    with StdioAgentAdapter(configuration, instructions=system_prompt) as adapter:
+        return execute_with_adapter(
+            fixture_dir,
+            adapter=adapter,
+            metadata=metadata,
+            budget=configuration.budget,
+            system_prompt=system_prompt,
+            snapshot=snapshot,
+            bug_index=bug_index,
+            isolate_image=isolate_image,
+            run_id=run_id,
+            workspace=workspace,
+            raw_store_root=raw_store_root,
+        )

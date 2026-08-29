@@ -132,6 +132,28 @@ def test_sanitizer_keeps_interface_capacity_but_drops_provider_bodies(
     assert call["tools_offered"] == []
 
 
+def test_sanitizer_drops_private_stdio_launch_and_failure_material(tmp_path: Path) -> None:
+    raw = clean_events()
+    raw[0]["payload"]["params"] = {
+        "argv": ["PRIVATE_ARGV"],
+        "cwd": "PRIVATE_EMPTY_CWD",
+        "inherited_environment": ["PRIVATE_ENVIRONMENT_NAME"],
+        "environment": {"PRIVATE_ENVIRONMENT_NAME": "PRIVATE_ENVIRONMENT_VALUE"},
+    }
+    raw[-1]["payload"].update(
+        adapter_error={"code": "child_exit", "phase": "step"},
+        adapter_error_message="PRIVATE_STDERR PRIVATE_RAW_BODY",
+    )
+    output = tmp_path / "trace.jsonl"
+
+    sanitize_events(raw, output)
+
+    text = output.read_text(encoding="utf-8")
+    assert "PRIVATE" not in text
+    termination = json.loads(text.splitlines()[-1])["payload"]
+    assert termination["adapter_error"] == {"code": "child_exit", "phase": "step"}
+
+
 def test_sanitizer_drops_private_adapter_failure_evidence(tmp_path: Path) -> None:
     raw = clean_events()
     raw[-1]["payload"].update(

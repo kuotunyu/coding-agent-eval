@@ -458,6 +458,27 @@ def test_any_write_findings_attempt_forces_tool_free_finalization(
     assert adapter.tool_names_by_step[1] == ()
 
 
+def test_capacity_progresses_from_all_tools_to_write_only_to_no_tools(
+    context: ToolContext,
+) -> None:
+    """A stale interface at either transition can advertise an unexecutable tool."""
+    adapter = ScriptedSteps(
+        [
+            Step(invocation=ToolInvocation("read_file", {"path": "src/auth.py"})),
+            Step(invocation=ToolInvocation("write_findings", {"findings": []})),
+            Step(stop=TerminationReason.COMPLETED),
+        ]
+    )
+
+    run_agent(adapter, context=context, budget=Budget(max_tool_calls=2))
+
+    assert adapter.tool_names_by_step == [
+        tuple(tool["name"] for tool in model_schemas()),
+        ("write_findings",),
+        (),
+    ]
+
+
 def test_a_registered_tool_withheld_by_the_phase_is_never_executed(
     context: ToolContext,
 ) -> None:

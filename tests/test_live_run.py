@@ -418,10 +418,15 @@ def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
     assert header["snapshot"] == "mutated"
     assert header["bugs_in_snapshot"] == ["fx-taskq-py/B-001"]
     assert header["tool_backend"] == "host_process"
-    assert header["provider"]["model"] == "gpt-5.6-luna"
+    assert header["provider"] == configuration(
+        CAE_MAX_ESTIMATED_COST_USD="7.00"
+    ).redacted()
     assert header["provider"]["api_key_present"] is True
 
     raw_header = run.raw_store.read_events()[0]["payload"]
+    assert raw_header["provider"] == "chat_completions"
+    assert raw_header["model"] == "gpt-5.6-luna"
+    assert raw_header["agent_adapter"] == "openai-compatible"
     assert raw_header["image_ref"] is None
     assert raw_header["image_manifest_digest"] is None
     assert raw_header["image_config_digest"] is None
@@ -881,6 +886,7 @@ def test_a_provider_failure_says_what_happened(tmp_path: Path) -> None:
     assert failure["type"] == "invalid_request_error"
     assert failure["code"] == "model_not_found"
     assert "does not exist" in failure["message"]
+    assert run.usage_total()["completeness"] == "complete"
 
 
 @pytest.mark.parametrize("status", [401, 429, 500])
