@@ -614,11 +614,18 @@ def test_provider_mode_rejects_stdio_only_flags_before_loading_configuration(
 
 
 def test_stdio_example_runs_offline_and_writes_only_public_evidence(tmp_path: Path) -> None:
-    """The packaged example must complete a real provider-free CLI run."""
+    """The installed module entry point must complete a provider-free CLI run."""
     fixture = tmp_path / "fixture"
     shutil.copytree(REPO_ROOT / "fixtures" / "fx-taskq-py", fixture)
 
-    assert main(stdio_args(tmp_path)) == 0
+    process = subprocess.run(
+        [sys.executable, "-m", "coding_agent_eval", *stdio_args(tmp_path)],
+        shell=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert process.returncode == 0, f"stdout:\n{process.stdout}\nstderr:\n{process.stderr}"
     assert sorted(path.name for path in (tmp_path / "out").iterdir()) == [
         "findings.json",
         "run.json",
