@@ -64,7 +64,7 @@ from coding_agent_eval.agent.provider import (
     tool_output_for_model,
 )
 
-ADAPTER_VERSION = "0.4.0"
+ADAPTER_VERSION = "0.5.0"
 
 #: The only status this adapter proceeds on. Anything else — a string that is
 #: present and different, including one never observed — is a provider error.
@@ -155,13 +155,16 @@ class OpenAIResponsesAdapter:
         payload: dict[str, Any] = {
             "model": self.model,
             "input": build_input(transcript, system_prompt=self.system_prompt),
-            "tools": responses_tool_schemas(tools),
-            "tool_choice": "auto",
             "store": False,
-            # One action per step is what this harness can execute. A provider
-            # that returns several calls anyway is rejected below.
-            "parallel_tool_calls": False,
         }
+        if tools:
+            payload.update(
+                tools=responses_tool_schemas(tools),
+                tool_choice="auto",
+                # One action per step is what this harness can execute. A provider
+                # that returns several calls anyway is rejected below.
+                parallel_tool_calls=False,
+            )
         if self.reasoning_effort is not None:
             payload["reasoning"] = {"effort": self.reasoning_effort}
         if self.max_output_tokens_per_request is not None:

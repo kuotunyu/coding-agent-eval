@@ -31,7 +31,7 @@ from coding_agent_eval.agent.provider import (
     normalise_usage,
     render_system_prompt,
 )
-from coding_agent_eval.agent.tools import ToolContext
+from coding_agent_eval.agent.tools import ToolContext, model_schemas
 
 PRICING = PricingTable(
     version="test-1",
@@ -49,6 +49,9 @@ def test_system_prompt_defines_both_completion_paths_and_the_tool_budget() -> No
     assert "without calling write_findings" in prompt
     assert "one write_findings call" in prompt
     assert "final response without a tool call" in prompt
+    assert "only write_findings" in prompt
+    assert "no tools are available" in prompt
+    assert "return a final response" in prompt
 
 
 def test_unbounded_prompt_does_not_invent_a_tool_count() -> None:
@@ -85,6 +88,31 @@ def adapter_with(handler: Any, **kwargs: Any) -> OpenAICompatibleAdapter:
     return OpenAICompatibleAdapter(
         model="test-model", api_key="test-key", client=client, pricing=PRICING, **kwargs
     )
+
+
+def test_chat_finalization_request_omits_every_tool_member() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.COMPLETED
+    assert not {"tools", "tool_choice", "parallel_tool_calls"} & captured.keys()
+
+
+def test_chat_review_request_keeps_the_single_action_tool_contract() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json=completion(tool_name=None))
+
+    adapter_with(handler).next_step(tools=model_schemas(), transcript=[])
+    assert len(captured["tools"]) == 4
+    assert captured["tool_choice"] == "auto"
+    assert captured["parallel_tool_calls"] is False
 
 
 @pytest.fixture
@@ -151,7 +179,7 @@ def test_chat_requests_disable_parallel_tool_calls() -> None:
         captured.append(json.loads(request.content))
         return httpx.Response(200, json=completion(tool_name=None))
 
-    adapter_with(handler).next_step(tools=[], transcript=[])
+    adapter_with(handler).next_step(tools=model_schemas(), transcript=[])
     assert captured[0]["parallel_tool_calls"] is False
 
 
@@ -606,11 +634,11 @@ def test_the_cost_budget_terminates(tree: Path) -> None:
     assert result.termination_reason is TerminationReason.BUDGET_EXHAUSTED_COST
 
 
-def test_the_tool_call_budget_terminates(tree: Path) -> None:
+def test_the_tool_budget_withholds_reads_from_the_reserved_report_slot(tree: Path) -> None:
     adapter = adapter_with(always_reads({"prompt_tokens": 1, "completion_tokens": 1}))
     result = run_agent(adapter, context=ToolContext(root=tree), budget=Budget(max_tool_calls=3))
     assert result.termination_reason is TerminationReason.STEP_EXHAUSTED
-    assert result.tool_calls == 3
+    assert result.tool_calls == 2
 
 
 def test_the_wallclock_budget_terminates(tree: Path) -> None:

@@ -25,7 +25,7 @@ from coding_agent_eval.agent.responses_provider import (
     build_input,
     responses_tool_schemas,
 )
-from coding_agent_eval.agent.tools import ToolContext
+from coding_agent_eval.agent.tools import ToolContext, model_schemas
 
 PRICING = PricingTable(
     version="test-1",
@@ -116,6 +116,44 @@ def test_the_tool_schema_is_flattened_not_nested() -> None:
     assert "function" not in schemas[0], "must not nest under 'function' like Chat Completions"
 
 
+def test_responses_finalization_request_omits_every_tool_member() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json=response(
+                tool_name=None,
+                extra_output=[{"type": "message", "role": "assistant", "content": []}],
+            ),
+        )
+
+    step = adapter_with(handler).next_step(tools=[], transcript=[])
+    assert step.stop is TerminationReason.COMPLETED
+    assert not {"tools", "tool_choice", "parallel_tool_calls"} & captured.keys()
+
+
+def test_responses_review_request_keeps_the_single_action_tool_contract() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json=response(
+                tool_name=None,
+                extra_output=[{"type": "message", "role": "assistant", "content": []}],
+            ),
+        )
+
+    adapter_with(handler).next_step(tools=model_schemas(), transcript=[])
+    assert len(captured["tools"]) == 4
+    assert all(tool["type"] == "function" for tool in captured["tools"])
+    assert captured["tool_choice"] == "auto"
+    assert captured["parallel_tool_calls"] is False
+
+
 def test_the_request_carries_input_not_messages() -> None:
     captured: list[dict[str, Any]] = []
 
@@ -166,7 +204,7 @@ def test_parallel_tool_calls_is_always_sent_false() -> None:
         captured.append(json.loads(request.content))
         return httpx.Response(200, json=response())
 
-    adapter_with(handler).next_step(tools=[], transcript=[])
+    adapter_with(handler).next_step(tools=model_schemas(), transcript=[])
     assert captured[0]["parallel_tool_calls"] is False
 
 

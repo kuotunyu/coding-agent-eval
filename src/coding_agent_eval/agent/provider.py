@@ -42,7 +42,7 @@ from coding_agent_eval.agent.protocol import (
 )
 from coding_agent_eval.agent.tools import model_schemas
 
-ADAPTER_VERSION = "0.4.0"
+ADAPTER_VERSION = "0.5.0"
 
 #: Usage fields that bear on price. Each is reported or explicitly unknown.
 PRICED_USAGE_FIELDS: tuple[str, ...] = (
@@ -52,7 +52,7 @@ PRICED_USAGE_FIELDS: tuple[str, ...] = (
     "reasoning_tokens",
 )
 
-SYSTEM_PROMPT_VERSION = "0.2.0"
+SYSTEM_PROMPT_VERSION = "0.3.0"
 
 
 def render_system_prompt(max_tool_calls: int | None) -> str:
@@ -67,10 +67,13 @@ def render_system_prompt(max_tool_calls: int | None) -> str:
         "a proof that no defect exists. "
         + budget
         + "Report only defects supported by evidence and cite the file and line range. "
-        "If supported defects exist, submit all of them in one write_findings call, "
-        "then return a final response without a tool call. If none were found, return "
-        "a final response without calling write_findings. Do not keep reading solely "
-        "to prove the absence of defects."
+        "The available tool interface reflects the current phase. If inspection tools "
+        "are available, use them selectively. If only write_findings is available, "
+        "submit all supported defects in one write_findings call, then return a final "
+        "response without a tool call; if none were found, return a final response "
+        "without calling write_findings. If no tools are available, return a final "
+        "response now without a tool call and do not request a tool. Do not keep reading "
+        "solely to prove the absence of defects."
     )
 
 
@@ -490,10 +493,13 @@ class OpenAICompatibleAdapter:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": build_messages(transcript, system_prompt=self.system_prompt),
-            "tools": [{"type": "function", "function": schema} for schema in tools],
-            "tool_choice": "auto",
-            "parallel_tool_calls": False,
         }
+        if tools:
+            payload.update(
+                tools=[{"type": "function", "function": schema} for schema in tools],
+                tool_choice="auto",
+                parallel_tool_calls=False,
+            )
         if self.reasoning_effort is not None:
             payload["reasoning_effort"] = self.reasoning_effort
         if self.max_output_tokens_per_request is not None:
