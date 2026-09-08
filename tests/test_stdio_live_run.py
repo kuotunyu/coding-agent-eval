@@ -155,11 +155,22 @@ def _configuration(tmp_path: Path) -> tuple[StdioRunConfiguration, Path]:
     return configuration, evidence
 
 
+def _direct_interpreter() -> str:
+    """Return the interpreter binary itself, bypassing any virtual-environment launcher.
+
+    A Windows virtual environment may expose ``python.exe`` as a launcher that spawns
+    the real interpreter as a child process and keeps its own copy of the stdin pipe.
+    The broken-pipe probe closes stdin inside the interpreter, so the pipe only breaks
+    when no launcher still holds the read end.
+    """
+    return getattr(sys, "_base_executable", None) or sys.executable
+
+
 def _failure_configuration(tmp_path: Path, mode: str) -> StdioRunConfiguration:
     script = tmp_path / f"failure-child-{mode}.py"
     script.write_text(FAILURE_CHILD, encoding="utf-8")
     return StdioRunConfiguration(
-        command=(sys.executable, str(script), mode),
+        command=(_direct_interpreter(), str(script), mode),
         inherited_environment=(),
         agent_name="failure-probe",
         agent_version="1.0",
