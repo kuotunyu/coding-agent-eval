@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -146,7 +147,7 @@ def test_stdio_resolves_an_explicit_dot_relative_executable_outside_path(
     monkeypatch.chdir(tmp_path)
 
     config = valid_config(
-        command=[f".\\{source.name}", "-c", "pass"],
+        command=[os.path.join(".", source.name), "-c", "pass"],
         environ={"AGENT_KEY": "value", "PATH": "", "PATHEXT": source.suffix},
     )
 
