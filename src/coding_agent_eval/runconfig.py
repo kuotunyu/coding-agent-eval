@@ -103,9 +103,7 @@ class StdioRunConfiguration:
     step_timeout_seconds: float = 120.0
     shutdown_grace_seconds: float = 2.0
     max_message_bytes: int = MAX_MESSAGE_BYTES
-    _preflight_environ: Mapping[str, str] = field(
-        default_factory=dict, repr=False, compare=False
-    )
+    _preflight_environ: Mapping[str, str] = field(default_factory=dict, repr=False, compare=False)
 
     def child_environment(self, environ: Mapping[str, str] | None = None) -> dict[str, str]:
         """Return the small, explicit environment passed to the child process."""

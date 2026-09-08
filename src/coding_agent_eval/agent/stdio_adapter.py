@@ -7,6 +7,7 @@ import json
 import os
 import queue
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -122,7 +123,9 @@ class StdioAgentAdapter:
         if self._process is not None:
             return
         self._started_at = self._clock()
-        creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.CREATE_NO_WINDOW
         try:
             process = subprocess.Popen(
                 self._configuration.command,
@@ -448,9 +451,7 @@ class StdioAgentAdapter:
             detail["returncode"] = returncode
         code = "child_exit" if returncode not in (None, 0) else fallback_code
         message = (
-            "external agent process exited non-zero"
-            if code == "child_exit"
-            else fallback_message
+            "external agent process exited non-zero" if code == "child_exit" else fallback_message
         )
         trace = self._failure_trace(
             request,
@@ -460,9 +461,7 @@ class StdioAgentAdapter:
             write_progress.status(),
         )
         if returncode not in (None, 0):
-            return AdapterFailure(
-                code, phase, message, detail=detail, trace=trace
-            )
+            return AdapterFailure(code, phase, message, detail=detail, trace=trace)
         return AdapterFailure(code, phase, message, detail=detail, trace=trace)
 
     @staticmethod
@@ -511,9 +510,7 @@ class StdioAgentAdapter:
                 phase,
                 exc.message,
                 detail={**self._stderr_detail(), "response": raw_response},
-                trace=self._failure_trace(
-                    request, raw_response, latency, exc.code, "complete"
-                ),
+                trace=self._failure_trace(request, raw_response, latency, exc.code, "complete"),
             ) from exc
 
     @staticmethod
@@ -623,7 +620,7 @@ class StdioAgentAdapter:
 
     def _cancel_blocked_writers(self) -> None:
         blocked = [thread for thread in self._writer_threads if thread.is_alive()]
-        if not blocked or os.name != "nt":
+        if not blocked or sys.platform != "win32":
             return
         # Windows pipe writes are synchronous kernel I/O. Closing the Python
         # stream from another thread waits on its lock, so cancel the operation

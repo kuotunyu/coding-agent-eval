@@ -155,11 +155,22 @@ def _configuration(tmp_path: Path) -> tuple[StdioRunConfiguration, Path]:
     return configuration, evidence
 
 
+def _direct_interpreter() -> str:
+    """Return the interpreter binary itself, bypassing any virtual-environment launcher.
+
+    A Windows virtual environment may expose ``python.exe`` as a launcher that spawns
+    the real interpreter as a child process and keeps its own copy of the stdin pipe.
+    The broken-pipe probe closes stdin inside the interpreter, so the pipe only breaks
+    when no launcher still holds the read end.
+    """
+    return getattr(sys, "_base_executable", None) or sys.executable
+
+
 def _failure_configuration(tmp_path: Path, mode: str) -> StdioRunConfiguration:
     script = tmp_path / f"failure-child-{mode}.py"
     script.write_text(FAILURE_CHILD, encoding="utf-8")
     return StdioRunConfiguration(
-        command=(sys.executable, str(script), mode),
+        command=(_direct_interpreter(), str(script), mode),
         inherited_environment=(),
         agent_name="failure-probe",
         agent_version="1.0",
@@ -200,9 +211,7 @@ def _public_values(value: Any) -> list[str]:
 
 def _public_keys(value: Any) -> set[str]:
     if isinstance(value, dict):
-        return set(value) | {
-            key for child in value.values() for key in _public_keys(child)
-        }
+        return set(value) | {key for child in value.values() for key in _public_keys(child)}
     if isinstance(value, list):
         return {key for child in value for key in _public_keys(child)}
     return set()
@@ -287,24 +296,25 @@ def test_stdio_live_run_shares_evidence_and_capacity_boundaries(tmp_path: Path) 
     ]
     keys = {key for document in public_documents for key in _public_keys(document)}
     values = [text for document in public_documents for text in _public_values(document)]
-    assert not {
-        "argv",
-        "cwd",
-        "environment",
-        "inherited_environment",
-        "request_body",
-        "response_body",
-        "stderr",
-        "stderr_tail",
-        "scores",
-        "metrics",
-        "verified_bug_recall",
-        "localization_recall",
-    } & keys
-    assert not any("PRIVATE_" in value for value in values)
-    assert json.loads((directory / "run.json").read_text())["usage"]["completeness"] == (
-        "partial"
+    assert (
+        not {
+            "argv",
+            "cwd",
+            "environment",
+            "inherited_environment",
+            "request_body",
+            "response_body",
+            "stderr",
+            "stderr_tail",
+            "scores",
+            "metrics",
+            "verified_bug_recall",
+            "localization_recall",
+        }
+        & keys
     )
+    assert not any("PRIVATE_" in value for value in values)
+    assert json.loads((directory / "run.json").read_text())["usage"]["completeness"] == ("partial")
 
 
 @pytest.mark.parametrize(
@@ -343,12 +353,15 @@ def test_failed_stdio_exchange_retains_private_request_and_public_attempt_eviden
     intended_request = attempted["request_body"]
     assert intended_request["type"] == "next_step"
     assert intended_request["payload"]["observation"] is None
-    encoded = json.dumps(
-        intended_request,
-        sort_keys=True,
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8") + b"\n"
+    encoded = (
+        json.dumps(
+            intended_request,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        + b"\n"
+    )
     assert attempted["request_hash"] == hashlib.sha256(encoded).hexdigest()
     assert attempted["request_write"] == expected_write
     assert "response_body" in attempted

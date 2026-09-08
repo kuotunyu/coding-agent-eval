@@ -419,9 +419,7 @@ def test_a_run_writes_evidence_and_never_writes_the_key(tmp_path: Path) -> None:
     assert header["snapshot"] == "mutated"
     assert header["bugs_in_snapshot"] == ["fx-taskq-py/B-001"]
     assert header["tool_backend"] == "host_process"
-    assert header["provider"] == configuration(
-        CAE_MAX_ESTIMATED_COST_USD="7.00"
-    ).redacted()
+    assert header["provider"] == configuration(CAE_MAX_ESTIMATED_COST_USD="7.00").redacted()
     assert header["provider"]["api_key_present"] is True
 
     raw_header = run.raw_store.read_events()[0]["payload"]
@@ -454,9 +452,9 @@ def test_provider_stable_raw_and_public_mapping_matches_the_golden_contract(
     )
     directory = write_evidence(run, tmp_path / "out")
     raw = run.raw_store.read_events()[0]["payload"]
-    public = json.loads(
-        (directory / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0]
-    )["payload"]
+    public = json.loads((directory / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0])[
+        "payload"
+    ]
     stable_keys = (
         "agent_adapter",
         "agent_adapter_version",
@@ -538,9 +536,9 @@ def test_returned_headers_cannot_mutate_execution_metadata_or_trace_identity(
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    assert raw_before["params_hash"] == hashlib.sha256(
-        raw_encoded_params.encode("utf-8")
-    ).hexdigest()
+    assert (
+        raw_before["params_hash"] == hashlib.sha256(raw_encoded_params.encode("utf-8")).hexdigest()
+    )
     assert run.header()["provider"]["model"] == "gpt-5.6-luna"
 
     subsequent_trace_header = run.trace_header()
@@ -551,9 +549,10 @@ def test_returned_headers_cannot_mutate_execution_metadata_or_trace_identity(
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    assert subsequent_trace_header["params_hash"] == hashlib.sha256(
-        encoded_params.encode("utf-8")
-    ).hexdigest()
+    assert (
+        subsequent_trace_header["params_hash"]
+        == hashlib.sha256(encoded_params.encode("utf-8")).hexdigest()
+    )
 
 
 def test_current_isolated_run_binds_the_fixture_oci_identity(

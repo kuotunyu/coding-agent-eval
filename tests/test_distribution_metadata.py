@@ -87,9 +87,7 @@ def test_external_agent_documentation_preserves_the_trust_boundary(repo_root: Pa
 
 def test_external_agent_operator_docs_preserve_run_and_review_boundaries(repo_root: Path) -> None:
     readme = " ".join((repo_root / "README.md").read_text(encoding="utf-8").split())
-    manual = " ".join(
-        (repo_root / "docs" / "MANUAL_RUN.md").read_text(encoding="utf-8").split()
-    )
+    manual = " ".join((repo_root / "docs" / "MANUAL_RUN.md").read_text(encoding="utf-8").split())
 
     assert "Resolve-Path 'examples/external_agents/scripted_agent.py'" in readme
     assert "不是 model benchmark 結果" in readme
