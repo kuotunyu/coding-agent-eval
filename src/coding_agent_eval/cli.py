@@ -883,9 +883,7 @@ def _run_agent(args: argparse.Namespace) -> int:
                     args.step_timeout_seconds if args.step_timeout_seconds is not None else 120.0
                 ),
                 shutdown_grace_seconds=(
-                    args.shutdown_grace_seconds
-                    if args.shutdown_grace_seconds is not None
-                    else 2.0
+                    args.shutdown_grace_seconds if args.shutdown_grace_seconds is not None else 2.0
                 ),
             )
         except ConfigurationError as exc:

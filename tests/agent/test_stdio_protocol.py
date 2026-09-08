@@ -32,9 +32,12 @@ def wire(request_id: int, message_type: str, payload: dict[str, Any]) -> bytes:
         "type": message_type,
         "payload": payload,
     }
-    return json.dumps(message, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
-        "utf-8"
-    ) + b"\n"
+    return (
+        json.dumps(message, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
+            "utf-8"
+        )
+        + b"\n"
+    )
 
 
 def step_wire(request_id: int, payload: dict[str, Any]) -> bytes:

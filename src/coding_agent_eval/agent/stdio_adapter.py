@@ -448,9 +448,7 @@ class StdioAgentAdapter:
             detail["returncode"] = returncode
         code = "child_exit" if returncode not in (None, 0) else fallback_code
         message = (
-            "external agent process exited non-zero"
-            if code == "child_exit"
-            else fallback_message
+            "external agent process exited non-zero" if code == "child_exit" else fallback_message
         )
         trace = self._failure_trace(
             request,
@@ -460,9 +458,7 @@ class StdioAgentAdapter:
             write_progress.status(),
         )
         if returncode not in (None, 0):
-            return AdapterFailure(
-                code, phase, message, detail=detail, trace=trace
-            )
+            return AdapterFailure(code, phase, message, detail=detail, trace=trace)
         return AdapterFailure(code, phase, message, detail=detail, trace=trace)
 
     @staticmethod
@@ -511,9 +507,7 @@ class StdioAgentAdapter:
                 phase,
                 exc.message,
                 detail={**self._stderr_detail(), "response": raw_response},
-                trace=self._failure_trace(
-                    request, raw_response, latency, exc.code, "complete"
-                ),
+                trace=self._failure_trace(request, raw_response, latency, exc.code, "complete"),
             ) from exc
 
     @staticmethod
