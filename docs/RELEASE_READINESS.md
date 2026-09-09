@@ -131,13 +131,16 @@ Online OCI gate：
 uv run cae release audit --publication --online
 ```
 
-完整本機驗證：
+完整本機驗證，單一入口（Git Bash）：
+
+```bash
+bash scripts/check.sh
+```
+
+它依序跑 ruff check、ruff format --check、mypy（host 與 Linux 兩個平台）、pytest、fixture
+rebuild、leak scan 與 release audit。打包與 Docker gates 另外跑：
 
 ```powershell
-uv run pytest -q
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy --strict src
 uv build
 uv run pytest -q -m docker
 ```
