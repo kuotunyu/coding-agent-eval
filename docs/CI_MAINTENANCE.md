@@ -4,6 +4,13 @@
 比對。CI 定義在 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)；本機 release
 gates 見 [Release Readiness](RELEASE_READINESS.md)。
 
+## 日常只有兩條
+
+1. 改東西前開分支，推之前跑 `bash scripts/check.sh`。它包含 `mypy --platform linux`，
+   這是在 Windows 上唯一能在本機看到 Linux 型別錯誤的方法。
+2. 改了 README 或 `docs/*.md`，同一個 commit 跑 `uv run python scripts/build_release_manifest.py`，
+   否則 publication audit 會擋。
+
 ## 事件摘要
 
 | | |
@@ -86,9 +93,8 @@ pull_request（PR #4，merge `cf8b727`），理由是規則要短到一眼看懂
 
 ## 之後如何避免
 
-- 系列改動走 PR，不直接批次推 main。
-- 推送前跑 `bash scripts/check.sh`。它包含 `mypy --platform linux`，這是在 Windows 上唯一能在
-  本機看到 Linux 型別錯誤的方法。
+除了開頭那兩條日常規則：
+
 - 涉及子行程、pipe 或路徑的測試，記得 CI 的 venv `python.exe` 可能是 launcher 行程，
   而 Linux 沒有反斜線分隔符。
 - 一個紅燈步驟後面可能還藏著別的紅燈；修完第一個就再跑一次完整 job。
