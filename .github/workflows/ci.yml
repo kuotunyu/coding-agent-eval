@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    # Every branch push runs CI, so drift is caught before it reaches main.
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 permissions:
