@@ -153,8 +153,10 @@ uv run cae sanitize RUN_ID --store-root .run-store --out public-trace.jsonl
 
 - [Benchmark Card](docs/BENCHMARK_CARD.md)：評測指標定義、分母規範、實驗結果與局限性。
 - [Data Card](docs/DATA_CARD.md)：語料來源、資料血統、開源授權與防污染邊界。
+- [Metrics](docs/METRICS.md)：指標公式、分母為零的處理與命名決定。
 - [Reference Suite](docs/REFERENCE_SUITE.md)：基準註冊、執行、重放與證據鏈規範。
 - [Release Readiness](docs/RELEASE_READINESS.md)：宣稱對照矩陣與發布門禁。
+- [Sandbox Verification](docs/SANDBOX_VERIFICATION.md)：sandbox 隔離屬性的實測紀錄。
 - [CI Maintenance](docs/CI_MAINTENANCE.md)：主線 CI 修復紀錄、根因與整合流程。
 
 ---

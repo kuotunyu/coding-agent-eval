@@ -63,19 +63,14 @@ quality job 會在第一個失敗步驟停止。Format check 的紅燈把後面 
    取得失敗步驟與 log；在本機重現第一個失敗（`uv run ruff format --check .`）。
 2. **隔離分支，一個根因一個 commit**。commit message 寫根因與驗證方式。不加
    `Co-Authored-By` trailer，publication audit 會擋。
-3. **每個 commit 前跑 CI 對應的本機檢查**：
+3. **每個 commit 前跑本機檢查的單一入口**：
 
-   ```powershell
-   uv run ruff check .
-   uv run ruff format --check .
-   uv run mypy
-   uv run mypy --platform linux
-   uv run pytest -q
-   uv run cae validate fixtures
-   uv run cae hygiene leak-scan --tracked
-   uv run cae release audit --publication
-   uv build
+   ```bash
+   bash scripts/check.sh
    ```
+
+   它涵蓋 lint、format、mypy（host 與 Linux）、tests、fixture rebuild、leak scan 與
+   release audit。schema validation、`--publication` audit、build 與 Docker gates 交給 PR 的 CI。
 
 4. **推分支、開 PR，用 PR 的 CI 看 Linux 側**。quality job 每次只揭露一個失敗，所以
    會來回幾次；每次只修剛揭露的那一個。
@@ -92,7 +87,7 @@ pull_request（PR #4，merge `cf8b727`），理由是規則要短到一眼看懂
 ## 之後如何避免
 
 - 系列改動走 PR，不直接批次推 main。
-- 推送前跑上面的本機檢查。在 Windows 上開發時，`uv run mypy --platform linux` 是唯一能在
+- 推送前跑 `bash scripts/check.sh`。它包含 `mypy --platform linux`，這是在 Windows 上唯一能在
   本機看到 Linux 型別錯誤的方法。
 - 涉及子行程、pipe 或路徑的測試，記得 CI 的 venv `python.exe` 可能是 launcher 行程，
   而 Linux 沒有反斜線分隔符。
