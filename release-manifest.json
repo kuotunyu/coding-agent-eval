@@ -17,14 +17,19 @@
       "sha256": "70e647a0ba8d4caf2d90de53115c8d197b08130509328f24cd2fd07f37af8cb8"
     },
     {
-      "bytes": 10376,
+      "bytes": 10471,
       "path": "README.md",
-      "sha256": "8a9c65aaed759510122a7934df5985c9f3d5ea9d2cfabf1785f3099d7907e795"
+      "sha256": "303146b095f4f985d78c6ccbab3f9e35fa0f16d9e75c2a6f20dbbe171d03d1e1"
     },
     {
       "bytes": 12975,
       "path": "docs/BENCHMARK_CARD.md",
       "sha256": "358f198df4a67e26125deb946a280b0c501a00db93d2201b6c7a11b434e30fa7"
+    },
+    {
+      "bytes": 5767,
+      "path": "docs/CI_MAINTENANCE.md",
+      "sha256": "013d544b0ac45aee6c25f5680e57c7fbceb01b344359cf4a5e5772c3ae168752"
     },
     {
       "bytes": 10213,

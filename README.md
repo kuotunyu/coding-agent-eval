@@ -155,6 +155,7 @@ uv run cae sanitize RUN_ID --store-root .run-store --out public-trace.jsonl
 - [Data Card](docs/DATA_CARD.md)：語料來源、資料血統、開源授權與防污染邊界。
 - [Reference Suite](docs/REFERENCE_SUITE.md)：基準註冊、執行、重放與證據鏈規範。
 - [Release Readiness](docs/RELEASE_READINESS.md)：宣稱對照矩陣與發布門禁。
+- [CI Maintenance](docs/CI_MAINTENANCE.md)：主線 CI 修復紀錄、根因與整合流程。
 
 ---
 
