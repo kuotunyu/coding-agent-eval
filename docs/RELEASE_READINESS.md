@@ -112,6 +112,13 @@ clean-control candidate，依零 finding gate 停止且未執行 mutated task。
 uv run cae release audit --publication
 ```
 
+Manifest 規則：`release-manifest.json` 記錄 README、`docs/*.md` 與其他公開 artifacts 的
+checksum。改了這些檔案，同一個 commit 要重新產生 manifest，否則上面的 audit 會擋：
+
+```powershell
+uv run python scripts/build_release_manifest.py
+```
+
 外部 agent 發布邊界也是 offline gate：distribution／CI metadata tests 要求 README 與
 Threat Model 保留 `cae-agent-stdio` 的 host-process 信任說明；完整驗證必須建立套件、
 用 `uv pip install --offline` 安裝唯一 wheel，並由該獨立 environment 匯入
